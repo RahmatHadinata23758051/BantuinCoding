@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Entity
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?  // Nullable if magic link / OAuth
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projects Project[]
+
+  @@map("users")
+}
+
+// Project Entity
+model Project {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  description    String
+  classification String   @default("OTHER") // STATIC_SITE | SAAS | CRUD_APP | etc.
+  targetAgent    String   @default("CLAUDE_CODE") @map("target_agent")
+  status         String   @default("DRAFT") // DRAFT | CONFIGURED | ANALYZING | etc.
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contexts               ProjectContext[]
+  clarificationQuestions ClarificationQuestion[]
+  artifacts              Artifact[]
+  skillRecommendations   SkillRecommendation[]
+  backlogPhases          BacklogPhase[]
+  backlogTasks           BacklogTask[]
+
+  @@map("projects")
+}
+
+// Canonical Project Context (Versioned)
+model ProjectContext {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  version     Int      @default(1)
+  contentJson String   @map("content_json") // Validated CanonicalProjectContext JSON
+  isCurrent   Boolean  @default(true) @map("is_current")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  artifacts Artifact[]
+
+  @@unique([projectId, version])
+  @@map("project_contexts")
+}
+
+// Clarification Question Entity
+model ClarificationQuestion {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  round     Int      @default(1)
+  question  String
+  answer    String?
+  impact    String?  // Why this question matters
+  status    String   @default("PENDING") // PENDING | ANSWERED | SKIPPED
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("clarification_questions")
+}
+
+// Artifact Entity (Generated Files)
+model Artifact {
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  type           String   // PRD | SRS | ARCHITECTURE | AGENT | RULES | SKILLS | BACKLOG | etc.
+  path           String   // E.g. "PRD.md" or "docs/API.md"
+  content        String   // Markdown content
+  version        Int      @default(1)
+  contextVersion Int      @map("context_version") // References ProjectContext.version
+  status         String   @default("NOT_GENERATED") // NOT_GENERATED | GENERATING | READY | MODIFIED | OUTDATED | FAILED
+  provider       String?  // AI Provider used
+  model          String?  // Model used
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  context ProjectContext @relation(fields: [projectId, contextVersion], references: [projectId, version])
+
+  @@unique([projectId, type])
+  @@map("artifacts")
+}
+
+// Skill Recommendation Entity
+model SkillRecommendation {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  name      String
+  source    String   @default("skillsllm.com")
+  purpose   String
+  trigger   String
+  metadata  String?  // JSON string: applicable_phases, task_types, etc.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("skill_recommendations")
+}
+
+// Backlog Phase Entity
+model BacklogPhase {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  order       Int
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   BacklogTask[]
+
+  @@unique([projectId, order])
+  @@map("backlog_phases")
+}
+
+// Backlog Task Entity
+model BacklogTask {
+  id                 String   @id @default(uuid())
+  projectId          String   @map("project_id")
+  phaseId            String   @map("phase_id")
+  taskKey            String   @map("task_key") // E.g. "BK-001"
+  title              String
+  description        String
+  status             String   @default("PENDING") // PENDING | READY | IN_PROGRESS | BLOCKED | REVIEW | DONE
+  acceptanceCriteria String   @map("acceptance_criteria") // JSON array string
+  definitionOfDone   String   @map("definition_of_done")
+  relevantDocs       String?  @map("relevant_docs") // JSON array string
+  recommendedSkills  String?  @map("recommended_skills") // JSON array string
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase   BacklogPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  dependsOn BacklogDependency[] @relation("DependentTask")
+  dependedBy BacklogDependency[] @relation("PrerequisiteTask")
+
+  @@unique([projectId, taskKey])
+  @@map("backlog_tasks")
+}
+
+// Backlog Dependency Entity (Many-to-Many self reference)
+model BacklogDependency {
+  taskId          String @map("task_id")
+  dependsOnTaskId String @map("depends_on_task_id")
+
+  task      BacklogTask @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn BacklogTask @relation("PrerequisiteTask", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnTaskId])
+  @@map("backlog_dependencies")
+}
