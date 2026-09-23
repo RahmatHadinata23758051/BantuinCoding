@@ -1,0 +1,83 @@
+# ============================================
+# SPECIFICATION DOCS — tidak di-push ke git
+# ============================================
+PRD.md
+SRS.md
+Agent.md
+BACKLOG.md
+CLAUDE.md
+
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+.pnp
+.pnp.js
+
+# ============================================
+# Build outputs
+# ============================================
+.next/
+out/
+dist/
+build/
+.turbo/
+
+# ============================================
+# Environment variables — JANGAN PERNAH COMMIT
+# ============================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+
+# ============================================
+# Database
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+/prisma/dev.db
+/apps/api/prisma/dev.db
+
+# ============================================
+# Testing
+# ============================================
+coverage/
+.vitest/
+playwright-report/
+test-results/
+
+# ============================================
+# OS & Editor
+# ============================================
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ============================================
+# Logs
+# ============================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+
+# ============================================
+# Misc
+# ============================================
+.vercel
+.netlify
+*.tsbuildinfo
+next-env.d.ts
