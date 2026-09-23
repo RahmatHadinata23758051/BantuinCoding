@@ -7,3 +7,4 @@ allowBuilds:
   esbuild: true
   prisma: true
   unrs-resolver: true
+  tsx: true
