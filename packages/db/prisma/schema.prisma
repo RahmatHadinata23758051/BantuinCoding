@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// User
+// ============================================================
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String? // nullable for future OAuth / magic-link
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projects Project[]
+
+  @@map("users")
+}
+
+// ============================================================
+// Project
+// ============================================================
+model Project {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  rawIdea        String   @map("raw_idea") // The original user-supplied idea text
+  classification String   @default("OTHER") @map("classification")
+  targetAgent    String   @default("CLAUDE_CODE") @map("target_agent")
+  status         String   @default("DRAFT") @map("status")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contexts               ProjectContext[]
+  clarificationQuestions ClarificationQuestion[]
+  artifacts              Artifact[]
+  skillRecommendations   SkillRecommendation[]
+  backlogPhases          BacklogPhase[]
+  backlogTasks           BacklogTask[]
+
+  @@map("projects")
+}
+
+// ============================================================
+// Canonical Project Context (versioned snapshots)
+// ============================================================
+model ProjectContext {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  version     Int      @default(1)
+  contentJson String   @map("content_json") // serialized CanonicalProjectContext
+  isCurrent   Boolean  @default(true) @map("is_current")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  artifacts Artifact[]
+
+  @@unique([projectId, version])
+  @@map("project_contexts")
+}
+
+// ============================================================
+// Clarification Question
+// ============================================================
+model ClarificationQuestion {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  round     Int      @default(1)
+  question  String
+  answer    String?
+  impact    String? // why this question matters
+  status    String   @default("PENDING") // PENDING | ANSWERED | SKIPPED
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("clarification_questions")
+}
+
+// ============================================================
+// Artifact (generated documents)
+// ============================================================
+model Artifact {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  contextId String   @map("context_id") // FK → ProjectContext.id
+  type      String // PRD | SRS | ARCHITECTURE | AGENT | RULES | SKILLS | BACKLOG | etc.
+  path      String // e.g. "PRD.md"
+  content   String   @db.Text
+  version   Int      @default(1)
+  status    String   @default("NOT_GENERATED") @map("status")
+  provider  String? // AI provider used
+  model     String? // model used
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  context ProjectContext @relation(fields: [contextId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, type])
+  @@map("artifacts")
+}
+
+// ============================================================
+// Skill Recommendation
+// ============================================================
+model SkillRecommendation {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  name      String
+  source    String   @default("skillsllm.com")
+  purpose   String
+  trigger   String
+  metadata  String? // JSON: applicable_phases, task_types, etc.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("skill_recommendations")
+}
+
+// ============================================================
+// Backlog Phase
+// ============================================================
+model BacklogPhase {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  order       Int
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   BacklogTask[]
+
+  @@unique([projectId, order])
+  @@map("backlog_phases")
+}
+
+// ============================================================
+// Backlog Task
+// ============================================================
+model BacklogTask {
+  id                 String   @id @default(uuid())
+  projectId          String   @map("project_id")
+  phaseId            String   @map("phase_id")
+  taskKey            String   @map("task_key") // e.g. "BK-001"
+  title              String
+  description        String   @db.Text
+  status             String   @default("PENDING") @map("status")
+  acceptanceCriteria String   @map("acceptance_criteria") @db.Text // JSON array
+  definitionOfDone   String   @map("definition_of_done") @db.Text
+  relevantDocs       String?  @map("relevant_docs") // JSON array
+  recommendedSkills  String?  @map("recommended_skills") // JSON array
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase   BacklogPhase @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  dependsOn  BacklogDependency[] @relation("DependentTask")
+  dependedBy BacklogDependency[] @relation("PrerequisiteTask")
+
+  @@unique([projectId, taskKey])
+  @@map("backlog_tasks")
+}
+
+// ============================================================
+// Backlog Dependency (self-referential many-to-many)
+// ============================================================
+model BacklogDependency {
+  taskId          String @map("task_id")
+  dependsOnTaskId String @map("depends_on_task_id")
+
+  task      BacklogTask @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn BacklogTask @relation("PrerequisiteTask", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnTaskId])
+  @@map("backlog_dependencies")
+}
