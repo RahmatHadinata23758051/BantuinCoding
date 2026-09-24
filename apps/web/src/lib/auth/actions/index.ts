@@ -33,9 +33,13 @@ export async function loginAction(
   }
 
   try {
-    await signIn('credentials', { email, password, redirect: false })
+    await signIn('credentials', { email, password, redirectTo: '/dashboard' })
     return { success: true, data: undefined }
-  } catch {
+  } catch (error) {
+    // Next.js redirect throws a special NEXT_REDIRECT error which MUST be re-thrown
+    if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
+      throw error
+    }
     return { success: false, error: 'Invalid email or password' }
   }
 }
