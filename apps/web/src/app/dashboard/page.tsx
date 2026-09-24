@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { getUserProjects } from '@/lib/projects/project-service'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'text-zinc-400 bg-zinc-900 border-zinc-800',
@@ -36,12 +37,12 @@ export default async function DashboardPage() {
 
         <div className="flex items-center gap-4 text-xs">
           <span className="text-zinc-500">{session.user.email}</span>
-          <a
+          <Link
             href="/projects/new"
             className="rounded bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-zinc-900 hover:bg-zinc-200 transition-colors"
           >
             + New Project
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -66,12 +67,12 @@ export default async function DashboardPage() {
               Transform your raw project ideas into structured documentation packs for
               coding agents (Claude Code, Cursor, Codex).
             </p>
-            <a
+            <Link
               href="/projects/new"
               className="rounded bg-zinc-100 px-4 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-200 transition-colors"
             >
               Bootstrap First Project →
-            </a>
+            </Link>
           </div>
         ) : (
           /* Project List */
@@ -80,7 +81,7 @@ export default async function DashboardPage() {
               const statusClass =
                 STATUS_COLORS[p.status] ?? STATUS_COLORS['DRAFT']
               return (
-                <a
+                <Link
                   key={p.id}
                   href={`/projects/${p.id}`}
                   className="group flex flex-col justify-between rounded border border-zinc-800 bg-zinc-900/40 p-4 hover:border-zinc-700 hover:bg-zinc-900/80 transition-all"
@@ -109,7 +110,7 @@ export default async function DashboardPage() {
                       <span>{p.targetAgent}</span>
                     </div>
                   </div>
-                </a>
+                </Link>
               )
             })}
           </div>
