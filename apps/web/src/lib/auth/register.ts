@@ -37,7 +37,8 @@ export async function registerUser(input: {
     }
   }
 
-  const { email, password, name } = parsed.data
+  const email = parsed.data.email.toLowerCase().trim()
+  const { password, name } = parsed.data
 
   const existing = await db.user.findUnique({ where: { email } })
   if (existing) {

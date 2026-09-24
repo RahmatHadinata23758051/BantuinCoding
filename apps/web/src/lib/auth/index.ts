@@ -15,6 +15,8 @@ const LoginSchema = z.object({
 })
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET || 'bantuincoding-super-secret-auth-key-32-chars-minimum',
+  trustHost: true,
   providers: [
     Credentials({
       name: 'credentials',
@@ -26,7 +28,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const parsed = LoginSchema.safeParse(credentials)
         if (!parsed.success) return null
 
-        const { email, password } = parsed.data
+        const email = parsed.data.email.toLowerCase().trim()
+        const { password } = parsed.data
 
         const user = await db.user.findUnique({ where: { email } })
         if (!user || !user.password) return null
