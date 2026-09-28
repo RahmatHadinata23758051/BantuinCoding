@@ -85,27 +85,58 @@ export type ArtifactType =
 export type ContextProvenance = 'confirmed' | 'assumed' | 'unknown'
 
 // Canonical Project Context
+export interface ContextValue {
+  value: string
+  provenance: ContextProvenance
+}
+
+export interface CanonicalFunctionalRequirement {
+  id: string
+  title: string
+  description: string
+  provenance: ContextProvenance
+}
+
+export interface CanonicalNonFunctionalRequirement {
+  category: string
+  requirement: string
+  provenance: ContextProvenance
+}
+
+export interface CanonicalCoreEntity {
+  name: string
+  fields: string[]
+  relationships?: string[]
+}
+
+/**
+ * Stored and generated canonical-context contract. Snake case is intentional:
+ * this exact shape crosses the AI structured-output and persistence boundaries.
+ */
 export interface CanonicalProjectContext {
-  project: {
-    name: string
-    description: string
-    classification: ProjectClassification
-    agentTarget: AgentTarget
+  project_name: string
+  summary: string
+  target_users: ContextValue[]
+  goals: ContextValue[]
+  non_goals: ContextValue[]
+  functional_requirements: CanonicalFunctionalRequirement[]
+  non_functional_requirements: CanonicalNonFunctionalRequirement[]
+  core_entities: CanonicalCoreEntity[]
+  technical_constraints: ContextValue[]
+  stack_preferences: {
+    frontend: ContextValue
+    backend: ContextValue
+    database: ContextValue
+    styling: ContextValue
   }
-  users: Array<{ role: string; description: string }>
-  goals: Array<{ goal: string; provenance: ContextProvenance }>
-  nonGoals: Array<{ goal: string; provenance: ContextProvenance }>
-  functionalRequirements: Array<{ requirement: string; provenance: ContextProvenance }>
-  nonFunctionalRequirements: Array<{ requirement: string; provenance: ContextProvenance }>
-  technicalConstraints: Record<string, { value: string; provenance: ContextProvenance }>
-  stackPreferences: Record<string, { value: string; provenance: ContextProvenance }>
-  designDirection: Record<string, { value: string; provenance: ContextProvenance }>
-  securityRequirements: Array<{ requirement: string; provenance: ContextProvenance }>
-  integrations: Array<{ name: string; purpose: string; provenance: ContextProvenance }>
-  deployment: Record<string, { value: string; provenance: ContextProvenance }>
-  openQuestions: Array<{ question: string; impact: string }>
-  confirmedDecisions: Array<{ decision: string; confirmedAt: string }>
-  assumptions: Array<{ assumption: string; impact: string }>
+  design_direction: ContextValue
+  security_requirements: ContextValue[]
+  integrations: ContextValue[]
+  deployment_target: ContextValue
+  agent_target: string
+  confirmed_decisions: ContextValue[]
+  open_questions: ContextValue[]
+  assumptions: ContextValue[]
 }
 
 // AI Provider interface

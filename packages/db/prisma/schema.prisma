@@ -38,14 +38,35 @@ model Project {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses               ProjectAnalysis[]
   contexts               ProjectContext[]
   clarificationQuestions ClarificationQuestion[]
   artifacts              Artifact[]
+  artifactPlans          ArtifactPlanItem[]
+  validationReports      ValidationReport[]
   skillRecommendations   SkillRecommendation[]
   backlogPhases          BacklogPhase[]
   backlogTasks           BacklogTask[]
 
   @@map("projects")
+}
+
+// ============================================================
+// Requirement Analysis (versioned structured snapshots)
+// ============================================================
+model ProjectAnalysis {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  version     Int      @default(1)
+  contentJson String   @map("content_json") @db.Text
+  isCurrent   Boolean  @default(true) @map("is_current")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, version])
+  @@index([projectId, isCurrent])
+  @@map("project_analyses")
 }
 
 // ============================================================
@@ -59,8 +80,10 @@ model ProjectContext {
   isCurrent   Boolean  @default(true) @map("is_current")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  artifacts Artifact[]
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  artifacts         Artifact[]
+  artifactPlans     ArtifactPlanItem[]
+  validationReports ValidationReport[]
 
   @@unique([projectId, version])
   @@map("project_contexts")
@@ -86,27 +109,70 @@ model ClarificationQuestion {
 }
 
 // ============================================================
+// Artifact Plan (authoritative requirements per context)
+// ============================================================
+model ArtifactPlanItem {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  contextId  String   @map("context_id")
+  type       String
+  path       String
+  isRequired Boolean  @default(false) @map("is_required")
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  context ProjectContext @relation(fields: [contextId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, contextId, type])
+  @@index([projectId, contextId, isRequired])
+  @@map("artifact_plan_items")
+}
+
+// ============================================================
 // Artifact (generated documents)
 // ============================================================
 model Artifact {
-  id        String   @id @default(uuid())
-  projectId String   @map("project_id")
-  contextId String   @map("context_id") // FK → ProjectContext.id
-  type      String // PRD | SRS | ARCHITECTURE | AGENT | RULES | SKILLS | BACKLOG | etc.
-  path      String // e.g. "PRD.md"
-  content   String   @db.Text
-  version   Int      @default(1)
-  status    String   @default("NOT_GENERATED") @map("status")
-  provider  String? // AI provider used
-  model     String? // model used
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  contextId  String   @map("context_id") // FK → ProjectContext.id
+  type       String // PRD | SRS | ARCHITECTURE | AGENT | RULES | SKILLS | BACKLOG | etc.
+  path       String // e.g. "PRD.md"
+  content    String   @db.Text
+  version    Int      @default(1)
+  status     String   @default("NOT_GENERATED") @map("status")
+  provider   String? // AI provider used
+  model      String? // model used
+  isRequired Boolean  @default(false) @map("is_required")
+  planReason String?  @map("plan_reason")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
 
   project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   context ProjectContext @relation(fields: [contextId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, type])
   @@map("artifacts")
+}
+
+// ============================================================
+// Consistency Validation Report
+// ============================================================
+model ValidationReport {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  contextId       String   @map("context_id")
+  contentJson     String   @map("content_json") @db.Text
+  artifactVersion String   @map("artifact_version")
+  passed          Boolean
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  project Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  context ProjectContext @relation(fields: [contextId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@map("validation_reports")
 }
 
 // ============================================================
