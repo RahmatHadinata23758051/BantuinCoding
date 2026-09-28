@@ -1,5 +1,10 @@
-import { auth } from '@/lib/auth'
+import { ArrowRight, KeyRound, Lightbulb, ListChecks } from 'lucide-react'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+
+import { PipelineSpine } from '@/app/components/PipelineSpine'
+import { Caption, Input, Panel, Select, StatusBadge, Textarea, buttonClassName } from '@/app/components/ui'
+import { auth } from '@/lib/auth'
 import { createProject } from '@/lib/projects/project-service'
 
 async function handleCreateProject(formData: FormData) {
@@ -22,137 +27,185 @@ async function handleCreateProject(formData: FormData) {
   redirect(`/projects/${project.id}`)
 }
 
+const CLASSIFICATIONS = [
+  { value: 'SAAS', label: 'SaaS app' },
+  { value: 'CRUD_APP', label: 'CRUD application' },
+  { value: 'DASHBOARD', label: 'Dashboard / admin' },
+  { value: 'API_SERVICE', label: 'API service' },
+  { value: 'STATIC_SITE', label: 'Static site' },
+  { value: 'LANDING_PAGE', label: 'Landing page' },
+  { value: 'MOBILE_APP', label: 'Mobile app' },
+  { value: 'AI_APP', label: 'AI application' },
+  { value: 'IOT_DASHBOARD', label: 'IoT dashboard' },
+  { value: 'FULLSTACK_COMPLEX', label: 'Fullstack complex' },
+  { value: 'OTHER', label: 'Other' },
+]
+
+const AGENTS = [
+  { value: 'CLAUDE_CODE', label: 'Claude Code' },
+  { value: 'CURSOR', label: 'Cursor' },
+  { value: 'CODEX', label: 'OpenAI Codex' },
+  { value: 'OPENCODE', label: 'OpenCode' },
+  { value: 'ANTIGRAVITY', label: 'AntiGravity' },
+  { value: 'OTHER', label: 'Other agent' },
+]
+
+const NEXT_STEPS = [
+  'Analyze the raw idea and expose requirement gaps.',
+  'Ask only the clarification questions that affect implementation.',
+  'Normalize confirmed decisions into canonical project context.',
+  'Plan and generate the right documentation depth.',
+  'Resolve relevant skills and build a dependency-aware backlog.',
+  'Review the Markdown and export a secret-safe ZIP.',
+]
+
 export default async function NewProjectPage() {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-zinc-100 font-mono">
-      <header className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-zinc-900/40">
-        <div className="flex items-center gap-3">
-          <a href="/dashboard" className="text-xs text-zinc-500 hover:text-zinc-300">
-            ← Dashboard
-          </a>
-          <span className="text-zinc-700">/</span>
-          <h1 className="text-sm font-semibold text-zinc-200">New Project</h1>
-        </div>
-      </header>
+    <main className="min-h-screen px-4 py-5 text-[var(--ink)] sm:px-6">
+      <div className="mx-auto max-w-7xl border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hero)]">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
+            <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
+              ← Dashboard
+            </Link>
+            <span>/ new project</span>
+          </div>
+          <StatusBadge tone="neutral">initial state · DRAFT</StatusBadge>
+        </header>
 
-      <main className="flex-1 p-6 max-w-2xl w-full mx-auto">
-        <div className="mb-6">
-          <span className="text-xs text-zinc-500 uppercase tracking-widest">
-            Step 1 of 3 — Project Setup
-          </span>
-          <h2 className="text-xl font-semibold text-zinc-50 mt-1">
-            Capture Raw Idea
-          </h2>
-          <p className="text-xs text-zinc-400 mt-1">
-            Describe what you want to build. The system will analyze requirements,
-            ask clarification questions, and generate a complete documentation pack.
-          </p>
+        <div className="border-b-2 border-[var(--ink)] bg-[var(--paper)] p-4 sm:p-6">
+          <PipelineSpine current="idea" compact />
         </div>
 
-        <form action={handleCreateProject} className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="name"
-              className="text-xs font-semibold text-zinc-300 uppercase tracking-wide"
-            >
-              Project Name
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              placeholder="e.g. Acme SaaS Analytics"
-              className="rounded bg-zinc-900 border border-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-            />
+        <section className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <div className="border-b-2 border-[var(--ink)] bg-[var(--paper-raised)] p-5 sm:p-8 lg:border-b-0 lg:border-r-2">
+            <Caption>Chapter 01 · capture intent</Caption>
+            <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
+              Give the system a useful raw idea—not a perfect spec.
+            </h1>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-[var(--paper-muted)]">
+              Describe the users, the core job, important features, and known constraints. Missing
+              high-impact decisions become focused clarification questions later.
+            </p>
+
+            <form action={handleCreateProject} className="mt-8 grid gap-6">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="name" className="text-sm font-black">
+                  Project name
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  minLength={2}
+                  maxLength={100}
+                  placeholder="Example: Kost Management"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label htmlFor="rawIdea" className="text-sm font-black">
+                  Project idea
+                </label>
+                <Textarea
+                  id="rawIdea"
+                  name="rawIdea"
+                  rows={10}
+                  required
+                  minLength={10}
+                  maxLength={5000}
+                  placeholder="Who is this for? What must they be able to do? What business or technical constraints are already known?"
+                  className="min-h-64 leading-6"
+                />
+                <p className="text-xs leading-5 text-[var(--paper-muted)]">
+                  Do not paste API keys or other secrets. This text becomes long-lived project context.
+                </p>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="classification" className="text-sm font-black">
+                    Starting classification
+                  </label>
+                  <Select id="classification" name="classification" defaultValue="SAAS">
+                    {CLASSIFICATIONS.map((classification) => (
+                      <option key={classification.value} value={classification.value}>
+                        {classification.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="targetAgent" className="text-sm font-black">
+                    Target coding agent
+                  </label>
+                  <Select id="targetAgent" name="targetAgent" defaultValue="CLAUDE_CODE">
+                    {AGENTS.map((agent) => (
+                      <option key={agent.value} value={agent.value}>
+                        {agent.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-4 border-t-[3px] border-[var(--ink)] pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--paper-muted)]">
+                  <Lightbulb size={17} className="text-[var(--proof-amber)]" aria-hidden="true" />
+                  You can refine context before final generation.
+                </div>
+                <button
+                  type="submit"
+                  className={buttonClassName({ variant: 'primary', size: 'lg', className: 'w-full sm:w-auto' })}
+                >
+                  Create project <ArrowRight size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </form>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="rawIdea"
-              className="text-xs font-semibold text-zinc-300 uppercase tracking-wide"
-            >
-              Raw Idea / Description
-            </label>
-            <textarea
-              id="rawIdea"
-              name="rawIdea"
-              rows={6}
-              required
-              minLength={10}
-              placeholder="Describe the application, target users, key features, business goals, or tech constraints..."
-              className="rounded bg-zinc-900 border border-zinc-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-500 leading-relaxed"
-            />
-          </div>
+          <aside className="bg-[var(--lavender)] p-5 sm:p-8">
+            <Panel tone="yellow" className="p-5">
+              <ListChecks size={28} strokeWidth={2.5} aria-hidden="true" />
+              <h2 className="mt-4 text-2xl font-black tracking-[-0.04em]">What happens next</h2>
+              <ol className="mt-5 grid gap-4">
+                {NEXT_STEPS.map((step, index) => (
+                  <li key={step} className="grid grid-cols-[34px_1fr] gap-3">
+                    <span className="flex size-8 items-center justify-center border-2 border-[var(--ink)] bg-[var(--paper-raised)] font-mono text-xs font-black shadow-[var(--shadow-xs)]">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="pt-1 text-sm font-bold leading-5">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </Panel>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="classification"
-                className="text-xs font-semibold text-zinc-300 uppercase tracking-wide"
-              >
-                Project Type
-              </label>
-              <select
-                id="classification"
-                name="classification"
-                defaultValue="SAAS"
-                className="rounded bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-              >
-                <option value="SAAS">SaaS App</option>
-                <option value="CRUD_APP">CRUD Application</option>
-                <option value="DASHBOARD">Dashboard / Admin</option>
-                <option value="API_SERVICE">API Service</option>
-                <option value="STATIC_SITE">Static Site</option>
-                <option value="LANDING_PAGE">Landing Page</option>
-                <option value="MOBILE_APP">Mobile App</option>
-                <option value="AI_APP">AI Application</option>
-                <option value="IOT_DASHBOARD">IoT Dashboard</option>
-                <option value="FULLSTACK_COMPLEX">Fullstack Complex</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="targetAgent"
-                className="text-xs font-semibold text-zinc-300 uppercase tracking-wide"
-              >
-                Target Coding Agent
-              </label>
-              <select
-                id="targetAgent"
-                name="targetAgent"
-                defaultValue="CLAUDE_CODE"
-                className="rounded bg-zinc-900 border border-zinc-800 px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-500"
-              >
-                <option value="CLAUDE_CODE">Claude Code</option>
-                <option value="CURSOR">Cursor</option>
-                <option value="CODEX">OpenAI Codex</option>
-                <option value="OPENCODE">OpenCode</option>
-                <option value="ANTIGRAVITY">AntiGravity</option>
-                <option value="OTHER">Other Agent</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
-            <span className="text-xs text-zinc-500">
-              Initial status will be <span className="text-zinc-300">DRAFT</span>
-            </span>
-
-            <button
-              type="submit"
-              className="rounded bg-zinc-100 px-5 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-200 transition-colors"
-            >
-              Create Project →
-            </button>
-          </div>
-        </form>
-      </main>
-    </div>
+            <Panel raised={false} className="mt-6 p-5 shadow-[var(--shadow-sm)]">
+              <div className="flex items-start gap-3">
+                <KeyRound className="mt-0.5 shrink-0" size={21} aria-hidden="true" />
+                <div>
+                  <p className="font-mono text-xs font-black">Generation prerequisite</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--paper-muted)]">
+                    A valid provider session is required before AI analysis. You can create this draft
+                    now and configure the key separately.
+                  </p>
+                  <Link
+                    href="/dashboard/provider"
+                    className="mt-3 inline-block text-sm font-black underline decoration-2 underline-offset-4"
+                  >
+                    Open provider desk →
+                  </Link>
+                </div>
+              </div>
+            </Panel>
+          </aside>
+        </section>
+      </div>
+    </main>
   )
 }
