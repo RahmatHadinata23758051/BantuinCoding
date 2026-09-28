@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { CanonicalProjectContext } from '@repo/types'
 
 // ============================================================
 // Canonical Project Context Prompt & Schema Module
@@ -46,17 +47,23 @@ export const CanonicalContextSchema = z.object({
     database: ContextItemWithProvenance,
     styling: ContextItemWithProvenance,
   }),
-  design_direction: z.string(),
-  security_requirements: z.array(z.string()),
-  integrations: z.array(z.string()),
-  deployment_target: z.string(),
+  design_direction: ContextItemWithProvenance,
+  security_requirements: z.array(ContextItemWithProvenance),
+  integrations: z.array(ContextItemWithProvenance),
+  deployment_target: ContextItemWithProvenance,
   agent_target: z.string(),
-  confirmed_decisions: z.array(z.string()),
-  open_questions: z.array(z.string()),
-  assumptions: z.array(z.string()),
-})
+  confirmed_decisions: z.array(ContextItemWithProvenance),
+  open_questions: z.array(ContextItemWithProvenance),
+  assumptions: z.array(ContextItemWithProvenance),
+}).strict()
 
 export type CanonicalContextOutput = z.infer<typeof CanonicalContextSchema>
+
+// Compile-time bidirectional compatibility guard for the shared contract.
+const _sharedContextCompatibility: CanonicalProjectContext = {} as CanonicalContextOutput
+const _schemaContextCompatibility: CanonicalContextOutput = {} as CanonicalProjectContext
+void _sharedContextCompatibility
+void _schemaContextCompatibility
 
 export const CONTEXT_NORMALIZER_SYSTEM_PROMPT = `You are a Principal Technical Architect creating a Canonical Project Context snapshot.
 
