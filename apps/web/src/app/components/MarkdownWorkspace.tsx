@@ -1,8 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { renderMarkdownToHtml } from '@/lib/artifacts/sanitizer'
+import { useMemo, useState } from 'react'
+import {
+  CheckCircle2,
+  Columns2,
+  Eye,
+  FileText,
+  Loader2,
+  PanelLeft,
+  PencilLine,
+  Save,
+} from 'lucide-react'
+
 import { getArtifactStatusBadgeStyle } from '@/lib/artifacts/artifact-service'
+import { renderMarkdownToHtml } from '@/lib/artifacts/sanitizer'
+import { cn } from '@/lib/ui'
+
+import { Button, Panel, StatusBadge } from './ui'
 
 export interface WorkspaceArtifactItem {
   id: string
@@ -19,24 +33,83 @@ interface MarkdownWorkspaceProps {
   onArtifactUpdated?: (updated: WorkspaceArtifactItem) => void
 }
 
+type WorkspaceMode = 'editor' | 'preview' | 'split'
+
+const viewModes: Array<{
+  id: WorkspaceMode
+  label: string
+  icon: typeof PencilLine
+}> = [
+  { id: 'editor', label: 'Edit', icon: PencilLine },
+  { id: 'split', label: 'Split', icon: Columns2 },
+  { id: 'preview', label: 'Preview', icon: Eye },
+]
+
+function getStatusDotClass(status: string) {
+  switch (status) {
+    case 'READY':
+      return 'bg-[var(--mint)]'
+    case 'MODIFIED':
+      return 'bg-[var(--cobalt)]'
+    case 'OUTDATED':
+      return 'bg-[var(--electric-yellow)]'
+    case 'FAILED':
+      return 'bg-[var(--action-red)]'
+    case 'GENERATING':
+      return 'bg-[var(--cobalt)] motion-safe:animate-pulse-dot'
+    default:
+      return 'bg-[var(--paper-dim)]'
+  }
+}
+
+function statusTone(status: string): 'neutral' | 'current' | 'pending' | 'success' | 'danger' | 'accent' {
+  switch (status) {
+    case 'READY':
+      return 'success'
+    case 'MODIFIED':
+      return 'current'
+    case 'OUTDATED':
+      return 'pending'
+    case 'FAILED':
+      return 'danger'
+    case 'GENERATING':
+      return 'accent'
+    default:
+      return 'neutral'
+  }
+}
+
+function formatUpdatedAt(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return value
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 export function MarkdownWorkspace({
   projectId,
   artifacts,
   onArtifactUpdated,
 }: MarkdownWorkspaceProps) {
-  const [selectedType, setSelectedType] = useState<string>(
-    artifacts[0]?.type || 'PRD',
-  )
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'split'>('split')
+  const [selectedType, setSelectedType] = useState<string>(artifacts[0]?.type || 'PRD')
+  const [activeTab, setActiveTab] = useState<WorkspaceMode>('split')
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
-  const activeArtifact = artifacts.find((a) => a.type === selectedType) || artifacts[0]
+  const activeArtifact = artifacts.find((artifact) => artifact.type === selectedType) || artifacts[0]
   const [content, setContent] = useState<string>(activeArtifact?.content || '')
 
-  const handleSelectArtifact = (art: WorkspaceArtifactItem) => {
-    setSelectedType(art.type)
-    setContent(art.content)
+  const renderedPreview = useMemo(() => renderMarkdownToHtml(content), [content])
+
+  const handleSelectArtifact = (artifact: WorkspaceArtifactItem) => {
+    setSelectedType(artifact.type)
+    setContent(artifact.content)
     setSaveMessage(null)
   }
 
@@ -46,21 +119,22 @@ export function MarkdownWorkspace({
     setSaveMessage(null)
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/artifacts/${activeArtifact.type}`, {
+      const response = await fetch(`/api/projects/${projectId}/artifacts/${activeArtifact.type}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       })
 
-      if (!res.ok) throw new Error('Failed to save artifact')
-
-      const data = await res.json()
-      setSaveMessage('Saved & updated to MODIFIED')
-      if (onArtifactUpdated && data.artifact) {
-        onArtifactUpdated(data.artifact)
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? 'Failed to save artifact')
       }
-    } catch (err) {
-      setSaveMessage(err instanceof Error ? err.message : 'Save error')
+
+      const data = (await response.json()) as { artifact?: WorkspaceArtifactItem }
+      setSaveMessage('Saved. Artifact status changed to modified.')
+      if (onArtifactUpdated && data.artifact) onArtifactUpdated(data.artifact)
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Save error')
     } finally {
       setIsSaving(false)
     }
@@ -68,157 +142,212 @@ export function MarkdownWorkspace({
 
   if (artifacts.length === 0) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-8 text-center text-zinc-400">
-        No generated artifacts available for this project yet.
-      </div>
+      <Panel className="p-8 text-center" aria-label="Markdown workspace">
+        <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+          <FileText className="size-9 text-[var(--paper-muted)]" aria-hidden="true" />
+          <p className="text-sm font-semibold leading-6 text-[var(--paper-muted)]">
+            No generated artifacts are available for this project yet.
+          </p>
+        </div>
+      </Panel>
     )
   }
 
   const badge = activeArtifact ? getArtifactStatusBadgeStyle(activeArtifact.status) : null
+  const isSaveError = Boolean(saveMessage && !saveMessage.startsWith('Saved'))
 
   return (
-    <div className="flex h-[750px] w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-100">
-      {/* Sidebar document navigation */}
-      <div className="w-64 flex-shrink-0 border-r border-zinc-800 bg-zinc-900/50 p-4">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-400">
-          Project Documents
-        </h3>
-        <div className="space-y-1">
-          {artifacts.map((art) => {
-            const isSelected = art.type === selectedType
-            const artBadge = getArtifactStatusBadgeStyle(art.status)
+    <section
+      className="flex min-h-[760px] w-full flex-col overflow-hidden border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-[var(--shadow-hard)] lg:h-[760px] lg:flex-row"
+      aria-label="Markdown workspace"
+    >
+      <aside className="border-b-2 border-[var(--ink)] bg-[var(--lavender-dim)] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r-2">
+        <div className="flex items-start gap-3 border-b-2 border-[var(--ink)] bg-[var(--lavender)] px-4 py-4">
+          <PanelLeft className="mt-0.5 size-5 flex-shrink-0" aria-hidden="true" />
+          <div className="min-w-0">
+            <h2 className="text-base font-black tracking-[-0.03em]">Project documents</h2>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--ink-soft)]">
+              Select an artifact to edit, compare, or preview.
+            </p>
+          </div>
+        </div>
+
+        <nav
+          className="flex gap-3 overflow-x-auto p-3 lg:max-h-[calc(760px-82px)] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
+          aria-label="Generated artifacts"
+        >
+          {artifacts.map((artifact) => {
+            const isSelected = artifact.type === selectedType
+            const artifactBadge = getArtifactStatusBadgeStyle(artifact.status)
+
             return (
               <button
-                key={art.id}
-                onClick={() => handleSelectArtifact(art)}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                key={artifact.id}
+                type="button"
+                onClick={() => handleSelectArtifact(artifact)}
+                aria-current={isSelected ? 'page' : undefined}
+                className={cn(
+                  'nb-button-press min-w-[15rem] border-2 border-[var(--ink)] px-3 py-3 text-left shadow-[var(--shadow-xs)] lg:min-w-0',
                   isSelected
-                    ? 'bg-zinc-800 font-medium text-white'
-                    : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-                }`}
+                    ? 'bg-[var(--electric-yellow)] text-[var(--ink)]'
+                    : 'bg-[var(--paper-raised)] text-[var(--ink)] hover:bg-white',
+                )}
               >
-                <span className="truncate">{art.path}</span>
-                <span
-                  className={`ml-2 inline-block h-2 w-2 rounded-full ${
-                    art.status === 'READY'
-                      ? 'bg-emerald-400'
-                      : art.status === 'MODIFIED'
-                        ? 'bg-blue-400'
-                        : art.status === 'OUTDATED'
-                          ? 'bg-amber-400'
-                          : art.status === 'FAILED'
-                            ? 'bg-rose-400'
-                            : 'bg-zinc-600'
-                  }`}
-                  title={artBadge.label}
-                />
+                <span className="flex items-start justify-between gap-3">
+                  <span className="min-w-0">
+                    <span className="block truncate font-mono text-sm font-black leading-5">
+                      {artifact.path}
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-semibold leading-5 text-[var(--paper-muted)]">
+                      {artifactBadge.label}
+                    </span>
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-1 size-3 flex-shrink-0 border-2 border-[var(--ink)]',
+                      getStatusDotClass(artifact.status),
+                    )}
+                    title={artifactBadge.label}
+                    aria-label={artifactBadge.label}
+                  />
+                </span>
               </button>
             )
           })}
-        </div>
-      </div>
+        </nav>
+      </aside>
 
-      {/* Main Workspace */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Workspace Toolbar */}
-        <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900/30 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-sm font-semibold text-zinc-200">
-              {activeArtifact?.path}
-            </span>
-            {badge && (
-              <span
-                className={`rounded-md border px-2 py-0.5 text-xs font-medium ${badge.colorClass}`}
-              >
-                {badge.label}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {saveMessage && (
-              <span className="text-xs text-zinc-400">{saveMessage}</span>
-            )}
-
-            {/* View Mode Controls */}
-            <div className="flex items-center rounded-lg border border-zinc-800 bg-zinc-900 p-0.5 text-xs font-medium">
-              <button
-                onClick={() => setActiveTab('editor')}
-                className={`rounded-md px-3 py-1 ${
-                  activeTab === 'editor'
-                    ? 'bg-zinc-800 text-white'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => setActiveTab('split')}
-                className={`rounded-md px-3 py-1 ${
-                  activeTab === 'split'
-                    ? 'bg-zinc-800 text-white'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Split
-              </button>
-              <button
-                onClick={() => setActiveTab('preview')}
-                className={`rounded-md px-3 py-1 ${
-                  activeTab === 'preview'
-                    ? 'bg-zinc-800 text-white'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Preview
-              </button>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--paper)]">
+        <header className="border-b-2 border-[var(--ink)] bg-[var(--paper-raised)]">
+          <div className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:justify-between lg:px-5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="truncate font-mono text-base font-black tracking-tight">
+                  {activeArtifact?.path}
+                </h1>
+                {activeArtifact && <StatusBadge tone={statusTone(activeArtifact.status)}>{badge?.label}</StatusBadge>}
+              </div>
+              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--paper-muted)]">
+                {activeArtifact
+                  ? `Last updated ${formatUpdatedAt(activeArtifact.updatedAt)}`
+                  : 'No artifact selected'}
+              </p>
             </div>
 
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-            >
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
+              <p
+                className={cn(
+                  'min-h-5 text-xs font-bold leading-5',
+                  isSaveError ? 'text-[var(--action-red)]' : 'text-[var(--paper-muted)]',
+                )}
+                role={isSaveError ? 'alert' : undefined}
+                aria-live="polite"
+              >
+                {saveMessage || 'Edits stay local until saved.'}
+              </p>
 
-        {/* Content Pane */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Markdown Code Editor */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div
+                  className="grid grid-cols-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-1 shadow-[var(--shadow-xs)]"
+                  role="group"
+                  aria-label="Workspace view mode"
+                >
+                  {viewModes.map(({ id, label, icon: Icon }) => {
+                    const isActive = activeTab === id
+
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setActiveTab(id)}
+                        aria-pressed={isActive}
+                        className={cn(
+                          'inline-flex items-center justify-center gap-2 border-2 border-transparent px-3 py-2 text-xs font-black transition-colors sm:min-w-24',
+                          isActive
+                            ? 'border-[var(--ink)] bg-[var(--electric-yellow)] text-[var(--ink)]'
+                            : 'text-[var(--paper-muted)] hover:border-[var(--ink)] hover:bg-white hover:text-[var(--ink)]',
+                        )}
+                      >
+                        <Icon className="size-3.5" aria-hidden="true" />
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <Button type="button" onClick={handleSave} disabled={isSaving} variant="success">
+                  {isSaving ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  ) : saveMessage?.startsWith('Saved') ? (
+                    <CheckCircle2 className="size-4" aria-hidden="true" />
+                  ) : (
+                    <Save className="size-4" aria-hidden="true" />
+                  )}
+                  {isSaving ? 'Saving…' : 'Save changes'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div
+          className={cn(
+            'grid min-h-0 flex-1 overflow-hidden',
+            activeTab === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1',
+          )}
+        >
           {(activeTab === 'editor' || activeTab === 'split') && (
-            <div
-              className={`h-full ${
-                activeTab === 'split' ? 'w-1/2 border-r border-zinc-800' : 'w-full'
-              }`}
+            <section
+              className={cn(
+                'flex min-h-[360px] flex-col overflow-hidden bg-[var(--ink)] text-[var(--paper-raised)]',
+                activeTab === 'split' && 'border-b-2 border-[var(--ink)] lg:border-b-0 lg:border-r-2',
+              )}
+              aria-labelledby="markdown-editor-title"
             >
+              <div className="flex items-center justify-between border-b-2 border-[var(--paper-raised)] bg-[var(--ink)] px-4 py-2.5">
+                <h2 id="markdown-editor-title" className="text-sm font-black">
+                  Markdown source
+                </h2>
+                <span className="font-mono text-xs text-[var(--paper-dim)]">
+                  {content.length.toLocaleString()} chars
+                </span>
+              </div>
               <textarea
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="h-full w-full resize-none bg-zinc-950 p-6 font-mono text-sm leading-relaxed text-zinc-200 outline-none focus:ring-0"
+                onChange={(event) => setContent(event.target.value)}
+                className="min-h-0 flex-1 resize-none bg-[var(--ink)] px-4 py-5 font-mono text-sm leading-7 text-[var(--paper-raised)] caret-[var(--electric-yellow)] placeholder:text-[var(--paper-dim)] focus:bg-[var(--ink-soft)] focus-visible:outline-[3px] focus-visible:outline-offset-[-6px] focus-visible:outline-[var(--electric-yellow)] sm:px-6"
                 placeholder="Write markdown content..."
+                aria-label="Markdown source content"
+                spellCheck={false}
               />
-            </div>
+            </section>
           )}
 
-          {/* Sanitized HTML Preview Pane */}
           {(activeTab === 'preview' || activeTab === 'split') && (
-            <div
-              className={`h-full overflow-y-auto bg-zinc-900/20 p-6 ${
-                activeTab === 'split' ? 'w-1/2' : 'w-full'
-              }`}
+            <section
+              className="flex min-h-[360px] flex-col overflow-hidden bg-[var(--paper)]"
+              aria-labelledby="markdown-preview-title"
             >
-              <div
-                className="prose prose-invert max-w-none prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base prose-code:rounded prose-code:bg-zinc-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-emerald-400"
-                dangerouslySetInnerHTML={{
-                  __html: renderMarkdownToHtml(content),
-                }}
-              />
-            </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[var(--ink)] bg-[var(--mint-dim)] px-4 py-2.5">
+                <h2 id="markdown-preview-title" className="text-sm font-black">
+                  Sanitized preview
+                </h2>
+                <span className="text-xs font-bold text-[var(--paper-muted)]">
+                  Scripts and unsafe HTML are stripped
+                </span>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+                <article
+                  className="prose-doc bg-[var(--paper-raised)] p-5 shadow-[var(--shadow-sm)]"
+                  dangerouslySetInnerHTML={{
+                    __html: renderedPreview,
+                  }}
+                />
+              </div>
+            </section>
           )}
         </div>
       </div>
-    </div>
+    </section>
   )
 }

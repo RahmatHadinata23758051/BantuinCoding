@@ -9,6 +9,9 @@ export async function getProjectWorkspaceData(userId: string, projectId: string)
         take: 1,
       },
       artifacts: true,
+      clarificationQuestions: {
+        orderBy: [{ round: 'asc' }, { createdAt: 'asc' }],
+      },
       skillRecommendations: true,
       backlogPhases: {
         orderBy: { order: 'asc' },
@@ -40,7 +43,15 @@ export async function getProjectWorkspaceData(userId: string, projectId: string)
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
     context: contextData,
-    contextVersion: currentContextRecord?.version ?? 1,
+    contextVersion: currentContextRecord?.version ?? 0,
+    clarifications: project.clarificationQuestions.map((question) => ({
+      id: question.id,
+      round: question.round,
+      question: question.question,
+      impact: question.impact,
+      answer: question.answer,
+      status: question.status,
+    })),
     artifacts: project.artifacts.map((a) => ({
       id: a.id,
       type: a.type,
