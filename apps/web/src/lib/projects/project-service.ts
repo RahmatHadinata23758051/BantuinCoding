@@ -1,6 +1,7 @@
 import { db } from '@repo/db'
 import type { ProjectStatus } from '@repo/types'
 import { z } from 'zod'
+import { hasProviderSession } from '@/lib/byok/session-store'
 
 // ============================================================
 // Project State Machine
@@ -24,6 +25,53 @@ export function canTransition(
   next: ProjectStatus,
 ): boolean {
   return ALLOWED_TRANSITIONS[current]?.includes(next) ?? false
+}
+
+const ACTION_ALLOWED_STATES = {
+  ANALYZE: ['DRAFT', 'CONFIGURED', 'ANALYZING', 'GENERATION_FAILED'],
+  CLARIFY: ['ANALYZING', 'CLARIFYING'],
+  CONTEXT: ['ANALYZING', 'CLARIFYING'],
+  PLAN: ['CONTEXT_READY', 'GENERATING', 'READY', 'EXPORTABLE', 'GENERATION_FAILED'],
+  GENERATE: ['CONTEXT_READY', 'GENERATING', 'READY', 'EXPORTABLE', 'GENERATION_FAILED'],
+  VALIDATE: ['READY', 'EXPORTABLE'],
+  EXPORT: ['EXPORTABLE'],
+} as const satisfies Record<string, readonly ProjectStatus[]>
+
+export type ProjectAction = keyof typeof ACTION_ALLOWED_STATES
+
+const AI_BACKED_ACTIONS = new Set<ProjectAction>([
+  'ANALYZE',
+  'CLARIFY',
+  'CONTEXT',
+  'PLAN',
+  'GENERATE',
+  'VALIDATE',
+])
+
+export async function requireProjectAction(
+  userId: string,
+  projectId: string,
+  action: ProjectAction,
+) {
+  const project = await db.project.findFirst({
+    where: { id: projectId, userId },
+    select: { id: true, status: true },
+  })
+
+  if (!project) throw new Error('Project not found')
+
+  const allowedStates = ACTION_ALLOWED_STATES[action]
+  if (!allowedStates.includes(project.status as never)) {
+    throw new Error(
+      `Project state ${project.status} does not allow ${action.toLowerCase()}`,
+    )
+  }
+
+  if (AI_BACKED_ACTIONS.has(action) && !hasProviderSession(userId)) {
+    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
+  }
+
+  return project
 }
 
 // ============================================================
@@ -56,24 +104,27 @@ export const CreateProjectSchema = z.object({
     .default('CLAUDE_CODE'),
 })
 
-export const UpdateProjectSchema = CreateProjectSchema.partial().extend({
-  status: z
-    .enum([
-      'DRAFT',
-      'CONFIGURED',
-      'ANALYZING',
-      'CLARIFYING',
-      'CONTEXT_READY',
-      'GENERATING',
-      'READY',
-      'EXPORTABLE',
-      'GENERATION_FAILED',
-    ])
-    .optional(),
+export const UpdateProjectSchema = CreateProjectSchema.partial()
+
+const ProjectStatusSchema = z.enum([
+  'DRAFT',
+  'CONFIGURED',
+  'ANALYZING',
+  'CLARIFYING',
+  'CONTEXT_READY',
+  'GENERATING',
+  'READY',
+  'EXPORTABLE',
+  'GENERATION_FAILED',
+])
+
+export const InternalProjectUpdateSchema = UpdateProjectSchema.extend({
+  status: ProjectStatusSchema.optional(),
 })
 
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>
 export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>
+type InternalProjectUpdateInput = z.infer<typeof InternalProjectUpdateSchema>
 
 // ============================================================
 // Database CRUD operations
@@ -145,7 +196,7 @@ export async function getProjectById(userId: string, projectId: string) {
 export async function updateProject(
   userId: string,
   projectId: string,
-  input: UpdateProjectInput,
+  input: InternalProjectUpdateInput,
 ) {
   const existing = await db.project.findFirst({
     where: { id: projectId, userId },

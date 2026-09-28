@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import { saveArtifactContent } from '@/lib/artifacts/artifact-service'
+import { recomputeProjectReadiness } from '@/lib/projects/readiness-service'
 
 // ============================================================
 // PATCH /api/projects/[id]/artifacts/[type] — Save edited artifact content
@@ -29,10 +31,12 @@ export async function PATCH(
       artifactType: type.toUpperCase(),
       content,
     })
+    const readiness = await recomputeProjectReadiness(session.user.id, id)
 
-    return NextResponse.json({ artifact })
+    return NextResponse.json({ artifact, readiness })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Save failed'
-    return NextResponse.json({ error: message }, { status: 400 })
+    const message = getSafeApiErrorMessage(err, 'Document save failed. Please retry.')
+    const status = message === 'Project not found' ? 404 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }

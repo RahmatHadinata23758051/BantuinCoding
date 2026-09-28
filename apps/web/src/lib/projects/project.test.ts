@@ -10,6 +10,10 @@ import type { ProjectStatus } from '@repo/types'
 // Mock DB for project operations
 // ============================================================
 
+vi.mock('@/lib/byok/session-store', () => ({
+  hasProviderSession: vi.fn(() => true),
+}))
+
 vi.mock('@repo/db', () => ({
   db: {
     project: {
@@ -119,7 +123,7 @@ describe('UpdateProjectSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('accepts valid status enum values', () => {
+  it('strips status updates from the public update contract', () => {
     const statuses: ProjectStatus[] = [
       'DRAFT',
       'CONFIGURED',
@@ -134,12 +138,14 @@ describe('UpdateProjectSchema', () => {
     for (const status of statuses) {
       const result = UpdateProjectSchema.safeParse({ status })
       expect(result.success).toBe(true)
+      expect(result.data).not.toHaveProperty('status')
     }
   })
 
-  it('rejects invalid status enum value', () => {
+  it('strips unknown fields from public project updates', () => {
     const result = UpdateProjectSchema.safeParse({ status: 'INVALID_STATUS' })
-    expect(result.success).toBe(false)
+    expect(result.success).toBe(true)
+    expect(result.data).toEqual({})
   })
 })
 
@@ -181,6 +187,49 @@ describe('Project CRUD logic — db interactions', () => {
         status: 'DRAFT',
       },
     })
+  })
+
+  it('rejects workflow actions from invalid project states', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'proj-1',
+      status: 'DRAFT',
+    } as never)
+
+    const { requireProjectAction } = await import('@/lib/projects/project-service')
+    await expect(
+      requireProjectAction('user-1', 'proj-1', 'EXPORT'),
+    ).rejects.toThrow('Project state DRAFT does not allow export')
+  })
+
+  it('allows workflow actions from explicitly permitted states', async () => {
+    const { db } = await import('@repo/db')
+    const { hasProviderSession } = await import('@/lib/byok/session-store')
+    vi.mocked(hasProviderSession).mockReturnValueOnce(true)
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'proj-1',
+      status: 'CONTEXT_READY',
+    } as never)
+
+    const { requireProjectAction } = await import('@/lib/projects/project-service')
+    await expect(
+      requireProjectAction('user-1', 'proj-1', 'GENERATE'),
+    ).resolves.toMatchObject({ id: 'proj-1', status: 'CONTEXT_READY' })
+  })
+
+  it('blocks AI-backed actions when the provider session is missing or expired', async () => {
+    const { db } = await import('@repo/db')
+    const { hasProviderSession } = await import('@/lib/byok/session-store')
+    vi.mocked(hasProviderSession).mockReturnValueOnce(false)
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'proj-1',
+      status: 'CONTEXT_READY',
+    } as never)
+
+    const { requireProjectAction } = await import('@/lib/projects/project-service')
+    await expect(
+      requireProjectAction('user-1', 'proj-1', 'GENERATE'),
+    ).rejects.toThrow('No active AI provider session found')
   })
 
   it('updateProject throws on illegal status transition', async () => {

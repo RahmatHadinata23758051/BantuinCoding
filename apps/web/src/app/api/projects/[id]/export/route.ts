@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import { exportProjectZip } from '@/lib/export/export-service'
+import { requireProjectAction } from '@/lib/projects/project-service'
 
 // ============================================================
 // GET /api/projects/[id]/export — Download Project Bootstrap Pack ZIP
@@ -18,6 +20,7 @@ export async function GET(
   const { id } = await params
 
   try {
+    await requireProjectAction(session.user.id, id, 'EXPORT')
     const { filename, buffer } = await exportProjectZip({
       userId: session.user.id,
       projectId: id,
@@ -32,7 +35,8 @@ export async function GET(
       },
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Export failed'
-    return NextResponse.json({ error: message }, { status: 400 })
+    const message = getSafeApiErrorMessage(err, 'Export failed. Review eligible documents and retry.')
+    const status = message === 'Project not found' ? 404 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import {
   getProjectById,
@@ -66,8 +67,9 @@ export async function PATCH(
     }
     return NextResponse.json({ project: updated })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Update failed'
-    return NextResponse.json({ error: msg }, { status: 400 })
+    const message = getSafeApiErrorMessage(err, 'Project update failed. Please retry.')
+    const status = message === 'Project not found' ? 404 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }
 

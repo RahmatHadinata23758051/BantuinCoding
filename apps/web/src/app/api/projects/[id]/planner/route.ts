@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import { planProjectArtifacts } from '@/lib/engine/artifact-planner'
+import { requireProjectAction } from '@/lib/projects/project-service'
 
 // ============================================================
 // POST /api/projects/[id]/planner — Generate artifact plan
@@ -18,6 +20,7 @@ export async function POST(
   const { id } = await params
 
   try {
+    await requireProjectAction(session.user.id, id, 'PLAN')
     const plan = await planProjectArtifacts({
       userId: session.user.id,
       projectId: id,
@@ -25,7 +28,8 @@ export async function POST(
 
     return NextResponse.json({ plan })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Planning failed'
-    return NextResponse.json({ error: message }, { status: 400 })
+    const message = getSafeApiErrorMessage(err, 'Artifact planning failed. Please retry.')
+    const status = message === 'Project not found' ? 404 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }

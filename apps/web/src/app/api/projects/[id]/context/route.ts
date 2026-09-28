@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import {
   generateCanonicalContext,
   getCurrentContext,
 } from '@/lib/engine/context-engine'
+import { requireProjectAction } from '@/lib/projects/project-service'
 
 // ============================================================
 // GET /api/projects/[id]/context — Fetch current context
@@ -35,7 +37,7 @@ export async function GET(
 // ============================================================
 
 export async function POST(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth()
@@ -45,24 +47,17 @@ export async function POST(
 
   const { id } = await params
 
-  let analysisJson = '{}'
   try {
-    const body = (await req.json()) as { analysisJson?: string }
-    if (body.analysisJson) analysisJson = body.analysisJson
-  } catch {
-    // optional body
-  }
-
-  try {
+    await requireProjectAction(session.user.id, id, 'CONTEXT')
     const result = await generateCanonicalContext({
       userId: session.user.id,
       projectId: id,
-      analysisJson,
     })
 
     return NextResponse.json(result)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Context generation failed'
-    return NextResponse.json({ error: message }, { status: 400 })
+    const message = getSafeApiErrorMessage(err, 'Canonical context generation failed. Please retry.')
+    const status = message === 'Project not found' ? 404 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }

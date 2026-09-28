@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import {
   generateClarificationRound,
   submitClarificationAnswers,
 } from '@/lib/engine/clarification-engine'
 import { db } from '@repo/db'
+import { requireProjectAction } from '@/lib/projects/project-service'
 import { z } from 'zod'
 
 const SubmitAnswersSchema = z.object({
@@ -30,8 +32,16 @@ export async function GET(
   }
 
   const { id } = await params
+  const project = await db.project.findFirst({
+    where: { id, userId: session.user.id },
+    select: { id: true },
+  })
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+  }
+
   const questions = await db.clarificationQuestion.findMany({
-    where: { projectId: id },
+    where: { projectId: project.id },
     orderBy: [{ round: 'asc' }, { createdAt: 'asc' }],
   })
 
@@ -55,6 +65,14 @@ export async function POST(
   const { id } = await params
   const { searchParams } = new URL(req.url)
   const action = searchParams.get('action') ?? 'generate'
+
+  try {
+    await requireProjectAction(session.user.id, id, 'CLARIFY')
+  } catch (err) {
+    const message = getSafeApiErrorMessage(err, 'Clarification is unavailable for this project.')
+    const status = message === 'Project not found' ? 404 : 409
+    return NextResponse.json({ error: message }, { status })
+  }
 
   if (action === 'answer') {
     let body: unknown
@@ -81,33 +99,17 @@ export async function POST(
     return NextResponse.json(result)
   }
 
-  // Generate action
-  let body: { analysis?: unknown } = {}
-  try {
-    body = (await req.json()) as { analysis?: unknown }
-  } catch {
-    // optional body
-  }
-
-  const analysis = (body.analysis ?? {
-    known_facts: [],
-    missing_information: [],
-    ambiguities: [],
-    important_decisions: [],
-    optional_decisions: [],
-    risk_flags: [],
-  }) as never
-
+  // Generate action uses the current persisted requirement analysis server-side.
   try {
     const roundResult = await generateClarificationRound({
       userId: session.user.id,
       projectId: id,
-      analysis,
     })
 
     return NextResponse.json(roundResult)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Generation failed'
-    return NextResponse.json({ error: message }, { status: 400 })
+    const message = getSafeApiErrorMessage(err, 'Clarification planning failed. Please retry.')
+    const status = message === 'Project not found' ? 404 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 }
