@@ -4,7 +4,6 @@ import { createProvider } from '@/lib/ai/provider'
 import {
   setProviderSession,
   getProviderMeta,
-  maskApiKey,
 } from '@/lib/byok/session-store'
 import { z } from 'zod'
 import type { AIProviderType } from '@repo/types'
@@ -117,7 +116,6 @@ export async function POST(req: NextRequest) {
     message: result.message,
     provider: meta?.provider,
     model: meta?.model,
-    keyHint: maskApiKey(apiKey), // only first 8 chars visible
     configuredAt: meta?.configuredAt,
   })
 }

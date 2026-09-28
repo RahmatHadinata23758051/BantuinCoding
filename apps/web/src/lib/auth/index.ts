@@ -14,8 +14,19 @@ const LoginSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
+function getAuthSecret(): string {
+  const secret = process.env.AUTH_SECRET
+  if (secret) return secret
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('AUTH_SECRET must be configured in production')
+  }
+
+  return 'development-only-auth-secret-do-not-use-in-production'
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: process.env.AUTH_SECRET || 'bantuincoding-super-secret-auth-key-32-chars-minimum',
+  secret: getAuthSecret(),
   trustHost: true,
   providers: [
     Credentials({

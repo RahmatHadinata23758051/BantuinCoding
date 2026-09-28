@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   setProviderSession,
   getProviderConfig,
@@ -22,7 +22,12 @@ const TEST_CONFIG = {
 
 describe('BYOK Session Store — core operations', () => {
   beforeEach(() => {
+    vi.useRealTimers()
     clearProviderSession(TEST_USER_ID)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('hasProviderSession returns false when no session set', () => {
@@ -95,6 +100,18 @@ describe('BYOK Session Store — core operations', () => {
     const config = getProviderConfig(TEST_USER_ID)
     expect(config?.provider).toBe('OPENAI')
     expect(config?.apiKey).toBe('new-key')
+  })
+
+  it('expires and clears provider credentials after the session TTL', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-27T00:00:00Z'))
+    setProviderSession(TEST_USER_ID, TEST_CONFIG)
+
+    vi.advanceTimersByTime(4 * 60 * 60 * 1000)
+
+    expect(hasProviderSession(TEST_USER_ID)).toBe(false)
+    expect(getProviderConfig(TEST_USER_ID)).toBeNull()
+    expect(getProviderMeta(TEST_USER_ID)).toBeNull()
   })
 })
 

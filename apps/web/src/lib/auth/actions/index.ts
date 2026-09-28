@@ -1,6 +1,7 @@
 'use server'
 
-import { signIn } from '@/lib/auth'
+import { auth, signIn, signOut } from '@/lib/auth'
+import { clearProviderSession } from '@/lib/byok/session-store'
 import { registerUser } from '@/lib/auth/register'
 import type { ActionResult } from '@/lib/auth/register'
 
@@ -12,10 +13,13 @@ export type { ActionResult }
 export async function registerAction(
   formData: FormData,
 ): Promise<ActionResult<{ email: string }>> {
+  const rawName = formData.get('name')
+  const name = typeof rawName === 'string' ? rawName.trim() : ''
+
   return registerUser({
     email: (formData.get('email') as string) ?? '',
     password: (formData.get('password') as string) ?? '',
-    name: formData.get('name') as string | null,
+    name: name || undefined,
   })
 }
 
@@ -42,4 +46,16 @@ export async function loginAction(
     }
     return { success: false, error: 'Invalid email or password' }
   }
+}
+
+/**
+ * Sign out and clear the session-scoped BYOK provider key from server memory.
+ */
+export async function logoutAction(): Promise<void> {
+  const session = await auth()
+  if (session?.user?.id) {
+    clearProviderSession(session.user.id)
+  }
+
+  await signOut({ redirectTo: '/login' })
 }

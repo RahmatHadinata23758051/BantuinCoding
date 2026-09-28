@@ -37,6 +37,10 @@ vi.mock('@/lib/auth', () => ({
   handlers: {},
 }))
 
+vi.mock('@/lib/byok/session-store', () => ({
+  clearProviderSession: vi.fn(),
+}))
+
 // ============================================================
 // Schema tests
 // ============================================================
@@ -244,5 +248,20 @@ describe('Auth — loginAction', () => {
     if (!result.success) {
       expect(result.error).toContain('Invalid email or password')
     }
+  })
+
+  it('clears the provider session before signing out', async () => {
+    const { auth, signOut } = await import('@/lib/auth')
+    const { clearProviderSession } = await import('@/lib/byok/session-store')
+    vi.mocked(auth as unknown as () => Promise<unknown>).mockResolvedValueOnce({
+      user: { id: 'user-1', email: 'user@example.com' },
+      expires: '2099-01-01T00:00:00.000Z',
+    })
+
+    const { logoutAction } = await import('@/lib/auth/actions')
+    await logoutAction()
+
+    expect(clearProviderSession).toHaveBeenCalledWith('user-1')
+    expect(signOut).toHaveBeenCalledWith({ redirectTo: '/login' })
   })
 })
