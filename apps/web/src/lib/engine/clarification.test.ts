@@ -17,9 +17,19 @@ vi.mock('@repo/db', () => ({
     },
     clarificationQuestion: {
       createMany: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
       count: vi.fn(),
     },
+    $transaction: vi.fn(async function (callbackOrOperations) {
+      if (typeof callbackOrOperations === 'function') {
+        const { db } = await import('@repo/db')
+        return callbackOrOperations({ clarificationQuestion: db.clarificationQuestion })
+      }
+      return Promise.all(callbackOrOperations)
+    }),
   },
 }))
 
@@ -33,6 +43,10 @@ vi.mock('@/lib/ai/provider', () => ({
 
 vi.mock('@/lib/projects/project-service', () => ({
   updateProject: vi.fn(),
+}))
+
+vi.mock('@/lib/engine/analysis-store', () => ({
+  getCurrentRequirementAnalysis: vi.fn(),
 }))
 
 describe('Clarification Generator Schemas', () => {
@@ -85,8 +99,22 @@ describe('Clarification Prompt Builder', () => {
 })
 
 describe('Clarification Engine — generateClarificationRound', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
+    const { getCurrentRequirementAnalysis } = await import('@/lib/engine/analysis-store')
+    vi.mocked(getCurrentRequirementAnalysis).mockResolvedValue({
+      id: 'analysis-1',
+      version: 1,
+      analysis: {
+        known_facts: [],
+        missing_information: [],
+        ambiguities: [],
+        important_decisions: [],
+        optional_decisions: [],
+        risk_flags: [],
+      },
+      createdAt: new Date(),
+    })
   })
 
   it('throws error if project not found', async () => {
@@ -97,16 +125,73 @@ describe('Clarification Engine — generateClarificationRound', () => {
       generateClarificationRound({
         userId: 'u-1',
         projectId: 'p-invalid',
-        analysis: {
-          known_facts: [],
-          missing_information: [],
-          ambiguities: [],
-          important_decisions: [],
-          optional_decisions: [],
-          risk_flags: [],
-        },
       }),
     ).rejects.toThrow('Project not found')
+  })
+
+  it('rejects a new round while prior questions are still pending', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      rawIdea: 'Test idea description text',
+      classification: 'SAAS',
+      targetAgent: 'CLAUDE_CODE',
+      status: 'CLARIFYING',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      clarificationQuestions: [
+        {
+          id: 'q-1',
+          projectId: 'p-1',
+          round: 1,
+          question: 'Which database should be used?',
+          answer: null,
+          impact: 'Determines the persistence architecture',
+          status: 'PENDING',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+    } as never)
+
+    await expect(
+      generateClarificationRound({
+        userId: 'u-1',
+        projectId: 'p-1',
+      }),
+    ).rejects.toThrow('Answer pending clarification questions before generating a new round.')
+
+    expect(getProviderConfig).not.toHaveBeenCalled()
+    expect(createProvider).not.toHaveBeenCalled()
+    expect(db.clarificationQuestion.createMany).not.toHaveBeenCalled()
+  })
+
+  it('requires explicit assumption confirmation after the round limit', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const { updateProject } = await import('@/lib/projects/project-service')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test', rawIdea: 'Idea',
+      clarificationQuestions: [1, 2, 3].map((round) => ({
+        id: `q-${round}`, round, status: 'ANSWERED', question: `Q${round}`, answer: 'A',
+      })),
+    } as never)
+
+    vi.mocked(db.clarificationQuestion.count).mockResolvedValueOnce(0)
+    const result = await generateClarificationRound({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(result.is_context_sufficient).toBe(false)
+    expect(result.questions[0]?.question).toContain('explicit assumptions')
+    expect(createProvider).not.toHaveBeenCalled()
+    expect(db.clarificationQuestion.createMany).toHaveBeenCalledWith({
+      data: [expect.objectContaining({ projectId: 'p-1', round: 4, status: 'PENDING' })],
+    })
+    expect(updateProject).not.toHaveBeenCalledWith('u-1', 'p-1', { status: 'CONTEXT_READY' })
   })
 
   it('transitions project status to CLARIFYING and saves questions', async () => {
@@ -150,22 +235,15 @@ describe('Clarification Engine — generateClarificationRound', () => {
     const result = await generateClarificationRound({
       userId: 'u-1',
       projectId: 'p-1',
-      analysis: {
-        known_facts: [],
-        missing_information: [],
-        ambiguities: [],
-        important_decisions: [],
-        optional_decisions: [],
-        risk_flags: [],
-      },
     })
 
     expect(updateProject).toHaveBeenCalledWith('u-1', 'p-1', { status: 'CLARIFYING' })
     expect(db.clarificationQuestion.createMany).toHaveBeenCalled()
+    expect(mockGenerate.mock.calls[0]?.[0]).toContain('"known_facts":[]')
     expect(result.questions).toHaveLength(1)
   })
 
-  it('transitions to CONTEXT_READY if is_context_sufficient is true', async () => {
+  it('does not mark context ready until the context snapshot is persisted', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
     const { createProvider } = await import('@/lib/ai/provider')
@@ -199,26 +277,46 @@ describe('Clarification Engine — generateClarificationRound', () => {
       }),
     })
 
-    await generateClarificationRound({
+    const result = await generateClarificationRound({
       userId: 'u-1',
       projectId: 'p-1',
-      analysis: {
-        known_facts: [],
-        missing_information: [],
-        ambiguities: [],
-        important_decisions: [],
-        optional_decisions: [],
-        risk_flags: [],
-      },
     })
 
-    expect(updateProject).toHaveBeenCalledWith('u-1', 'p-1', { status: 'CONTEXT_READY' })
+    expect(result.is_context_sufficient).toBe(true)
+    expect(updateProject).toHaveBeenCalledWith('u-1', 'p-1', { status: 'CLARIFYING' })
+    expect(updateProject).not.toHaveBeenCalledWith('u-1', 'p-1', { status: 'CONTEXT_READY' })
   })
 })
 
 describe('Clarification Engine — submitClarificationAnswers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('rejects duplicated answer question IDs before updating', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({ id: 'p-1', userId: 'u-1' } as never)
+
+    await expect(submitClarificationAnswers({
+      userId: 'u-1', projectId: 'p-1',
+      answers: [
+        { questionId: 'q-1', answer: 'A' },
+        { questionId: 'q-1', answer: 'B' },
+      ],
+    })).rejects.toThrow('Duplicate clarification question IDs are not allowed.')
+    expect(db.clarificationQuestion.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('rejects already answered or cross-project question IDs', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({ id: 'p-1', userId: 'u-1' } as never)
+    vi.mocked(db.clarificationQuestion.findMany).mockResolvedValueOnce([] as never)
+
+    await expect(submitClarificationAnswers({
+      userId: 'u-1', projectId: 'p-1',
+      answers: [{ questionId: 'q-other', answer: 'A' }],
+    })).rejects.toThrow('One or more clarification questions are invalid or already answered.')
+    expect(db.clarificationQuestion.updateMany).not.toHaveBeenCalled()
   })
 
   it('updates answers and returns allAnswered status', async () => {
@@ -235,6 +333,8 @@ describe('Clarification Engine — submitClarificationAnswers', () => {
       updatedAt: new Date(),
     })
 
+    vi.mocked(db.clarificationQuestion.findMany).mockResolvedValueOnce([{ id: 'q-1' }] as never)
+    vi.mocked(db.clarificationQuestion.updateMany).mockResolvedValueOnce({ count: 1 })
     vi.mocked(db.clarificationQuestion.count).mockResolvedValueOnce(0)
 
     const result = await submitClarificationAnswers({
@@ -244,7 +344,7 @@ describe('Clarification Engine — submitClarificationAnswers', () => {
     })
 
     expect(db.clarificationQuestion.updateMany).toHaveBeenCalledWith({
-      where: { id: 'q-1', projectId: 'p-1' },
+      where: { id: 'q-1', projectId: 'p-1', status: 'PENDING' },
       data: { answer: 'PostgreSQL', status: 'ANSWERED' },
     })
     expect(result.allAnswered).toBe(true)
