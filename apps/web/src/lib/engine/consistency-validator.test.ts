@@ -82,7 +82,7 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
     ).rejects.toThrow('Project not found')
   })
 
-  it('audits consistency using rule-based validator when no provider config exists', async () => {
+  it('blocks AI consistency validation when no active BYOK session exists', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
 
@@ -98,8 +98,8 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
 
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
 
-    const report = await auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' })
-    expect(report.isConsistent).toBe(true)
-    expect(report.score).toBe(100)
+    await expect(
+      auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' }),
+    ).rejects.toThrow('No active AI provider session found')
   })
 })

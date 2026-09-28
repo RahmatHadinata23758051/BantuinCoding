@@ -14,10 +14,6 @@ vi.mock('@repo/db', () => ({
   },
 }))
 
-vi.mock('@/lib/projects/project-service', () => ({
-  updateProject: vi.fn(),
-}))
-
 describe('ZIP Path Traversal Security Validator', () => {
   it('allows safe relative paths', () => {
     expect(validateZipPath('PRD.md')).toBe('PRD.md')
@@ -89,9 +85,8 @@ describe('ZIP Export Engine — exportProjectZip', () => {
     ).rejects.toThrow('No ready artifacts available to export')
   })
 
-  it('exports zip buffer and sets project status to EXPORTABLE', async () => {
+  it('exports zip buffer without mutating project status', async () => {
     const { db } = await import('@repo/db')
-    const { updateProject } = await import('@/lib/projects/project-service')
 
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
       id: 'p-1',
@@ -109,6 +104,5 @@ describe('ZIP Export Engine — exportProjectZip', () => {
     expect(result.filename).toBe('acme-saas-app-bootstrap-pack.zip')
     expect(result.buffer).toBeInstanceOf(Buffer)
     expect(result.buffer.length).toBeGreaterThan(0)
-    expect(updateProject).toHaveBeenCalledWith('u-1', 'p-1', { status: 'EXPORTABLE' })
   })
 })

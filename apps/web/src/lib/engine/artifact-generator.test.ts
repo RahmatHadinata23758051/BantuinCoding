@@ -198,7 +198,7 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     ).rejects.toThrow('No Canonical Project Context found')
   })
 
-  it('generates 3 core artifacts using fallback when no provider config exists', async () => {
+  it('blocks core generation when no active BYOK session exists', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
 
@@ -208,21 +208,18 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
       name: 'Test Project',
       contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{"summary":"Test"}' }],
     } as never)
-
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
 
-    const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1' })
-
-    expect(results).toHaveLength(3)
-    expect(results.map((r) => r.type)).toEqual(['PRD', 'SRS', 'ARCHITECTURE'])
-    expect(results.every((r) => r.status === 'READY')).toBe(true)
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(3)
-    expect(db.artifact.update).toHaveBeenCalledTimes(3)
+    await expect(
+      generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1' }),
+    ).rejects.toThrow('No active AI provider session found')
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
   })
 
   it('supports single-artifact regeneration (e.g. PRD only)', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
 
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
       id: 'p-1',
@@ -231,7 +228,16 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
       contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{"summary":"Test"}' }],
     } as never)
 
-    vi.mocked(getProviderConfig).mockReturnValueOnce(null)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'claude-sonnet-4-5',
+      apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValue({ markdown_content: '# PRD' }),
+    })
 
     const results = await generateCoreArtifacts({
       userId: 'u-1',

@@ -137,12 +137,14 @@ export async function generateCoreArtifacts({
     throw new Error('No Canonical Project Context found. Generate context first.')
   }
 
-  // Update project status to GENERATING
-  await updateProject(userId, projectId, { status: 'GENERATING' })
-
-  const parsedContext = JSON.parse(currentContextRecord.contentJson)
   const providerConfig = getProviderConfig(userId)
-  const provider = providerConfig ? createProvider(providerConfig) : null
+  if (!providerConfig) {
+    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
+  }
+  const provider = createProvider(providerConfig)
+
+  // Update project status to GENERATING only after BYOK is confirmed.
+  await updateProject(userId, projectId, { status: 'GENERATING' })
 
   const results: GeneratedArtifactResult[] = []
 
@@ -167,41 +169,29 @@ export async function generateCoreArtifacts({
       let markdownContent = ''
 
       if (artifactType === 'PRD') {
-        if (provider) {
-          const userPrompt = buildPrdGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
-          const res = await provider.generateStructured(userPrompt, PrdDocumentSchema, {
-            system: PRD_GENERATOR_SYSTEM_PROMPT,
-            maxTokens: 4096,
-            temperature: 0.2,
-          })
-          markdownContent = res.markdown_content
-        } else {
-          markdownContent = generateFallbackPrd(project.name, parsedContext)
-        }
+        const userPrompt = buildPrdGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
+        const res = await provider.generateStructured(userPrompt, PrdDocumentSchema, {
+          system: PRD_GENERATOR_SYSTEM_PROMPT,
+          maxTokens: 4096,
+          temperature: 0.2,
+        })
+        markdownContent = res.markdown_content
       } else if (artifactType === 'SRS') {
-        if (provider) {
-          const userPrompt = buildSrsGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
-          const res = await provider.generateStructured(userPrompt, SrsDocumentSchema, {
-            system: SRS_GENERATOR_SYSTEM_PROMPT,
-            maxTokens: 4096,
-            temperature: 0.2,
-          })
-          markdownContent = res.markdown_content
-        } else {
-          markdownContent = generateFallbackSrs(project.name, parsedContext)
-        }
+        const userPrompt = buildSrsGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
+        const res = await provider.generateStructured(userPrompt, SrsDocumentSchema, {
+          system: SRS_GENERATOR_SYSTEM_PROMPT,
+          maxTokens: 4096,
+          temperature: 0.2,
+        })
+        markdownContent = res.markdown_content
       } else if (artifactType === 'ARCHITECTURE') {
-        if (provider) {
-          const userPrompt = buildArchitectureGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
-          const res = await provider.generateStructured(userPrompt, ArchitectureDocumentSchema, {
-            system: ARCHITECTURE_GENERATOR_SYSTEM_PROMPT,
-            maxTokens: 4096,
-            temperature: 0.2,
-          })
-          markdownContent = res.markdown_content
-        } else {
-          markdownContent = generateFallbackArchitecture(project.name, parsedContext)
-        }
+        const userPrompt = buildArchitectureGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
+        const res = await provider.generateStructured(userPrompt, ArchitectureDocumentSchema, {
+          system: ARCHITECTURE_GENERATOR_SYSTEM_PROMPT,
+          maxTokens: 4096,
+          temperature: 0.2,
+        })
+        markdownContent = res.markdown_content
       }
 
       await db.artifact.update({

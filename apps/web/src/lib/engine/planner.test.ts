@@ -16,6 +16,14 @@ vi.mock('@repo/db', () => ({
     artifact: {
       upsert: vi.fn(),
     },
+    artifactPlanItem: {
+      deleteMany: vi.fn(),
+      create: vi.fn(),
+    },
+    $transaction: vi.fn(async (callback) => callback({
+      artifact: { upsert: vi.fn() },
+      artifactPlanItem: { deleteMany: vi.fn(), create: vi.fn() },
+    })),
   },
 }))
 
@@ -25,6 +33,10 @@ vi.mock('@/lib/byok/session-store', () => ({
 
 vi.mock('@/lib/ai/provider', () => ({
   createProvider: vi.fn(),
+}))
+
+vi.mock('@/lib/projects/project-service', () => ({
+  updateProject: vi.fn(),
 }))
 
 describe('Artifact Plan Schema', () => {
@@ -109,7 +121,7 @@ describe('Artifact Planner Engine — planProjectArtifacts', () => {
     ).rejects.toThrow('No Canonical Project Context found')
   })
 
-  it('uses default plan when no BYOK session is active', async () => {
+  it('blocks artifact planning when no active BYOK session exists', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
 
@@ -123,9 +135,10 @@ describe('Artifact Planner Engine — planProjectArtifacts', () => {
 
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
 
-    const plan = await planProjectArtifacts({ userId: 'u-1', projectId: 'p-1' })
-    expect(plan.artifacts).toHaveLength(7)
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(7)
+    await expect(
+      planProjectArtifacts({ userId: 'u-1', projectId: 'p-1' }),
+    ).rejects.toThrow('No active AI provider session found')
+    expect(db.$transaction).not.toHaveBeenCalled()
   })
 
   it('uses AI provider plan when BYOK session is active', async () => {
@@ -169,6 +182,6 @@ describe('Artifact Planner Engine — planProjectArtifacts', () => {
 
     const plan = await planProjectArtifacts({ userId: 'u-1', projectId: 'p-1' })
     expect(plan.rationale).toBe('AI generated plan')
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(7)
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
   })
 })

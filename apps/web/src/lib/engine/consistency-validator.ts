@@ -107,31 +107,21 @@ export async function auditProjectConsistency({
   }))
 
   const providerConfig = getProviderConfig(userId)
-  let report: ConsistencyReportOutput
-
-  if (providerConfig) {
-    const provider = createProvider(providerConfig)
-    const userPrompt = buildConsistencyValidatorUserPrompt(
-      project.name,
-      JSON.stringify(artifactsSummary),
-    )
-
-    try {
-      report = await provider.generateStructured(
-        userPrompt,
-        ConsistencyReportSchema,
-        {
-          system: CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
-          maxTokens: 2048,
-          temperature: 0.1,
-        },
-      )
-    } catch {
-      report = validateRuleBasedConsistency(artifactsSummary)
-    }
-  } else {
-    report = validateRuleBasedConsistency(artifactsSummary)
+  if (!providerConfig) {
+    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
-
-  return report
+  const provider = createProvider(providerConfig)
+  const userPrompt = buildConsistencyValidatorUserPrompt(
+    project.name,
+    JSON.stringify(artifactsSummary),
+  )
+  return provider.generateStructured(
+    userPrompt,
+    ConsistencyReportSchema,
+    {
+      system: CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
+      maxTokens: 2048,
+      temperature: 0.1,
+    },
+  )
 }

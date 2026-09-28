@@ -100,7 +100,7 @@ describe('Skill Resolver Engine — resolveProjectSkills', () => {
     ).rejects.toThrow('Project not found')
   })
 
-  it('resolves skills using fallback when no provider config exists', async () => {
+  it('blocks AI skill resolution when no active BYOK session exists', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
 
@@ -114,12 +114,11 @@ describe('Skill Resolver Engine — resolveProjectSkills', () => {
 
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
 
-    const result = await resolveProjectSkills({ userId: 'u-1', projectId: 'p-1' })
-
-    expect(result.skills).toHaveLength(4)
-    expect(db.skillRecommendation.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'p-1' } })
-    expect(db.skillRecommendation.create).toHaveBeenCalledTimes(4)
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(1)
+    await expect(
+      resolveProjectSkills({ userId: 'u-1', projectId: 'p-1' }),
+    ).rejects.toThrow('No active AI provider session found')
+    expect(db.skillRecommendation.deleteMany).not.toHaveBeenCalled()
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
   })
 
   it('uses AI provider when BYOK session is active', async () => {

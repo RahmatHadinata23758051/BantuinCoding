@@ -97,41 +97,31 @@ export async function generateAgentAndRulesArtifacts({
     throw new Error('No Canonical Project Context found. Generate context first.')
   }
 
+  const providerConfig = getProviderConfig(userId)
+  if (!providerConfig) {
+    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
+  }
+  const provider = createProvider(providerConfig)
+
   await updateProject(userId, projectId, { status: 'GENERATING' })
 
-  const providerConfig = getProviderConfig(userId)
-  const provider = providerConfig ? createProvider(providerConfig) : null
-
   const targetAgent = project.targetAgent || 'CLAUDE_CODE'
-  let agentContent = ''
-  let rulesContent = ''
-
-  if (provider) {
-    try {
-      const userPrompt = buildAgentRulesGeneratorUserPrompt(
-        project.name,
-        targetAgent,
-        currentContextRecord.contentJson,
-      )
-      const res = await provider.generateStructured(
-        userPrompt,
-        AgentRulesDocumentSchema,
-        {
-          system: AGENT_RULES_GENERATOR_SYSTEM_PROMPT,
-          maxTokens: 4096,
-          temperature: 0.2,
-        },
-      )
-      agentContent = res.agent_content
-      rulesContent = res.rules_content
-    } catch {
-      agentContent = generateFallbackAgentMd(project.name, targetAgent)
-      rulesContent = generateFallbackRulesMd(project.name)
-    }
-  } else {
-    agentContent = generateFallbackAgentMd(project.name, targetAgent)
-    rulesContent = generateFallbackRulesMd(project.name)
-  }
+  const userPrompt = buildAgentRulesGeneratorUserPrompt(
+    project.name,
+    targetAgent,
+    currentContextRecord.contentJson,
+  )
+  const generated = await provider.generateStructured(
+    userPrompt,
+    AgentRulesDocumentSchema,
+    {
+      system: AGENT_RULES_GENERATOR_SYSTEM_PROMPT,
+      maxTokens: 4096,
+      temperature: 0.2,
+    },
+  )
+  const agentContent = generated.agent_content
+  const rulesContent = generated.rules_content
 
   const results: GeneratedArtifactResult[] = []
   const items = [

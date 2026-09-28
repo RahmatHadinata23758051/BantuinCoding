@@ -1,6 +1,5 @@
 import JSZip from 'jszip'
 import { db } from '@repo/db'
-import { updateProject } from '@/lib/projects/project-service'
 
 /**
  * Validates file path inside ZIP pack to prevent path traversal vulnerability.
@@ -136,9 +135,6 @@ export async function exportProjectZip({
   // Generate ZIP file buffer
   const uint8Array = await zip.generateAsync({ type: 'uint8array' })
   const buffer = Buffer.from(uint8Array)
-
-  // Update project status to EXPORTABLE
-  await updateProject(userId, projectId, { status: 'EXPORTABLE' })
 
   const safeProjectName = project.name.toLowerCase().replace(/[^a-z0-9]/g, '-')
   const filename = `${safeProjectName}-bootstrap-pack.zip`

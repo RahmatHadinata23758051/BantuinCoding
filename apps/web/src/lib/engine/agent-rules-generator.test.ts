@@ -80,7 +80,7 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
     ).rejects.toThrow('Project not found')
   })
 
-  it('generates AGENT and RULES artifacts using fallback when no provider config exists', async () => {
+  it('blocks AGENT and RULES generation when no active BYOK session exists', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
 
@@ -94,12 +94,10 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
 
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
 
-    const results = await generateAgentAndRulesArtifacts({ userId: 'u-1', projectId: 'p-1' })
-
-    expect(results).toHaveLength(2)
-    expect(results.map((r) => r.type)).toEqual(['AGENT', 'RULES'])
-    expect(results.every((r) => r.status === 'READY')).toBe(true)
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(2)
+    await expect(
+      generateAgentAndRulesArtifacts({ userId: 'u-1', projectId: 'p-1' }),
+    ).rejects.toThrow('No active AI provider session found')
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
   })
 
   it('uses AI provider when BYOK session is active', async () => {

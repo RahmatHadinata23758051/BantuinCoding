@@ -137,41 +137,25 @@ export async function resolveProjectSkills({
   }
 
   const providerConfig = getProviderConfig(userId)
-  let resolvedOutput: SkillResolverOutput
-
-  if (providerConfig) {
-    const provider = createProvider(providerConfig)
-    const userPrompt = buildSkillResolverUserPrompt(
-      project.name,
-      project.classification,
-      currentContextRecord.contentJson,
-      JSON.stringify(catalogSkills),
-    )
-
-    try {
-      resolvedOutput = await provider.generateStructured(
-        userPrompt,
-        SkillResolverOutputSchema,
-        {
-          system: SKILL_RESOLVER_SYSTEM_PROMPT,
-          maxTokens: 2048,
-          temperature: 0.2,
-        },
-      )
-    } catch {
-      resolvedOutput = {
-        skills: catalogSkills,
-        rationale: 'Fallback skill resolution using default catalog adapter.',
-        skills_md_content: generateSkillsMdContent(project.name, catalogSkills),
-      }
-    }
-  } else {
-    resolvedOutput = {
-      skills: catalogSkills,
-      rationale: 'Baseline skill resolution using default catalog adapter.',
-      skills_md_content: generateSkillsMdContent(project.name, catalogSkills),
-    }
+  if (!providerConfig) {
+    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
+  const provider = createProvider(providerConfig)
+  const userPrompt = buildSkillResolverUserPrompt(
+    project.name,
+    project.classification,
+    currentContextRecord.contentJson,
+    JSON.stringify(catalogSkills),
+  )
+  const resolvedOutput: SkillResolverOutput = await provider.generateStructured(
+    userPrompt,
+    SkillResolverOutputSchema,
+    {
+      system: SKILL_RESOLVER_SYSTEM_PROMPT,
+      maxTokens: 2048,
+      temperature: 0.2,
+    },
+  )
 
   // Persist SkillRecommendation DB records (clear prior recommendations first)
   await db.skillRecommendation.deleteMany({ where: { projectId } })

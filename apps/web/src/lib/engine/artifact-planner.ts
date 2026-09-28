@@ -8,6 +8,7 @@ import {
   type ArtifactPlanOutput,
 } from '@/lib/prompts/artifact-planner'
 import type { ProjectClassification } from '@repo/types'
+import { updateProject } from '@/lib/projects/project-service'
 
 export interface PlanArtifactsOptions {
   userId: string
@@ -83,53 +84,70 @@ export async function planProjectArtifacts({
   }
 
   const providerConfig = getProviderConfig(userId)
-  let plan: ArtifactPlanOutput
-
-  if (providerConfig) {
-    const provider = createProvider(providerConfig)
-    const userPrompt = buildArtifactPlannerUserPrompt(
-      project.name,
-      project.classification as ProjectClassification,
-      currentContextRecord.contentJson,
-    )
-
-    try {
-      plan = await provider.generateStructured(
-        userPrompt,
-        ArtifactPlanSchema,
-        {
-          system: ARTIFACT_PLANNER_SYSTEM_PROMPT,
-          maxTokens: 2048,
-          temperature: 0.2,
-        },
-      )
-    } catch {
-      // Fall back to rule-based default plan on AI failure
-      plan = getDefaultArtifactPlan(project.classification as ProjectClassification)
-    }
-  } else {
-    plan = getDefaultArtifactPlan(project.classification as ProjectClassification)
+  if (!providerConfig) {
+    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
+  const provider = createProvider(providerConfig)
+  const userPrompt = buildArtifactPlannerUserPrompt(
+    project.name,
+    project.classification as ProjectClassification,
+    currentContextRecord.contentJson,
+  )
+  const plan: ArtifactPlanOutput = await provider.generateStructured(
+    userPrompt,
+    ArtifactPlanSchema,
+    {
+      system: ARTIFACT_PLANNER_SYSTEM_PROMPT,
+      maxTokens: 2048,
+      temperature: 0.2,
+    },
+  )
 
-  // Create initial empty Artifact records in DB for each planned artifact
-  for (const item of plan.artifacts) {
-    await db.artifact.upsert({
-      where: {
-        projectId_type: { projectId, type: item.type },
-      },
-      update: {
-        path: item.path,
-        contextId: currentContextRecord.id,
-      },
-      create: {
-        projectId,
-        contextId: currentContextRecord.id,
-        type: item.type,
-        path: item.path,
-        content: '',
-        status: 'NOT_GENERATED',
-      },
+  // Persist the authoritative artifact plan for the current context and
+  // create placeholder Artifact rows for workspace visibility. Readiness is
+  // derived from artifactPlanItem records, not from already-created artifacts.
+  await db.$transaction(async (tx) => {
+    await tx.artifactPlanItem.deleteMany({
+      where: { projectId, contextId: currentContextRecord.id },
     })
+
+    for (const item of plan.artifacts) {
+      await tx.artifactPlanItem.create({
+        data: {
+          projectId,
+          contextId: currentContextRecord.id,
+          type: item.type,
+          path: item.path,
+          isRequired: item.isRequired,
+          reason: item.reason,
+        },
+      })
+
+      await tx.artifact.upsert({
+        where: {
+          projectId_type: { projectId, type: item.type },
+        },
+        update: {
+          path: item.path,
+          isRequired: item.isRequired,
+          planReason: item.reason,
+        },
+        create: {
+          projectId,
+          contextId: currentContextRecord.id,
+          type: item.type,
+          path: item.path,
+          content: '',
+          status: 'NOT_GENERATED',
+          isRequired: item.isRequired,
+          planReason: item.reason,
+        },
+      })
+    }
+  })
+
+  if (project.status === 'READY' || project.status === 'EXPORTABLE') {
+    await updateProject(userId, projectId, { status: 'GENERATING' })
   }
 
   return plan
