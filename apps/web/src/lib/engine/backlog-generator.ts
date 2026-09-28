@@ -131,40 +131,26 @@ export async function generateProjectBacklog({
   const archArtifact = project.artifacts.find((a) => a.type === 'ARCHITECTURE')?.content || ''
 
   const providerConfig = getProviderConfig(userId)
-  let backlogOutput: BacklogGeneratorOutput
-
-  if (providerConfig) {
-    const provider = createProvider(providerConfig)
-    const userPrompt = buildBacklogGeneratorUserPrompt(
-      project.name,
-      currentContextRecord.contentJson,
-      prdArtifact,
-      srsArtifact,
-      archArtifact,
-    )
-
-    try {
-      backlogOutput = await provider.generateStructured(
-        userPrompt,
-        BacklogGeneratorOutputSchema,
-        {
-          system: BACKLOG_GENERATOR_SYSTEM_PROMPT,
-          maxTokens: 4096,
-          temperature: 0.2,
-        },
-      )
-    } catch {
-      backlogOutput = {
-        phases: defaultFallbackPhases,
-        backlog_md_content: generateBacklogMdContent(project.name, defaultFallbackPhases),
-      }
-    }
-  } else {
-    backlogOutput = {
-      phases: defaultFallbackPhases,
-      backlog_md_content: generateBacklogMdContent(project.name, defaultFallbackPhases),
-    }
+  if (!providerConfig) {
+    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
+  const provider = createProvider(providerConfig)
+  const userPrompt = buildBacklogGeneratorUserPrompt(
+    project.name,
+    currentContextRecord.contentJson,
+    prdArtifact,
+    srsArtifact,
+    archArtifact,
+  )
+  let backlogOutput: BacklogGeneratorOutput = await provider.generateStructured(
+    userPrompt,
+    BacklogGeneratorOutputSchema,
+    {
+      system: BACKLOG_GENERATOR_SYSTEM_PROMPT,
+      maxTokens: 4096,
+      temperature: 0.2,
+    },
+  )
 
   // Validate dependency references and circular dependencies
   const validation = validateBacklogDependencies(backlogOutput.phases)
@@ -176,86 +162,81 @@ export async function generateProjectBacklog({
     }
   }
 
-  // Clear previous backlog DB records for this project
-  await db.backlogPhase.deleteMany({ where: { projectId } })
+  try {
+    await db.$transaction(async (tx) => {
+      // Cascades remove the old tasks and dependencies with their phases. All
+      // replacement records and the artifact are committed together.
+      await tx.backlogPhase.deleteMany({ where: { projectId } })
 
-  // Map to resolve taskKey -> db.backlogTask.id
-  const createdTasksMap = new Map<string, string>()
-
-  // Save BacklogPhases and BacklogTasks to DB
-  for (const phase of backlogOutput.phases) {
-    const dbPhase = await db.backlogPhase.create({
-      data: {
-        projectId,
-        order: phase.order,
-        name: phase.name,
-        description: phase.description,
-      },
-    })
-
-    for (const task of phase.tasks) {
-      const initialStatus = validation.taskStatusMap[task.id] || 'PENDING'
-
-      const dbTask = await db.backlogTask.create({
-        data: {
-          projectId,
-          phaseId: dbPhase.id,
-          taskKey: task.id,
-          title: task.title,
-          description: task.description,
-          acceptanceCriteria: JSON.stringify(task.acceptance_criteria),
-          definitionOfDone: task.definition_of_done,
-          relevantDocs: JSON.stringify(task.relevant_docs),
-          recommendedSkills: JSON.stringify(task.recommended_skills),
-          status: initialStatus,
-        },
-      })
-
-      createdTasksMap.set(task.id, dbTask.id)
-    }
-  }
-
-  // Create dependency relations in DB using valid BacklogTask UUIDs
-  for (const phase of backlogOutput.phases) {
-    for (const task of phase.tasks) {
-      const dbTaskId = createdTasksMap.get(task.id)
-      if (!dbTaskId) continue
-
-      for (const depKey of task.dependencies) {
-        const depDbTaskId = createdTasksMap.get(depKey)
-        if (!depDbTaskId) continue
-
-        await db.backlogDependency.create({
+      const createdTasksMap = new Map<string, string>()
+      for (const phase of backlogOutput.phases) {
+        const dbPhase = await tx.backlogPhase.create({
           data: {
-            taskId: dbTaskId,
-            dependsOnTaskId: depDbTaskId,
+            projectId,
+            order: phase.order,
+            name: phase.name,
+            description: phase.description,
           },
         })
-      }
-    }
-  }
 
-  // Upsert BACKLOG.md Artifact record
-  await db.artifact.upsert({
-    where: { projectId_type: { projectId, type: 'BACKLOG' } },
-    update: {
-      content: backlogOutput.backlog_md_content,
-      status: 'READY',
-      contextId: currentContextRecord.id,
-      provider: providerConfig?.provider ?? 'FALLBACK',
-      model: providerConfig?.model ?? 'BASELINE',
-    },
-    create: {
-      projectId,
-      contextId: currentContextRecord.id,
-      type: 'BACKLOG',
-      path: 'BACKLOG.md',
-      content: backlogOutput.backlog_md_content,
-      status: 'READY',
-      provider: providerConfig?.provider ?? 'FALLBACK',
-      model: providerConfig?.model ?? 'BASELINE',
-    },
-  })
+        for (const task of phase.tasks) {
+          const initialStatus = validation.taskStatusMap[task.id] || 'PENDING'
+          const dbTask = await tx.backlogTask.create({
+            data: {
+              projectId,
+              phaseId: dbPhase.id,
+              taskKey: task.id,
+              title: task.title,
+              description: task.description,
+              acceptanceCriteria: JSON.stringify(task.acceptance_criteria),
+              definitionOfDone: task.definition_of_done,
+              relevantDocs: JSON.stringify(task.relevant_docs),
+              recommendedSkills: JSON.stringify(task.recommended_skills),
+              status: initialStatus,
+            },
+          })
+          createdTasksMap.set(task.id, dbTask.id)
+        }
+      }
+
+      for (const phase of backlogOutput.phases) {
+        for (const task of phase.tasks) {
+          const dbTaskId = createdTasksMap.get(task.id)
+          if (!dbTaskId) continue
+          for (const depKey of task.dependencies) {
+            const depDbTaskId = createdTasksMap.get(depKey)
+            if (!depDbTaskId) continue
+            await tx.backlogDependency.create({
+              data: { taskId: dbTaskId, dependsOnTaskId: depDbTaskId },
+            })
+          }
+        }
+      }
+
+      await tx.artifact.upsert({
+        where: { projectId_type: { projectId, type: 'BACKLOG' } },
+        update: {
+          content: backlogOutput.backlog_md_content,
+          status: 'READY',
+          contextId: currentContextRecord.id,
+          provider: providerConfig.provider,
+          model: providerConfig.model,
+        },
+        create: {
+          projectId,
+          contextId: currentContextRecord.id,
+          type: 'BACKLOG',
+          path: 'BACKLOG.md',
+          content: backlogOutput.backlog_md_content,
+          status: 'READY',
+          provider: providerConfig.provider,
+          model: providerConfig.model,
+        },
+      })
+    })
+  } catch {
+    throw new Error('Backlog replacement failed. The previous backlog was preserved.')
+  }
 
   return backlogOutput
 }

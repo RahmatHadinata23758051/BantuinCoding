@@ -12,24 +12,24 @@ import {
   defaultFallbackPhases,
 } from '@/lib/engine/backlog-generator'
 
+const dbMocks = vi.hoisted(() => {
+  const tx = {
+    backlogPhase: { deleteMany: vi.fn(), create: vi.fn() },
+    backlogTask: { create: vi.fn() },
+    backlogDependency: { create: vi.fn() },
+    artifact: { upsert: vi.fn() },
+  }
+  return { tx }
+})
+
 vi.mock('@repo/db', () => ({
   db: {
-    project: {
-      findFirst: vi.fn(),
-    },
-    backlogPhase: {
-      deleteMany: vi.fn(),
-      create: vi.fn(),
-    },
-    backlogTask: {
-      create: vi.fn(),
-    },
-    backlogDependency: {
-      create: vi.fn(),
-    },
-    artifact: {
-      upsert: vi.fn(),
-    },
+    project: { findFirst: vi.fn() },
+    backlogPhase: dbMocks.tx.backlogPhase,
+    backlogTask: dbMocks.tx.backlogTask,
+    backlogDependency: dbMocks.tx.backlogDependency,
+    artifact: dbMocks.tx.artifact,
+    $transaction: vi.fn(async (callback) => callback(dbMocks.tx)),
   },
 }))
 
@@ -174,7 +174,7 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
     ).rejects.toThrow('Project not found')
   })
 
-  it('generates fallback backlog when no provider config exists', async () => {
+  it('blocks backlog generation when no active BYOK session exists', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
 
@@ -187,14 +187,72 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
     } as never)
 
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
-    vi.mocked(db.backlogPhase.create).mockResolvedValue({ id: 'phase-1' } as never)
-    vi.mocked(db.backlogTask.create).mockResolvedValue({ id: 'task-1' } as never)
 
-    const result = await generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })
+    await expect(
+      generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' }),
+    ).rejects.toThrow('No active AI provider session found')
+    expect(db.backlogPhase.deleteMany).not.toHaveBeenCalled()
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
+  })
 
-    expect(result.phases).toHaveLength(2)
-    expect(db.backlogPhase.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'p-1' } })
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(1)
+  it('replaces phases, tasks, dependencies, and artifact in one transaction', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}' }], artifacts: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC', testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({
+        phases: defaultFallbackPhases,
+        backlog_md_content: '# BACKLOG',
+      }),
+    })
+    dbMocks.tx.backlogPhase.create
+      .mockResolvedValueOnce({ id: 'phase-1' })
+      .mockResolvedValueOnce({ id: 'phase-2' })
+    dbMocks.tx.backlogTask.create
+      .mockResolvedValueOnce({ id: 'task-1' })
+      .mockResolvedValueOnce({ id: 'task-2' })
+      .mockResolvedValueOnce({ id: 'task-3' })
+
+    await generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
+    expect(dbMocks.tx.backlogPhase.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'p-1' } })
+    expect(dbMocks.tx.backlogTask.create).toHaveBeenCalled()
+    expect(dbMocks.tx.backlogDependency.create).toHaveBeenCalled()
+    expect(dbMocks.tx.artifact.upsert).toHaveBeenCalled()
+  })
+
+  it('reports a safe failure when atomic replacement rolls back', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}' }], artifacts: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC', testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({
+        phases: defaultFallbackPhases,
+        backlog_md_content: '# BACKLOG',
+      }),
+    })
+    vi.mocked(db.$transaction).mockRejectedValueOnce(new Error('write failed'))
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' }))
+      .rejects.toThrow('Backlog replacement failed. The previous backlog was preserved.')
+    expect(dbMocks.tx.artifact.upsert).not.toHaveBeenCalled()
   })
 
   it('generates backlog markdown content correctly', () => {

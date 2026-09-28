@@ -59,7 +59,10 @@ export async function markOutdatedArtifacts(projectId: string): Promise<number> 
   let outdatedCount = 0
 
   for (const art of artifacts) {
-    if (art.contextId !== currentContext.id && art.status === 'READY') {
+    if (
+      art.contextId !== currentContext.id &&
+      (art.status === 'READY' || art.status === 'MODIFIED')
+    ) {
       await db.artifact.update({
         where: { id: art.id },
         data: { status: 'OUTDATED' },
@@ -80,16 +83,16 @@ export function getArtifactStatusBadgeStyle(status: ArtifactStatus | string): {
 } {
   switch (status) {
     case 'READY':
-      return { label: 'Generated (Ready)', colorClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' }
+      return { label: 'Generated (Ready)', colorClass: 'border-[var(--ink)] bg-[var(--mint-dim)] text-[var(--ink)]' }
     case 'MODIFIED':
-      return { label: 'User Modified', colorClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20' }
+      return { label: 'User Modified', colorClass: 'border-[var(--ink)] bg-[var(--cobalt-dim)] text-[var(--ink)]' }
     case 'OUTDATED':
-      return { label: 'Outdated (Context Changed)', colorClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }
+      return { label: 'Outdated (Context Changed)', colorClass: 'border-[var(--ink)] bg-[var(--electric-yellow-dim)] text-[var(--ink)]' }
     case 'FAILED':
-      return { label: 'Generation Failed', colorClass: 'bg-rose-500/10 text-rose-400 border-rose-500/20' }
+      return { label: 'Generation Failed', colorClass: 'border-[var(--ink)] bg-[var(--action-red-dim)] text-[var(--ink)]' }
     case 'GENERATING':
-      return { label: 'Generating...', colorClass: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20 animate-pulse' }
+      return { label: 'Generating...', colorClass: 'border-[var(--ink)] bg-[var(--cobalt-dim)] text-[var(--ink)] animate-pulse-dot' }
     default:
-      return { label: 'Not Generated', colorClass: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' }
+      return { label: 'Not Generated', colorClass: 'border-[var(--ink)] bg-[var(--paper)] text-[var(--paper-muted)]' }
   }
 }

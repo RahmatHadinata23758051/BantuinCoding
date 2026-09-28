@@ -115,13 +115,29 @@ describe('Artifact Service — markOutdatedArtifacts', () => {
     vi.mocked(db.artifact.findMany).mockResolvedValueOnce([
       { id: 'art-1', contextId: 'ctx-v1', status: 'READY' },
       { id: 'art-2', contextId: 'ctx-v2', status: 'READY' },
+      { id: 'art-3', contextId: 'ctx-v1', status: 'MODIFIED' },
+      { id: 'art-4', contextId: 'ctx-v1', status: 'FAILED' },
+      { id: 'art-5', contextId: 'ctx-v1', status: 'GENERATING' },
+      { id: 'art-6', contextId: 'ctx-v1', status: 'NOT_GENERATED' },
     ] as never)
 
     const count = await markOutdatedArtifacts('p-1')
 
-    expect(count).toBe(1)
+    expect(count).toBe(2)
     expect(db.artifact.update).toHaveBeenCalledWith({
       where: { id: 'art-1' },
+      data: { status: 'OUTDATED' },
+    })
+    expect(db.artifact.update).toHaveBeenCalledWith({
+      where: { id: 'art-3' },
+      data: { status: 'OUTDATED' },
+    })
+    expect(db.artifact.update).not.toHaveBeenCalledWith({
+      where: { id: 'art-2' },
+      data: { status: 'OUTDATED' },
+    })
+    expect(db.artifact.update).not.toHaveBeenCalledWith({
+      where: { id: 'art-4' },
       data: { status: 'OUTDATED' },
     })
   })
