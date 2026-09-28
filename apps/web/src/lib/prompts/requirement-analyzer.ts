@@ -24,7 +24,7 @@ export const RequirementAnalysisSchema = z.object({
   risk_flags: z
     .array(z.string())
     .describe('Potential security, scaling, compliance, or technical risks identified in the idea'),
-})
+}).strict()
 
 export type RequirementAnalysisResult = z.infer<typeof RequirementAnalysisSchema>
 

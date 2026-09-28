@@ -31,6 +31,10 @@ vi.mock('@/lib/projects/project-service', () => ({
   updateProject: vi.fn(),
 }))
 
+vi.mock('@/lib/engine/analysis-store', () => ({
+  persistRequirementAnalysis: vi.fn(),
+}))
+
 describe('Requirement Analysis Schema', () => {
   it('validates a correct analysis object', () => {
     const validData = {
@@ -120,6 +124,7 @@ describe('Requirement Analyzer Engine', () => {
     const { getProviderConfig } = await import('@/lib/byok/session-store')
     const { createProvider } = await import('@/lib/ai/provider')
     const { updateProject } = await import('@/lib/projects/project-service')
+    const { persistRequirementAnalysis } = await import('@/lib/engine/analysis-store')
 
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
       id: 'p-1',
@@ -157,6 +162,10 @@ describe('Requirement Analyzer Engine', () => {
 
     expect(updateProject).toHaveBeenCalledWith('u-1', 'p-1', { status: 'ANALYZING' })
     expect(result.known_facts).toEqual(['Fact 1'])
+    expect(persistRequirementAnalysis).toHaveBeenCalledWith({
+      projectId: 'p-1',
+      analysis: result,
+    })
   })
 
   it('marks status GENERATION_FAILED when all retries fail', async () => {

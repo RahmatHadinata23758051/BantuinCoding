@@ -7,6 +7,7 @@ import {
   type RequirementAnalysisResult,
 } from '@/lib/prompts/requirement-analyzer'
 import { db } from '@repo/db'
+import { persistRequirementAnalysis } from '@/lib/engine/analysis-store'
 import { updateProject } from '@/lib/projects/project-service'
 
 export interface AnalyzeRequirementOptions {
@@ -42,7 +43,11 @@ export async function analyzeProjectRequirements({
     )
   }
 
-  // 3. Transition status to ANALYZING
+  // 3. Transition status to ANALYZING. Fresh projects start at DRAFT,
+  // so move through CONFIGURED using the domain state machine first.
+  if (project.status === 'DRAFT') {
+    await updateProject(userId, projectId, { status: 'CONFIGURED' })
+  }
   await updateProject(userId, projectId, { status: 'ANALYZING' })
 
   // 4. Instantiate provider and generate structured output with retry
@@ -68,6 +73,7 @@ export async function analyzeProjectRequirements({
         },
       )
 
+      await persistRequirementAnalysis({ projectId, analysis: result })
       return result
     } catch (err) {
       lastError = err
