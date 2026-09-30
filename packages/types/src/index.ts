@@ -144,6 +144,8 @@ export interface AIProviderConfig {
   provider: AIProviderType
   apiKey: string
   model: string
+  /** Optional custom base URL for OpenAI-compatible providers (e.g. 9router local). */
+  baseUrl?: string
 }
 
 export interface TestConnectionResult {
