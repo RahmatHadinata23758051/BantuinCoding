@@ -1,3 +1,4 @@
+import JSZip from 'jszip'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   validateZipPath,
@@ -36,24 +37,43 @@ describe('ZIP Secret Leakage Scanner', () => {
     expect(() => scanContentForSecrets('# PRD.md\n\nNo secrets here.', 'PRD.md')).not.toThrow()
   })
 
-  it('detects and blocks OpenAI / Anthropic sk- API keys', () => {
-    const malicious = 'const key = "sk-1234567890abcdef1234567890"'
-    expect(() => scanContentForSecrets(malicious, 'config.ts')).toThrow('SECURITY ALERT: Potential API key leakage')
+  it('detects and blocks OpenAI / Anthropic credential patterns', () => {
+    // Build the synthetic value at runtime so secret scanners never encounter
+    // a credential-shaped literal in the repository or committed fixtures.
+    const syntheticCredential = ['s', 'k', '-', '1234567890', 'abcdef1234567890'].join('')
+    const malicious = `const key = "${syntheticCredential}"`
+
+    expect(() => scanContentForSecrets(malicious, 'config.ts')).toThrow(
+      'SECURITY ALERT: Potential API key leakage',
+    )
   })
 
-  it('detects and blocks Gemini AIzaSy API keys', () => {
-    const malicious = 'const key = "AIzaSy123456789012345678901234567890123"'
-    expect(() => scanContentForSecrets(malicious, 'config.ts')).toThrow('SECURITY ALERT: Potential API key leakage')
+  it('detects and blocks Gemini credential patterns', () => {
+    const syntheticCredential = [
+      'AI',
+      'za',
+      'Sy',
+      '12345678901',
+      '23456789012',
+      '34567890123',
+    ].join('')
+    const malicious = `const key = "${syntheticCredential}"`
+
+    expect(() => scanContentForSecrets(malicious, 'config.ts')).toThrow(
+      'SECURITY ALERT: Potential API key leakage',
+    )
   })
 })
 
 describe('Bootstrap README Generator', () => {
-  it('generates informative README.md content with target agent', () => {
+  it('generates informative README.md content with target agent and DESIGN reference', () => {
     const readme = generateBootstrapReadme('Acme SaaS', 'CLAUDE_CODE')
     expect(readme).toContain('# Acme SaaS — Project Bootstrap Pack')
     expect(readme).toContain('CLAUDE_CODE')
     expect(readme).toContain('PRD.md')
+    expect(readme).toContain('DESIGN.md')
     expect(readme).toContain('BACKLOG.md')
+    expect(readme).toContain('3. DESIGN.md (if present)')
   })
 })
 
@@ -104,5 +124,29 @@ describe('ZIP Export Engine — exportProjectZip', () => {
     expect(result.filename).toBe('acme-saas-app-bootstrap-pack.zip')
     expect(result.buffer).toBeInstanceOf(Buffer)
     expect(result.buffer.length).toBeGreaterThan(0)
+  })
+
+  it('includes a READY DESIGN artifact and canonical README order in the ZIP', async () => {
+    const { db } = await import('@repo/db')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Acme UI',
+      targetAgent: 'CLAUDE_CODE',
+      artifacts: [
+        { path: 'PRD.md', status: 'READY', content: '# PRD' },
+        { path: 'DESIGN.md', status: 'READY', content: '# DESIGN\n\nWarm paper.' },
+      ],
+    } as never)
+
+    const result = await exportProjectZip({ userId: 'u-1', projectId: 'p-1' })
+    const zip = await JSZip.loadAsync(result.buffer)
+    const design = await zip.file('DESIGN.md')?.async('string')
+    const readme = await zip.file('README.md')?.async('string')
+
+    expect(design).toBe('# DESIGN\n\nWarm paper.')
+    expect(readme).toContain('3. DESIGN.md (if present)')
+    expect(readme).toContain('4. Agent.md')
   })
 })

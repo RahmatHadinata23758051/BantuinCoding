@@ -69,8 +69,8 @@ const routes = [
   ['export', () => exportZip(getRequest(), params)],
 ] as const
 
-async function body(response: Response) {
-  return response.json() as Promise<{ error?: string }>
+async function body<T = unknown>(response: Response) {
+  return response.json() as Promise<T>
 }
 
 describe('BK-025 workflow route security', () => {
@@ -97,7 +97,7 @@ describe('BK-025 workflow route security', () => {
   it.each(routes)('%s rejects invalid project state with sanitized copy', async (_name, invoke) => {
     mocks.requireProjectAction.mockRejectedValueOnce(new Error('Project state DRAFT does not allow generate'))
     const response = await invoke(postRequest())
-    const payload = await body(response)
+    const payload = await body<{ error?: string }>(response)
     expect([400, 409]).toContain(response.status)
     expect(payload.error).toContain('current state')
     expect(payload.error).not.toContain('DRAFT')
@@ -166,5 +166,30 @@ describe('BK-025 workflow route security', () => {
     expect(response.status).toBe(200)
     expect(mocks.requireProjectAction).toHaveBeenCalledWith('user-1', 'project-1', 'EXPORT')
     expect(mocks.updateProject).not.toHaveBeenCalled()
+  })
+
+  it('generate route supports AGENT_RULES orchestration without filtering', async () => {
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'GENERATING' })
+    mocks.generateAgentAndRulesArtifacts.mockResolvedValue([
+      { type: 'AGENT', status: 'READY', path: 'Agent.md', content: 'Agent' },
+      { type: 'RULES', status: 'READY', path: 'RULES.md', content: 'Rules' },
+    ])
+    mocks.recomputeProjectReadiness.mockResolvedValue({ isReady: false })
+
+    const request = new NextRequest('http://localhost/api/projects/project-1/generate', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'AGENT_RULES' }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    const response = await generate(request, params)
+    const json = await body<{ artifacts?: Array<{ type: string; status: string; path: string; content: string }> }>(response)
+
+    expect(response.status).toBe(200)
+    expect(mocks.generateAgentAndRulesArtifacts).toHaveBeenCalledWith({
+      userId: 'user-1',
+      projectId: 'project-1',
+    })
+    expect(json.artifacts).toHaveLength(2)
   })
 })
