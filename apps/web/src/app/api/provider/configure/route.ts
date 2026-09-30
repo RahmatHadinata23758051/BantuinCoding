@@ -27,6 +27,7 @@ const ConfigureSchema = z.object({
     .min(8, 'API key too short')
     .max(512, 'API key too long')
     .regex(/^[^\s]+$/, 'API key must not contain spaces'),
+  baseUrl: z.string().optional(),
 })
 
 // Simple in-process rate limiter: 5 attempts per minute per user
@@ -82,13 +83,14 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { provider, model, apiKey } = parsed.data
+  const { provider, model, apiKey, baseUrl } = parsed.data
 
   // Test connection — API key stays in server memory only
   const aiProvider = createProvider({
     provider: provider as AIProviderType,
     model,
     apiKey,
+    baseUrl,
   })
 
   const result = await aiProvider.testConnection()
@@ -106,7 +108,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Store in session — key never leaves the server
-  setProviderSession(userId, { provider: provider as AIProviderType, model, apiKey })
+  setProviderSession(userId, { provider: provider as AIProviderType, model, apiKey, baseUrl })
 
   // Return safe metadata only
   const meta = getProviderMeta(userId)

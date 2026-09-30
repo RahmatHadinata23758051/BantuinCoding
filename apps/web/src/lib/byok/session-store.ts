@@ -22,6 +22,8 @@ interface ProviderSession {
   model: string
   // API key stored in server memory — redacted from all responses
   readonly _apiKey: string
+  // Optional custom base URL for OpenAI-compatible providers
+  baseUrl?: string
   configuredAt: Date
   expiresAt: Date
 }
@@ -57,6 +59,7 @@ export function setProviderSession(
     provider: config.provider,
     model: config.model,
     _apiKey: config.apiKey,
+    baseUrl: config.baseUrl,
     configuredAt: new Date(),
     expiresAt: new Date(Date.now() + SESSION_TTL_MS),
   })
@@ -73,6 +76,7 @@ export function getProviderConfig(userId: string): AIProviderConfig | null {
     provider: session.provider,
     model: session.model,
     apiKey: session._apiKey,
+    baseUrl: session.baseUrl,
   }
 }
 
