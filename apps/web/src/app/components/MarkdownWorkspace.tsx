@@ -9,6 +9,7 @@ import {
   Loader2,
   PanelLeft,
   PencilLine,
+  RefreshCw,
   Save,
 } from 'lucide-react'
 
@@ -100,6 +101,7 @@ export function MarkdownWorkspace({
   const [selectedType, setSelectedType] = useState<string>(artifacts[0]?.type || 'PRD')
   const [activeTab, setActiveTab] = useState<WorkspaceMode>('split')
   const [isSaving, setIsSaving] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
   const activeArtifact = artifacts.find((artifact) => artifact.type === selectedType) || artifacts[0]
@@ -111,6 +113,55 @@ export function MarkdownWorkspace({
     setSelectedType(artifact.type)
     setContent(artifact.content)
     setSaveMessage(null)
+  }
+
+  const handleRegenerate = async () => {
+    if (!activeArtifact) return
+    setIsRegenerating(true)
+    setSaveMessage(null)
+
+    try {
+      let endpoint = `/api/projects/${projectId}/generate`
+      const body: Record<string, unknown> = { type: activeArtifact.type }
+
+      if (activeArtifact.type === 'SKILLS') {
+        endpoint = `/api/projects/${projectId}/skills`
+      } else if (activeArtifact.type === 'BACKLOG') {
+        endpoint = `/api/projects/${projectId}/backlog`
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(data?.error ?? 'Regeneration failed')
+      }
+
+      const data = (await response.json()) as {
+        artifacts?: Array<WorkspaceArtifactItem & { error?: string }>
+      }
+      const updated = data.artifacts?.find((a) => a.type === activeArtifact.type)
+      if (updated) {
+        if (updated.status === 'FAILED') {
+          setSaveMessage(`Generation failed: ${updated.error || 'The model failed to produce document output. Please retry.'}`)
+        } else {
+          setContent(updated.content)
+          setSaveMessage('Saved. Document regenerated successfully!')
+        }
+        if (onArtifactUpdated) onArtifactUpdated(updated)
+      } else {
+        setSaveMessage('Regenerated. Refreshing…')
+        window.location.reload()
+      }
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : 'Regeneration error')
+    } finally {
+      setIsRegenerating(false)
+    }
   }
 
   const handleSave = async () => {
@@ -247,6 +298,24 @@ export function MarkdownWorkspace({
               </p>
 
               <div className="flex flex-wrap items-center gap-2">
+                {activeArtifact && (
+                  <Button
+                    type="button"
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating || isSaving}
+                    variant="secondary"
+                    className="gap-2"
+                    aria-busy={isRegenerating}
+                  >
+                    {isRegenerating ? (
+                      <Loader2 className="animate-spin size-4" aria-hidden="true" />
+                    ) : (
+                      <RefreshCw className="size-4" aria-hidden="true" />
+                    )}
+                    {isRegenerating ? 'Regenerating…' : 'Regenerate'}
+                  </Button>
+                )}
+
                 <div
                   className="grid grid-cols-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-1 shadow-[var(--shadow-xs)]"
                   role="group"

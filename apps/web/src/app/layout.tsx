@@ -27,6 +27,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <body
         className="flex h-full flex-col"
         style={{ background: 'var(--bg-page)', color: 'var(--ink)' }}
+        suppressHydrationWarning
       >
         {children}
       </body>

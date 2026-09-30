@@ -12,12 +12,14 @@ import {
 import {
   AlertTriangle,
   ArrowLeft,
+  Bot,
   Braces,
   Check,
   CheckCircle2,
   Circle,
   CircleDashed,
   ClipboardCheck,
+  Copy,
   Download,
   FileText,
   Files,
@@ -35,6 +37,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
+import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
 
 export interface ProjectWorkspaceProps {
   initialData: {
@@ -132,8 +135,8 @@ const SECTION_ITEMS: {
   },
   {
     id: 'export',
-    label: 'Export',
-    description: 'Inspect and download',
+    label: 'Export & Prompt',
+    description: 'Download pack & one-shot agent prompt',
     icon: Package,
   },
 ]
@@ -235,7 +238,8 @@ function formatDate(value: string) {
   }).format(date)
 }
 
-function getPipelineStageIndex(status: string) {
+function getPipelineStageIndex(status: string, hasExported = false) {
+  if (hasExported || status === 'EXPORTABLE') return 6
   switch (status) {
     case 'ANALYZING':
     case 'CLARIFYING':
@@ -246,8 +250,6 @@ function getPipelineStageIndex(status: string) {
     case 'GENERATION_FAILED':
       return 3
     case 'READY':
-      return 4
-    case 'EXPORTABLE':
       return 5
     case 'DRAFT':
     case 'CONFIGURED':
@@ -529,9 +531,67 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const answeredClarifications = clarifications.filter((question) => question.status === 'ANSWERED')
   const contextReady = hasContextData(initialData.context)
   const canExport = readyArtifacts.length > 0
-  const activePipelineIndex = getPipelineStageIndex(projectStatus)
-  const taskKeyById = new Map(allTasks.map((task) => [task.id, task.taskKey] as const))
+  const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
+  const [selectedAgentTarget, setSelectedAgentTarget] = useState(initialData.targetAgent || 'CLAUDE_CODE')
+  const [copiedPrompt, setCopiedPrompt] = useState(false)
+
+  const activePipelineIndex = getPipelineStageIndex(projectStatus, hasExportedZip)
   const includesReadme = readyArtifacts.some((artifact) => artifact.path === 'README.md')
+
+  const handleDownloadZip = async () => {
+    setHasExportedZip(true)
+    setProjectStatus('EXPORTABLE')
+    // Silently notify the server to transition project to EXPORTABLE
+    try {
+      await fetch(`/api/projects/${initialData.id}/validate`, { method: 'POST' })
+    } catch {}
+  }
+
+  const generateOneShotKickoffPrompt = (agent: string) => {
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+    const dashboardUrl = `${currentOrigin}/projects/${initialData.id}`
+
+    return `# 🚀 PROJECT BOOTSTRAP KICKOFF — ${initialData.name}
+
+## 1. AGENT IDENTITY & RESPONSIBILITY
+You are the primary autonomous coding agent (${formatLabel(agent)}) assigned to implement **${initialData.name}** (${initialData.classification}).
+All requirements, architecture, locked design contracts, and implementation tasks have been prepared in this bootstrap pack.
+
+## 2. MANDATORY DOCUMENT READING ORDER (DO NOT SKIP)
+Before authoring or modifying any code in the workspace, you MUST read the specification files in this exact priority order:
+1. \`PRD.md\` — Product Requirements Document (Vision, Goals, Non-Goals, User Flows, Feature Scope)
+2. \`SRS.md\` — Software Requirements Specification (Functional Specs FR-xxx, Data Requirements, Error Behavior)
+3. \`DESIGN.md\` — Locked Visual Contract (Palette, Typography, 2-3px Ink Borders, Hard Offset Shadows, Anti-Slop Rules)
+4. \`Agent.md\` — Agent Operational Contract (Hierarchy, Workflow, Definition of Done, Quality Gates)
+5. \`BACKLOG.md\` — Phased Backlog (Atomic Tasks with Acceptance Criteria & Verification Steps)
+6. \`ARCHITECTURE.md\` — System Architecture (Component Hierarchy, Boundaries, Data Flow, DB Design)
+7. \`RULES.md\` — Non-Negotiable Hard Constraints (Tech Stack Immutability, Secret Protection, Zero-Warning Rule)
+8. \`SKILLS.md\` — Recommended Agent Skills & Triggers
+
+## 3. DESIGN SYSTEM CONTRACT (LOCKED)
+- Follow the locked visual system in \`DESIGN.md\`: warm off-white paper (#F7F0DF), near-black ink (#151515), 2-3px solid structural borders, hard offset shadows (4px-6px), asymmetric composition, and clear functional accents.
+- ZERO AI-SLOP: Prohibit generic templates, glassmorphism, decorative gradients, fake metrics, unadapted library widgets, and childish cartoon styling.
+
+## 4. LIVE DASHBOARD & TASK TRACKING
+- Project Workspace Dashboard: ${dashboardUrl}
+- Connect your session to track tasks on the live Trello-style Backlog Board.
+- Execute tasks sequentially following dependency order starting with Phase 1 / task \`BK-001\`.
+- Keep task status updated as you work: Ready → In Progress → Review → Done.
+
+## 5. FIRST ACTION REQUIRED
+1. Confirm receipt of this kickoff prompt.
+2. Read \`PRD.md\` and \`Agent.md\`.
+3. Present your execution plan for task \`BK-001\` before touching the codebase.`
+  }
+
+  const handleCopyOneShotPrompt = () => {
+    const promptText = generateOneShotKickoffPrompt(selectedAgentTarget)
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      void navigator.clipboard.writeText(promptText)
+      setCopiedPrompt(true)
+      setTimeout(() => setCopiedPrompt(false), 2000)
+    }
+  }
 
   const handleArtifactUpdated = (updated: WorkspaceArtifactItem) => {
     setArtifacts((previous) =>
@@ -570,10 +630,36 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     options: RequestInit,
     fallbackError: string,
   ): Promise<T> => {
-    const response = await fetch(`/api/projects/${initialData.id}/${path}`, options)
-    const data = (await response.json().catch(() => null)) as
+    let response = await fetch(`/api/projects/${initialData.id}/${path}`, options)
+    let data = (await response.json().catch(() => null)) as
       | (T & { error?: string; message?: string })
       | null
+
+    // If server lost session due to dev server rebuild/hot-reload, auto-restore from tab sessionStorage and retry
+    if (
+      !response.ok &&
+      (data?.error?.includes('No active AI provider session') ||
+        data?.message?.includes('No active AI provider session')) &&
+      typeof window !== 'undefined' &&
+      window.sessionStorage
+    ) {
+      const stored = window.sessionStorage.getItem('byok_session')
+      if (stored) {
+        try {
+          const configRes = await fetch('/api/provider/configure', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: stored,
+          })
+          if (configRes.ok) {
+            response = await fetch(`/api/projects/${initialData.id}/${path}`, options)
+            data = (await response.json().catch(() => null)) as
+              | (T & { error?: string; message?: string })
+              | null
+          }
+        } catch {}
+      }
+    }
 
     if (!response.ok) {
       throw new Error(data?.error ?? data?.message ?? fallbackError)
@@ -584,16 +670,26 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   }
 
   const buildCanonicalContext = async () => {
+    setIsAnalyzing(true)
     setDiscoveryMessage({ type: 'status', text: 'Normalizing the canonical context…' })
-    await requestProjectStage(
-      'context',
-      { method: 'POST' },
-      'Canonical context generation failed.',
-    )
+    try {
+      await requestProjectStage(
+        'context',
+        { method: 'POST' },
+        'Canonical context generation failed.',
+      )
 
-    setProjectStatus('CONTEXT_READY')
-    setDiscoveryMessage({ type: 'status', text: 'Canonical context ready. Refreshing workspace…' })
-    window.location.reload()
+      setProjectStatus('CONTEXT_READY')
+      setDiscoveryMessage({ type: 'status', text: 'Canonical context ready. Refreshing workspace…' })
+      window.location.reload()
+    } catch (error) {
+      setDiscoveryMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Canonical context generation failed. Please retry.',
+      })
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   const handleStartDiscovery = async () => {
@@ -678,6 +774,16 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
         'Clarification answers could not be saved.',
       )
 
+      // Immediately reflect answered status in client state so pending questions form clears
+      const answeredMap = new Map(answers.map((a) => [a.questionId, a.answer]))
+      setClarifications((prev) =>
+        prev.map((q) =>
+          answeredMap.has(q.id)
+            ? { ...q, status: 'ANSWERED', answer: answeredMap.get(q.id) ?? q.answer }
+            : q,
+        ),
+      )
+
       setDiscoveryMessage({ type: 'status', text: 'Checking whether more decisions are needed…' })
       const nextRound = await requestProjectStage<{
         questions: Array<{ question: string; impact?: string }>
@@ -710,6 +816,23 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
         text: `Round ${stored.questions.at(-1)?.round ?? 1} is ready. Resolve the remaining decisions.`,
       })
     } catch (error) {
+      // Synchronize latest questions from server so UI reflects any saved answers
+      try {
+        const stored = await requestProjectStage<{
+          questions: Array<{
+            id: string
+            round: number
+            question: string
+            impact: string | null
+            answer: string | null
+            status: string
+          }>
+        }>('clarifications', { method: 'GET' }, '')
+        if (stored?.questions) {
+          setClarifications(stored.questions)
+        }
+      } catch {}
+
       setDiscoveryMessage({
         type: 'error',
         text: error instanceof Error ? error.message : 'Clarification submission failed. Please retry.',
@@ -733,19 +856,27 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     setProjectStatus('GENERATING')
     setGenMessage(null)
 
-    const stages = [
+    interface GenerationStage {
+      label: string
+      path: string
+      type?: 'AGENT_RULES'
+    }
+
+    const stages: GenerationStage[] = [
       { label: 'artifact planning', path: 'planner' },
-      { label: 'document generation', path: 'generate' },
+      { label: 'core document generation', path: 'generate' },
+      { label: 'agent & rules generation', path: 'generate', type: 'AGENT_RULES' },
       { label: 'skill resolution', path: 'skills' },
       { label: 'backlog generation', path: 'backlog' },
-    ] as const
+    ]
 
     try {
       for (const stage of stages) {
         setGenMessage({ type: 'status', text: `Running ${stage.label}…` })
+        const body = stage.type ? JSON.stringify({ type: stage.type }) : undefined
         await requestProjectStage(
           stage.path,
-          { method: 'POST' },
+          { method: 'POST', body, headers: { 'Content-Type': 'application/json' } },
           `${formatLabel(stage.label)} failed.`,
         )
       }
@@ -766,6 +897,87 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     }
   }
 
+  const handleRegenerateFailed = async () => {
+    if (!contextReady) return
+
+    setIsGenerating(true)
+    setProjectStatus('GENERATING')
+    setGenMessage(null)
+
+    try {
+      const coreCandidateTypes = ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'] as const
+      const needingAttention = artifacts
+        .filter((a) => a.status !== 'READY' && a.status !== 'MODIFIED')
+        .map((a) => a.type)
+
+      const coreToRetry = coreCandidateTypes.filter((t) => needingAttention.includes(t))
+
+      if (coreToRetry.length > 0) {
+        for (let i = 0; i < coreToRetry.length; i++) {
+          const docType = coreToRetry[i]
+          setGenMessage({
+            type: 'status',
+            text: `Regenerating ${docType}.md (${i + 1} of ${coreToRetry.length})…`,
+          })
+          const stageResult = await requestProjectStage<{
+            artifacts?: Array<{ type: string; status: string; error?: string }>
+          }>(
+            'generate',
+            {
+              method: 'POST',
+              body: JSON.stringify({ type: docType }),
+              headers: { 'Content-Type': 'application/json' },
+            },
+            `Failed to regenerate ${docType}.md.`,
+          )
+          const failedItem = stageResult?.artifacts?.find(
+            (a) => a.type === docType && a.status === 'FAILED',
+          )
+          if (failedItem) {
+            throw new Error(`Generation of ${docType}.md failed: ${failedItem.error || 'The model did not return output.'}`)
+          }
+        }
+      }
+
+      if (needingAttention.includes('AGENT') || needingAttention.includes('RULES')) {
+        setGenMessage({ type: 'status', text: 'Regenerating Agent.md & RULES.md…' })
+        await requestProjectStage(
+          'generate',
+          {
+            method: 'POST',
+            body: JSON.stringify({ type: 'AGENT_RULES' }),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          'Failed to regenerate Agent & Rules.',
+        )
+      }
+
+      if (needingAttention.includes('SKILLS')) {
+        setGenMessage({ type: 'status', text: 'Resolving skills…' })
+        await requestProjectStage('skills', { method: 'POST' }, 'Skill resolution failed.')
+      }
+
+      if (needingAttention.includes('BACKLOG')) {
+        setGenMessage({ type: 'status', text: 'Generating backlog…' })
+        await requestProjectStage('backlog', { method: 'POST' }, 'Backlog generation failed.')
+      }
+
+      setGenMessage({ type: 'status', text: 'All required documents updated. Refreshing workspace…' })
+      window.location.reload()
+    } catch (error) {
+      setProjectStatus('GENERATION_FAILED')
+      setGenMessage({
+        type: 'error',
+        text:
+          error instanceof Error
+            ? error.message
+            : 'Retry failed. Check the project context and retry.',
+      })
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   const discoveryButton = pendingClarifications.length > 0 ? (
     <button
       type="button"
@@ -774,6 +986,20 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     >
       <MessageSquareText aria-hidden="true" className="size-4" />
       Continue clarification
+    </button>
+  ) : projectStatus === 'CLARIFYING' && answeredClarifications.length > 0 ? (
+    <button
+      type="button"
+      onClick={buildCanonicalContext}
+      disabled={isAnalyzing || isSubmittingAnswers}
+      className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+    >
+      {isAnalyzing ? (
+        <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+      ) : (
+        <Braces aria-hidden="true" className="size-4" />
+      )}
+      {isAnalyzing ? 'Normalizing context…' : 'Generate canonical context'}
     </button>
   ) : (
     <button
@@ -792,25 +1018,38 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   )
 
   const generateButton = contextReady ? (
-    <button
-      type="button"
-      onClick={handleGenerateAll}
-      disabled={isGenerating}
-      className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-black text-white shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-    >
-      {isGenerating ? (
-        <Loader2 aria-hidden="true" className="size-4 animate-spin" />
-      ) : readyArtifacts.length > 0 ? (
-        <RefreshCw aria-hidden="true" className="size-4" />
-      ) : (
-        <Play aria-hidden="true" className="size-4" />
+    <div className="flex flex-wrap gap-3">
+      <button
+        type="button"
+        onClick={handleGenerateAll}
+        disabled={isGenerating}
+        className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-black text-white shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+      >
+        {isGenerating ? (
+          <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+        ) : readyArtifacts.length > 0 ? (
+          <RefreshCw aria-hidden="true" className="size-4" />
+        ) : (
+          <Play aria-hidden="true" className="size-4" />
+        )}
+        {isGenerating
+          ? 'Generating pack…'
+          : readyArtifacts.length > 0
+            ? 'Regenerate full pack'
+            : 'Generate full pack'}
+      </button>
+      {attentionArtifacts.length > 0 && (
+        <button
+          type="button"
+          onClick={handleRegenerateFailed}
+          disabled={isGenerating}
+          className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--electric-yellow)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+        >
+          <RefreshCw aria-hidden="true" className="size-4" />
+          Retry failed ({attentionArtifacts.length})
+        </button>
       )}
-      {isGenerating
-        ? 'Generating pack…'
-        : readyArtifacts.length > 0
-          ? 'Regenerate full pack'
-          : 'Generate full pack'}
-    </button>
+    </div>
   ) : (
     discoveryButton
   )
@@ -1000,8 +1239,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
               tabIndex={0}
               aria-labelledby={getSectionTabId(activeTab)}
             >
-              {activeTab === 'overview' && (
-              <div className="space-y-10">
+              <div className={activeTab === 'overview' ? 'space-y-10' : 'hidden'}>
                 <SectionHeading
                   title="Documentation control room"
                   description="A direct view of what the coding agent can rely on now, what still needs attention, and the next safe action."
@@ -1156,10 +1394,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                   </section>
                 </section>
               </div>
-            )}
 
-            {activeTab === 'context' && (
-              <div className="space-y-8">
+              <div className={activeTab === 'context' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
                   title="Canonical project context"
                   description="The normalized source of truth consumed by every generator. Provenance labels distinguish confirmed decisions from assumptions and unknowns."
@@ -1355,10 +1591,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                   </section>
                 )}
               </div>
-            )}
 
-            {activeTab === 'documents' && (
-              <div className="space-y-8">
+              <div className={activeTab === 'documents' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
                   title="Generated documents"
                   description="Edit markdown, compare rendered output, and save intentional changes. Ready and modified documents are eligible for export."
@@ -1392,10 +1626,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                   </div>
                 )}
               </div>
-            )}
 
-            {activeTab === 'skills' && (
-              <div className="space-y-8">
+              <div className={activeTab === 'skills' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
                   title="Resolved agent skills"
                   description="Capabilities selected for this project, with the conditions that should invoke them and the implementation phases they support."
@@ -1491,13 +1723,11 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                   </div>
                 )}
               </div>
-            )}
 
-            {activeTab === 'backlog' && (
-              <div className="space-y-8">
+              <div className={activeTab === 'backlog' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
                   title="Implementation backlog"
-                  description="Phased work ordered by dependency. Open a task to inspect its acceptance criteria, definition of done, documentation, and recommended skills."
+                  description="Interactive Trello-style Kanban board. Drag tasks across columns or use quick actions to track coding agent progress."
                   action={
                     allTasks.length > 0 ? (
                       <div
@@ -1520,163 +1750,18 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                     action={generateButton}
                   />
                 ) : (
-                  <div className="space-y-10">
-                    {initialData.phases.map((phase) => (
-                      <section key={phase.id} aria-labelledby={`phase-${phase.id}`}>
-                        <div
-                          className={`${PANEL_CLASS} grid gap-3 bg-[var(--workspace-sun)] p-5 sm:grid-cols-[4rem_1fr_auto] sm:items-end`}
-                        >
-                          <span className="font-mono text-3xl font-black tracking-[-0.08em] text-[var(--workspace-ink)]">
-                            {String(phase.order).padStart(2, '0')}
-                          </span>
-                          <div>
-                            <h3
-                              id={`phase-${phase.id}`}
-                              className="text-2xl font-black tracking-[-0.05em]"
-                            >
-                              {phase.name}
-                            </h3>
-                            {phase.description && (
-                              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
-                                {phase.description}
-                              </p>
-                            )}
-                          </div>
-                          <span className="font-mono text-xs font-black text-[var(--workspace-ink)]">
-                            {phase.tasks.length} task
-                            {phase.tasks.length === 1 ? '' : 's'}
-                          </span>
-                        </div>
-
-                        {phase.tasks.length === 0 ? (
-                          <p
-                            className={`${PANEL_SOFT_CLASS} mt-4 bg-[var(--workspace-paper)] p-5 text-sm font-semibold text-[var(--workspace-muted)]`}
-                          >
-                            This phase has no generated tasks.
-                          </p>
-                        ) : (
-                          <div className="mt-4 space-y-4">
-                            {phase.tasks.map((task) => {
-                              const dependencyLabels = task.dependencies.map(
-                                (dependencyId) => taskKeyById.get(dependencyId) ?? dependencyId,
-                              )
-
-                              return (
-                                <details
-                                  key={task.id}
-                                  className={`${PANEL_SOFT_CLASS} group bg-[var(--workspace-paper)]`}
-                                >
-                                  <summary
-                                    className={`grid cursor-pointer list-none gap-3 p-5 sm:grid-cols-[6rem_minmax(0,1fr)_auto] sm:items-start [&::-webkit-details-marker]:hidden ${BUTTON_FOCUS_CLASS}`}
-                                  >
-                                    <span className="font-mono text-xs font-black text-[var(--workspace-primary)]">
-                                      {task.taskKey}
-                                    </span>
-                                    <div className="min-w-0">
-                                      <div className="flex items-start gap-2">
-                                        <h4 className="text-base font-black leading-5 tracking-[-0.02em]">
-                                          {task.title}
-                                        </h4>
-                                        <span className="mt-0.5 font-mono text-lg font-black text-[var(--workspace-faint)] transition-transform group-open:rotate-90">
-                                          ›
-                                        </span>
-                                      </div>
-                                      <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-[var(--workspace-muted)]">
-                                        {task.description}
-                                      </p>
-                                    </div>
-                                    <span
-                                      className={`w-fit border-2 px-2.5 py-1 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${statusTone(task.status)}`}
-                                    >
-                                      {formatStatus(task.status)}
-                                    </span>
-                                  </summary>
-
-                                  <div className="grid gap-6 border-t-2 border-[var(--workspace-ink)] p-5 sm:pl-28 lg:grid-cols-2">
-                                    <div>
-                                      <h5 className="font-mono text-xs font-black text-[var(--workspace-faint)]">
-                                        Acceptance criteria
-                                      </h5>
-                                      {task.acceptanceCriteria.length > 0 ? (
-                                        <ul className="mt-3 space-y-2">
-                                          {task.acceptanceCriteria.map((criterion) => (
-                                            <li
-                                              key={criterion}
-                                              className="flex gap-2 text-sm font-semibold leading-5"
-                                            >
-                                              <Check
-                                                aria-hidden="true"
-                                                className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]"
-                                              />
-                                              {criterion}
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      ) : (
-                                        <p className="mt-2 text-sm font-medium text-[var(--workspace-muted)]">
-                                          No acceptance criteria recorded.
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    <dl className="space-y-4 text-sm">
-                                      <div>
-                                        <dt className="font-mono text-xs font-black text-[var(--workspace-faint)]">
-                                          Definition of done
-                                        </dt>
-                                        <dd className="mt-1 font-medium leading-5 text-[var(--workspace-muted)]">
-                                          {task.definitionOfDone || 'Not specified'}
-                                        </dd>
-                                      </div>
-                                      <div>
-                                        <dt className="font-mono text-xs font-black text-[var(--workspace-faint)]">
-                                          Dependencies
-                                        </dt>
-                                        <dd className="mt-1 font-medium leading-5 text-[var(--workspace-muted)]">
-                                          {dependencyLabels.length > 0
-                                            ? dependencyLabels.join(', ')
-                                            : 'No blockers'}
-                                        </dd>
-                                      </div>
-                                      <div>
-                                        <dt className="font-mono text-xs font-black text-[var(--workspace-faint)]">
-                                          Relevant documents
-                                        </dt>
-                                        <dd className="mt-1 font-medium leading-5 text-[var(--workspace-muted)]">
-                                          {task.relevantDocs.length > 0
-                                            ? task.relevantDocs.join(', ')
-                                            : 'None linked'}
-                                        </dd>
-                                      </div>
-                                      <div>
-                                        <dt className="font-mono text-xs font-black text-[var(--workspace-faint)]">
-                                          Recommended skills
-                                        </dt>
-                                        <dd className="mt-1 font-medium leading-5 text-[var(--workspace-muted)]">
-                                          {task.recommendedSkills.length > 0
-                                            ? task.recommendedSkills.join(', ')
-                                            : 'No specific skill'}
-                                        </dd>
-                                      </div>
-                                    </dl>
-                                  </div>
-                                </details>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </section>
-                    ))}
-                  </div>
+                  <BacklogKanbanBoard
+                    projectId={initialData.id}
+                    phases={initialData.phases}
+                    targetAgent={initialData.targetAgent}
+                  />
                 )}
               </div>
-            )}
 
-            {activeTab === 'export' && (
-              <div className="space-y-8">
+              <div className={activeTab === 'export' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
-                  title="Export bootstrap pack"
-                  description="Inspect the exact document manifest, then download a UTF-8 ZIP prepared for the selected coding agent."
+                  title="Export & Agent Kickoff Prompt"
+                  description="Download the complete Project Bootstrap Pack archive and copy the one-shot prompt to immediately launch your coding agent."
                   action={
                     <span
                       className={`border-2 px-2.5 py-1 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${
@@ -1685,7 +1770,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                           : 'border-[var(--workspace-ink)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)]'
                       }`}
                     >
-                      {canExport ? 'Ready to download' : 'Not ready'}
+                      {canExport ? (hasExportedZip ? 'Export completed' : 'Ready to download') : 'Not ready'}
                     </span>
                   }
                 />
@@ -1698,108 +1783,159 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                     action={generateButton}
                   />
                 ) : (
-                  <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_23rem]">
-                    <section aria-labelledby="manifest-title" className={PANEL_CLASS}>
-                      <div className="flex items-center justify-between border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] p-5">
-                        <h3 id="manifest-title" className="text-2xl font-black tracking-[-0.05em]">
-                          Archive manifest
-                        </h3>
-                        <span className="font-mono text-xs font-black text-[var(--workspace-ink)]">
-                          {readyArtifacts.length + (includesReadme ? 0 : 1)} files
-                        </span>
-                      </div>
-                      <ul className="bg-[var(--workspace-paper)]">
-                        {readyArtifacts.map((artifact) => (
-                          <li
-                            key={artifact.id}
-                            className="grid gap-2 border-b-2 border-[var(--workspace-ink)] p-4 sm:grid-cols-[1fr_auto] sm:items-center"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <FileText
-                                aria-hidden="true"
-                                className="size-4 shrink-0 text-[var(--workspace-ink)]"
-                              />
-                              <span className="truncate font-mono text-sm font-bold">
-                                {artifact.path}
-                              </span>
-                            </div>
-                            <span
-                              className={`w-fit border-2 px-2 py-0.5 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${statusTone(artifact.status)}`}
-                            >
-                              {formatStatus(artifact.status)}
-                            </span>
-                          </li>
-                        ))}
-                        {!includesReadme && (
-                          <li className="grid gap-2 border-b-2 border-[var(--workspace-ink)] p-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <FileText
-                                aria-hidden="true"
-                                className="size-4 shrink-0 text-[var(--workspace-ink)]"
-                              />
-                              <span className="truncate font-mono text-sm font-bold">
-                                README.md
-                              </span>
-                            </div>
-                            <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
-                              Added during export
-                            </span>
-                          </li>
-                        )}
-                      </ul>
+                  <div className="space-y-10">
+                    {/* One-Shot Kickoff Prompt Card */}
+                    <section aria-label="One-shot agent prompt" className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
+                      <div className="flex flex-col gap-4 border-b-2 border-[var(--workspace-ink)] pb-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="flex size-10 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] shadow-[3px_3px_0_var(--workspace-ink)]">
+                            <Bot aria-hidden="true" className="size-5" />
+                          </span>
+                          <div>
+                            <h3 className="text-xl font-black tracking-tight">One-Shot Agent Kickoff Prompt</h3>
+                            <p className="text-xs font-semibold text-[var(--workspace-muted)]">
+                              Copy this prompt and paste it as the very first message into your coding agent.
+                            </p>
+                          </div>
+                        </div>
 
-                      {artifacts.length > readyArtifacts.length && (
-                        <p className="m-5 flex gap-2 border-l-4 border-[var(--workspace-ink)] bg-[var(--workspace-yellow-soft)] p-4 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
-                          <AlertTriangle
-                            aria-hidden="true"
-                            className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]"
-                          />
-                          {artifacts.length - readyArtifacts.length} ineligible document
-                          {artifacts.length - readyArtifacts.length === 1 ? '' : 's'} will be
-                          omitted because their status is not ready or modified.
-                        </p>
-                      )}
+                        {/* Agent Selector Tabs */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {['CLAUDE_CODE', 'CURSOR', 'OPENCODE', 'CODEX', 'ANTIGRAVITY'].map((agent) => (
+                            <button
+                              key={agent}
+                              type="button"
+                              onClick={() => setSelectedAgentTarget(agent)}
+                              className={`border-2 border-[var(--workspace-ink)] px-2.5 py-1 font-mono text-xs font-black transition-colors ${
+                                selectedAgentTarget === agent
+                                  ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)]'
+                                  : 'bg-[var(--workspace-paper)] text-[var(--workspace-muted)] hover:bg-white hover:text-[var(--workspace-ink)]'
+                              }`}
+                            >
+                              {agent.replace('_', ' ')}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Prompt Output Box */}
+                      <div className="mt-5 relative">
+                        <pre className="max-h-80 overflow-y-auto border-2 border-[var(--workspace-ink)] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-[4px_4px_0_var(--workspace-ink)] whitespace-pre-wrap">
+                          {generateOneShotKickoffPrompt(selectedAgentTarget)}
+                        </pre>
+
+                        <button
+                          type="button"
+                          onClick={handleCopyOneShotPrompt}
+                          className={`mt-4 inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
+                        >
+                          {copiedPrompt ? (
+                            <>
+                              <Check aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
+                              Prompt Copied to Clipboard!
+                            </>
+                          ) : (
+                            <>
+                              <Copy aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
+                              Copy Agent Kickoff Prompt
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </section>
 
-                    <aside
-                      className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-6 xl:-rotate-1`}
-                    >
-                      <span className="flex size-12 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] shadow-[4px_4px_0_var(--workspace-ink)]">
-                        <Package aria-hidden="true" className="size-6" />
-                      </span>
-                      <h3 className="mt-6 text-3xl font-black leading-none tracking-[-0.05em]">
-                        Bootstrap pack
-                      </h3>
-                      <p className="mt-3 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                        Prepared for {formatLabel(initialData.targetAgent)}. Provider keys, session
-                        credentials, and project secrets are never intentionally added to the
-                        archive.
-                      </p>
-
-                      <div className="mt-6 space-y-3 border-y-4 border-[var(--workspace-ink)] py-4 text-sm font-black">
-                        <div className="flex items-center gap-3">
-                          <ShieldCheck aria-hidden="true" className="size-4" />
-                          Content is scanned before packaging
+                    {/* Download ZIP & Manifest Grid */}
+                    <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_23rem]">
+                      <section aria-labelledby="manifest-title" className={PANEL_CLASS}>
+                        <div className="flex items-center justify-between border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] p-5">
+                          <h3 id="manifest-title" className="text-2xl font-black tracking-[-0.05em]">
+                            Archive manifest
+                          </h3>
+                          <span className="font-mono text-xs font-black text-[var(--workspace-ink)]">
+                            {readyArtifacts.length + (includesReadme ? 0 : 1)} files
+                          </span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <CheckCircle2 aria-hidden="true" className="size-4" />
-                          Controlled filenames and UTF-8 text
-                        </div>
-                      </div>
+                        <ul className="bg-[var(--workspace-paper)] divide-y-2 divide-[var(--workspace-ink)]">
+                          {readyArtifacts.map((artifact) => (
+                            <li
+                              key={artifact.id}
+                              className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-center"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <FileText
+                                  aria-hidden="true"
+                                  className="size-4 shrink-0 text-[var(--workspace-ink)]"
+                                />
+                                <span className="truncate font-mono text-sm font-bold">
+                                  {artifact.path}
+                                </span>
+                              </div>
+                              <span
+                                className={`w-fit border-2 px-2 py-0.5 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${statusTone(artifact.status)}`}
+                              >
+                                {formatStatus(artifact.status)}
+                              </span>
+                            </li>
+                          ))}
+                          {!includesReadme && (
+                            <li className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <FileText
+                                  aria-hidden="true"
+                                  className="size-4 shrink-0 text-[var(--workspace-ink)]"
+                                />
+                                <span className="truncate font-mono text-sm font-bold">
+                                  README.md
+                                </span>
+                              </div>
+                              <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
+                                Added during export
+                              </span>
+                            </li>
+                          )}
+                        </ul>
+                      </section>
 
-                      <Link
-                        href={`/api/projects/${initialData.id}/export`}
-                        download
-                        className={`mt-6 inline-flex w-full items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-black text-white shadow-[5px_5px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
+                      <aside
+                        className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-6 xl:-rotate-1 flex flex-col justify-between`}
                       >
-                        <Download aria-hidden="true" className="size-4" />
-                        Download ZIP pack
-                      </Link>
-                    </aside>
+                        <div>
+                          <span className="flex size-12 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] shadow-[4px_4px_0_var(--workspace-ink)]">
+                            <Package aria-hidden="true" className="size-6" />
+                          </span>
+                          <h3 className="mt-6 text-3xl font-black leading-none tracking-[-0.05em]">
+                            Bootstrap pack
+                          </h3>
+                          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
+                            Prepared for {formatLabel(selectedAgentTarget)}. Provider keys and credentials are never included in the archive.
+                          </p>
+
+                          <div className="mt-6 space-y-3 border-y-4 border-[var(--workspace-ink)] py-4 text-sm font-black">
+                            <div className="flex items-center gap-3">
+                              <ShieldCheck aria-hidden="true" className="size-4" />
+                              Content is scanned before packaging
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <CheckCircle2 aria-hidden="true" className="size-4" />
+                              Controlled filenames & UTF-8 Markdown
+                            </div>
+                          </div>
+                        </div>
+
+                        <a
+                          href={`/api/projects/${initialData.id}/export`}
+                          download
+                          onClick={handleDownloadZip}
+                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-black text-white shadow-[5px_5px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
+                        >
+                          <Download aria-hidden="true" className="size-4" />
+                          Download ZIP pack
+                        </a>
+                      </aside>
+                    </div>
                   </div>
                 )}
               </div>
-              )}
             </div>
           </main>
         </div>
