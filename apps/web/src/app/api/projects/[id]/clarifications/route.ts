@@ -90,13 +90,22 @@ export async function POST(
       )
     }
 
-    const result = await submitClarificationAnswers({
-      userId: session.user.id,
-      projectId: id,
-      answers: parsed.data.answers,
-    })
+    try {
+      const result = await submitClarificationAnswers({
+        userId: session.user.id,
+        projectId: id,
+        answers: parsed.data.answers,
+      })
 
-    return NextResponse.json(result)
+      return NextResponse.json(result)
+    } catch (err) {
+      const message = getSafeApiErrorMessage(
+        err,
+        'Failed to submit clarification answers. Please retry.',
+      )
+      const status = message === 'Project not found' ? 404 : 400
+      return NextResponse.json({ error: message }, { status })
+    }
   }
 
   // Generate action uses the current persisted requirement analysis server-side.
