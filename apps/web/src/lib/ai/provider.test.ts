@@ -162,6 +162,41 @@ describe('AIProvider — interface contract', () => {
       const result = await p.generateStructured('test', OkSchema)
       expect(result).toEqual({ ok: true })
     })
+
+    it('unwraps single-element array wrapping an object response', async () => {
+      const { Anthropic } = await import('@anthropic-ai/sdk')
+      const mockCreate = vi.fn().mockResolvedValue({
+        content: [{ type: 'text', text: '[{"ok":true}]' }],
+      })
+      vi.mocked(Anthropic).mockImplementationOnce(() => ({
+        messages: { create: mockCreate },
+      }) as never)
+
+      const p = createProvider({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'sk-ant-test' })
+      const result = await p.generateStructured('test', OkSchema)
+      expect(result).toEqual({ ok: true })
+    })
+
+    it('recovers markdown_content from broken JSON with inner array', async () => {
+      const { Anthropic } = await import('@anthropic-ai/sdk')
+      const DocSchema = z.object({
+        title: z.string().default('DESIGN.md'),
+        markdown_content: z.string(),
+      })
+      const mockCreate = vi.fn().mockResolvedValue({
+        content: [{
+          type: 'text',
+          text: '```json\n{\n  "title": "DESIGN.md",\n  "markdown_content": "# Heading\\nHere is markdown.",\n  "colors": ["#151515", "#F7F0DF"]\n}\n```',
+        }],
+      })
+      vi.mocked(Anthropic).mockImplementationOnce(() => ({
+        messages: { create: mockCreate },
+      }) as never)
+
+      const p = createProvider({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'sk-ant-test' })
+      const result = await p.generateStructured('test', DocSchema)
+      expect(result.markdown_content).toContain('# Heading')
+    })
   })
 
   describe('error mapping — maps SDK errors to typed status', () => {

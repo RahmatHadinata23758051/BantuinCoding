@@ -114,22 +114,68 @@ abstract class BaseProvider implements AIProvider {
       text = outerFence[1].trim()
     }
 
-    // 3. Find the outermost JSON object boundaries: from the FIRST { to the LAST }
     const firstBrace = text.indexOf('{')
     const lastBrace = text.lastIndexOf('}')
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const firstBracket = text.indexOf('[')
+    const lastBracket = text.lastIndexOf(']')
+
+    // 3. Find the outermost JSON object boundaries: from the FIRST { to the LAST }
+    // Only attempt if text starts as an object ({ appears before [ or there is no [)
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket) && lastBrace > firstBrace) {
       const candidate = text.slice(firstBrace, lastBrace + 1)
       try {
         return JSON.parse(candidate)
       } catch {
-        // Candidate slicing failed, fallback below
+        // Candidate slicing failed to parse directly.
+        // Try sanitizing unescaped newlines/tabs inside string literals before giving up.
+        let inString = false
+        let escaped = false
+        let repaired = ''
+        for (let i = 0; i < candidate.length; i++) {
+          const char = candidate[i]
+          if (escaped) {
+            repaired += char
+            escaped = false
+            continue
+          }
+          if (char === '\\') {
+            repaired += char
+            escaped = true
+            continue
+          }
+          if (char === '"') {
+            inString = !inString
+            repaired += char
+            continue
+          }
+          if (inString) {
+            if (char === '\n') {
+              repaired += '\\n'
+              continue
+            }
+            if (char === '\r') {
+              repaired += '\\r'
+              continue
+            }
+            if (char === '\t') {
+              repaired += '\\t'
+              continue
+            }
+          }
+          repaired += char
+        }
+        try {
+          return JSON.parse(repaired)
+        } catch {
+          // Object repair failed, proceed to markdown/truncation recovery below.
+          // CRITICAL: DO NOT fall back to extracting an inner array from inside this broken object!
+        }
       }
     }
 
-    // 4. Find the outermost JSON array boundaries: from the FIRST [ to the LAST ]
-    const firstBracket = text.indexOf('[')
-    const lastBracket = text.lastIndexOf(']')
-    if (firstBracket !== -1 && lastBracket > firstBracket) {
+    // 4. Find the outermost JSON array boundaries ONLY if the text explicitly started with an array
+    // ([ appears BEFORE { or there is no { at all)
+    if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace) && lastBracket > firstBracket) {
       const candidate = text.slice(firstBracket, lastBracket + 1)
       try {
         return JSON.parse(candidate)
@@ -176,29 +222,136 @@ abstract class BaseProvider implements AIProvider {
   }
 
   /**
+   * Resilient fallback to extract markdown content from raw AI response text
+   * when schema validation or JSON parsing fails.
+   */
+  protected extractMarkdownContent(raw: string): string | null {
+    let text = raw.trim()
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '')
+    text = text.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    text = text.replace(/<\?xml[^>]*>/gi, '')
+    text = text.replace(/^\s*[\r\n]+/, '')
+
+    // Case A: Look for "markdown_content": "..."
+    const marker = '"markdown_content":'
+    const idx = text.indexOf(marker)
+    if (idx !== -1) {
+      const afterMarker = text.slice(idx + marker.length).trim()
+      const firstQuote = afterMarker.indexOf('"')
+      if (firstQuote !== -1) {
+        let content = afterMarker.slice(firstQuote + 1)
+        for (let i = 0; i < content.length; i++) {
+          if (content[i] === '"' && (i === 0 || content[i - 1] !== '\\')) {
+            content = content.slice(0, i)
+            break
+          }
+        }
+        const unescaped = content
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\t/g, '\t')
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+          .trim()
+        if (unescaped.length > 20) return unescaped
+      }
+    }
+
+    // Case B: Markdown code fence ```markdown ... ``` or ```md ... ```
+    const mdFence = text.match(/```(?:markdown|md)\s*\n([\s\S]*?)\n```/i)
+    if (mdFence && mdFence[1].trim().startsWith('#')) {
+      return mdFence[1].trim()
+    }
+
+    // Case C: Direct Markdown starting with #
+    const direct = text.replace(/^```[a-z]*\s*\n/i, '').replace(/\n```\s*$/i, '').trim()
+    if (direct.startsWith('#') && direct.length > 50) {
+      return direct
+    }
+
+    return null
+  }
+
+  /**
    * Parse and validate JSON against a Zod schema.
    * Throws a descriptive error if validation fails.
+   * Includes multi-stage resilient recovery for non-conforming model outputs:
+   * 1. Direct validation
+   * 2. Unpack single-element arrays: [ { ... } ]
+   * 3. Extract markdown_content from parsed object if schema accepts it
+   * 4. Extract markdown_content directly from raw text if schema accepts it
    */
   protected parseAndValidate<T>(raw: string, schema: z.ZodSchema<T>): T {
     let parsed: unknown
     try {
       parsed = this.extractJson(raw)
     } catch {
-      throw new Error(
-        `[${this.type}] AI response is not valid JSON.\n` +
-          `Raw (first 500 chars): ${raw.slice(0, 500)}`,
-      )
+      // extraction failed, will attempt markdown recovery below
     }
 
-    const result = schema.safeParse(parsed)
-    if (!result.success) {
-      throw new Error(
-        `[${this.type}] AI response failed schema validation.\n` +
-          `Issues: ${JSON.stringify(result.error.issues, null, 2)}`,
-      )
+    if (parsed !== undefined) {
+      // 1. Direct validation attempt
+      const result = schema.safeParse(parsed)
+      if (result.success) {
+        return result.data
+      }
+
+      // 2. Unpack single-element array if schema expects an object: [ { ... } ]
+      if (
+        Array.isArray(parsed) &&
+        parsed.length === 1 &&
+        typeof parsed[0] === 'object' &&
+        parsed[0] !== null &&
+        !Array.isArray(parsed[0])
+      ) {
+        const unwrapped = schema.safeParse(parsed[0])
+        if (unwrapped.success) {
+          return unwrapped.data
+        }
+      }
+
+      // 3. If parsed is an object and has a valid markdown_content string
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const asRec = parsed as Record<string, unknown>
+        if (typeof asRec.markdown_content === 'string' && asRec.markdown_content.trim().length > 0) {
+          const minimal = schema.safeParse({
+            title: asRec.title || 'DESIGN.md',
+            markdown_content: asRec.markdown_content,
+          })
+          if (minimal.success) {
+            return minimal.data
+          }
+        }
+      }
     }
 
-    return result.data
+    // 4. Fallback: extract markdown directly from raw text if schema expects markdown_content
+    const extractedMd = this.extractMarkdownContent(raw)
+    if (extractedMd) {
+      const mdResult = schema.safeParse({
+        title: 'DESIGN.md',
+        markdown_content: extractedMd,
+      })
+      if (mdResult.success) {
+        return mdResult.data
+      }
+    }
+
+    // If all recovery paths failed, throw the detailed validation error
+    if (parsed !== undefined) {
+      const result = schema.safeParse(parsed)
+      if (!result.success) {
+        throw new Error(
+          `[${this.type}] AI response failed schema validation.\n` +
+            `Issues: ${JSON.stringify(result.error.issues, null, 2)}`,
+        )
+      }
+    }
+
+    throw new Error(
+      `[${this.type}] AI response is not valid JSON.\n` +
+        `Raw (first 500 chars): ${raw.slice(0, 500)}`,
+    )
   }
 }
 
