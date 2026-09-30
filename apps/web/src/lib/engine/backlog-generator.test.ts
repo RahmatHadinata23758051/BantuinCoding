@@ -17,7 +17,7 @@ const dbMocks = vi.hoisted(() => {
     backlogPhase: { deleteMany: vi.fn(), create: vi.fn() },
     backlogTask: { create: vi.fn() },
     backlogDependency: { create: vi.fn() },
-    artifact: { upsert: vi.fn() },
+    artifact: { upsert: vi.fn(), update: vi.fn() },
   }
   return { tx }
 })
@@ -57,7 +57,24 @@ describe('Backlog Generator Schema & Prompt', () => {
     expect(prompt).toContain('PRD Reference:')
     expect(prompt).toContain('SRS Reference:')
     expect(prompt).toContain('Architecture Reference:')
+    expect(prompt).toContain('DESIGN Reference (not planned for this project):')
     expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('Engineering Project Manager')
+  })
+
+  it('includes DESIGN reference and instruction for frontend tasks when present', () => {
+    const prompt = buildBacklogGeneratorUserPrompt(
+      'Acme',
+      '{}',
+      'PRD',
+      'SRS',
+      'ARCH',
+      '# DESIGN.md\n\nUse hard shadows and warm paper.',
+    )
+
+    expect(prompt).toContain('DESIGN Reference:')
+    expect(prompt).toContain('Use hard shadows and warm paper.')
+    expect(prompt).toContain('Frontend and interaction tasks must reference DESIGN.md')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('include DESIGN.md in relevant_docs')
   })
 })
 
@@ -213,13 +230,8 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
         backlog_md_content: '# BACKLOG',
       }),
     })
-    dbMocks.tx.backlogPhase.create
-      .mockResolvedValueOnce({ id: 'phase-1' })
-      .mockResolvedValueOnce({ id: 'phase-2' })
-    dbMocks.tx.backlogTask.create
-      .mockResolvedValueOnce({ id: 'task-1' })
-      .mockResolvedValueOnce({ id: 'task-2' })
-      .mockResolvedValueOnce({ id: 'task-3' })
+    dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: `phase-${data.order}`, ...data }))
+    dbMocks.tx.backlogTask.create.mockImplementation(async ({ data }) => ({ id: `task-${data.taskKey}`, ...data }))
 
     await generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })
 
@@ -252,13 +264,19 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
 
     await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' }))
       .rejects.toThrow('Backlog replacement failed. The previous backlog was preserved.')
-    expect(dbMocks.tx.artifact.upsert).not.toHaveBeenCalled()
+    // Artifact is set to GENERATING before transaction; upsert is called once
+    expect(dbMocks.tx.artifact.upsert).toHaveBeenCalledTimes(1)
+    // On transaction failure, artifact is marked FAILED outside transaction for observability
+    expect(dbMocks.tx.artifact.update).toHaveBeenCalledWith({
+      where: { projectId_type: { projectId: 'p-1', type: 'BACKLOG' } },
+      data: { status: 'FAILED' },
+    })
   })
 
   it('generates backlog markdown content correctly', () => {
     const md = generateBacklogMdContent('Acme Project', defaultFallbackPhases)
     expect(md).toContain('# BACKLOG.md — Acme Project')
-    expect(md).toContain('BK-001 — Initialize project structure')
-    expect(md).toContain('BK-002 — Setup database models')
+    expect(md).toContain('BK-001 — Initialize project scaffold and tooling')
+    expect(md).toContain('BK-002 — Define Prisma database schema and migrations')
   })
 })
