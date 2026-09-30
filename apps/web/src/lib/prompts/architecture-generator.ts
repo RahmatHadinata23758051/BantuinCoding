@@ -7,29 +7,29 @@ import { z } from 'zod'
 
 export const ArchitectureDocumentSchema = z.object({
   title: z.string().default('ARCHITECTURE.md'),
-  system_overview: z.string(),
+  system_overview: z.string().optional(),
   stack: z.object({
-    frontend: z.string(),
-    backend: z.string(),
-    database: z.string(),
-    styling: z.string(),
-    infrastructure: z.string(),
-  }),
+    frontend: z.string().optional(),
+    backend: z.string().optional(),
+    database: z.string().optional(),
+    styling: z.string().optional(),
+    infrastructure: z.string().optional(),
+  }).optional(),
   components: z.array(
     z.object({
       name: z.string(),
       responsibility: z.string(),
       boundary: z.string(),
     }),
-  ),
+  ).optional(),
   data_flow: z.array(
     z.object({
       flow_name: z.string(),
       description: z.string(),
     }),
-  ),
-  security_architecture: z.array(z.string()),
-  deployment_strategy: z.string(),
+  ).optional(),
+  security_architecture: z.array(z.string()).optional(),
+  deployment_strategy: z.string().optional(),
   markdown_content: z.string().describe('Full formatted ARCHITECTURE.md content in Markdown'),
 })
 
@@ -51,7 +51,8 @@ ARCHITECTURE STRUCTURE REQUIREMENTS:
 
 CRITICAL CONSTRAINTS:
 - Keep the architecture practical (modular monolith first; avoid unnecessary microservices or over-engineering).
-- Explicitly detail data flow and security boundaries.`
+- Explicitly detail data flow and security boundaries.
+- Ensure the specification is dense, rigorous, and completes cleanly within token limits.`
 
 export function buildArchitectureGeneratorUserPrompt(
   projectName: string,
