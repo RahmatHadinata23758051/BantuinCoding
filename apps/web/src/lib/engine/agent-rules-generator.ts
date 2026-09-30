@@ -32,10 +32,11 @@ You are the primary coding agent assigned to implement ${projectName}.
 1. Explicit user instructions
 2. SRS.md
 3. PRD.md
-4. ARCHITECTURE.md
-5. RULES.md
-6. Agent.md
-7. BACKLOG.md
+4. DESIGN.md (visual and interaction scope)
+5. ARCHITECTURE.md
+6. RULES.md
+7. Agent.md
+8. BACKLOG.md
 
 ### 3. Implementation Workflow
 - **UNDERSTAND**: Read specifications and requirements.
@@ -111,40 +112,61 @@ export async function generateAgentAndRulesArtifacts({
     targetAgent,
     currentContextRecord.contentJson,
   )
-  const generated = await provider.generateStructured(
-    userPrompt,
-    AgentRulesDocumentSchema,
-    {
-      system: AGENT_RULES_GENERATOR_SYSTEM_PROMPT,
-      maxTokens: 4096,
-      temperature: 0.2,
-    },
-  )
-  const agentContent = generated.agent_content
-  const rulesContent = generated.rules_content
 
-  const results: GeneratedArtifactResult[] = []
   const items = [
-    { type: 'AGENT' as const, path: 'Agent.md', content: agentContent },
-    { type: 'RULES' as const, path: 'RULES.md', content: rulesContent },
+    { type: 'AGENT' as const, path: 'Agent.md' },
+    { type: 'RULES' as const, path: 'RULES.md' },
   ]
 
+  // Set both artifacts to GENERATING before provider call
   for (const item of items) {
     await db.artifact.upsert({
       where: { projectId_type: { projectId, type: item.type } },
-      update: {
-        content: item.content,
-        status: 'READY',
-        contextId: currentContextRecord.id,
-        provider: providerConfig?.provider ?? 'FALLBACK',
-        model: providerConfig?.model ?? 'BASELINE',
-      },
+      update: { status: 'GENERATING', contextId: currentContextRecord.id },
       create: {
         projectId,
         contextId: currentContextRecord.id,
         type: item.type,
         path: item.path,
-        content: item.content,
+        content: '',
+        status: 'GENERATING',
+      },
+    })
+  }
+
+  let agentContent = ''
+  let rulesContent = ''
+
+  try {
+    const generated = await provider.generateStructured(
+      userPrompt,
+      AgentRulesDocumentSchema,
+      {
+        system: AGENT_RULES_GENERATOR_SYSTEM_PROMPT,
+        maxTokens: 4096,
+        temperature: 0.2,
+      },
+    )
+    agentContent = generated.agent_content
+    rulesContent = generated.rules_content
+  } catch (err) {
+    for (const item of items) {
+      await db.artifact.update({
+        where: { projectId_type: { projectId, type: item.type } },
+        data: { status: 'FAILED' },
+      })
+    }
+    throw err
+  }
+
+  const results: GeneratedArtifactResult[] = []
+
+  for (const item of items) {
+    const content = item.type === 'AGENT' ? agentContent : rulesContent
+    await db.artifact.update({
+      where: { projectId_type: { projectId, type: item.type } },
+      data: {
+        content,
         status: 'READY',
         provider: providerConfig?.provider ?? 'FALLBACK',
         model: providerConfig?.model ?? 'BASELINE',
@@ -155,7 +177,7 @@ export async function generateAgentAndRulesArtifacts({
       type: item.type,
       status: 'READY',
       path: item.path,
-      content: item.content,
+      content,
     })
   }
 
