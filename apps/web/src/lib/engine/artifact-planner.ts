@@ -15,19 +15,108 @@ export interface PlanArtifactsOptions {
   projectId: string
 }
 
+const UI_PRODUCT_CLASSIFICATIONS = new Set<ProjectClassification>([
+  'STATIC_SITE',
+  'LANDING_PAGE',
+  'CRUD_APP',
+  'DASHBOARD',
+  'SAAS',
+  'MOBILE_APP',
+  'AI_APP',
+  'IOT_DASHBOARD',
+  'FULLSTACK_COMPLEX',
+])
+
+function hasConfirmedContextValue(value: unknown): boolean {
+  if (typeof value === 'string') return value.trim().length > 0
+  if (!value || typeof value !== 'object') return false
+
+  const contextValue = value as { value?: unknown; provenance?: unknown }
+  return (
+    typeof contextValue.value === 'string' &&
+    contextValue.value.trim().length > 0 &&
+    contextValue.provenance !== 'unknown'
+  )
+}
+
+export function requiresDesignArtifact(
+  classification: ProjectClassification,
+  contextJson?: string,
+): boolean {
+  if (UI_PRODUCT_CLASSIFICATIONS.has(classification)) return true
+  if (!contextJson) return false
+
+  try {
+    const context = JSON.parse(contextJson) as {
+      design_direction?: unknown
+      stack_preferences?: { styling?: unknown }
+    }
+
+    return (
+      hasConfirmedContextValue(context.design_direction) ||
+      hasConfirmedContextValue(context.stack_preferences?.styling)
+    )
+  } catch {
+    return false
+  }
+}
+
+export function ensureDesignArtifact(
+  plan: ArtifactPlanOutput,
+  contextJson?: string,
+): ArtifactPlanOutput {
+  if (!requiresDesignArtifact(plan.classification, contextJson)) return plan
+
+  const designArtifact = plan.artifacts.find((artifact) => artifact.type === 'DESIGN')
+  if (designArtifact) {
+    return {
+      ...plan,
+      artifacts: plan.artifacts.map((artifact) =>
+        artifact.type === 'DESIGN'
+          ? {
+              ...artifact,
+              path: 'DESIGN.md',
+              reason: artifact.reason || 'Locked visual contract and UI system',
+              isRequired: true,
+            }
+          : artifact,
+      ),
+    }
+  }
+
+  const architectureIndex = plan.artifacts.findIndex(
+    (artifact) => artifact.type === 'ARCHITECTURE',
+  )
+  const insertAt = architectureIndex >= 0 ? architectureIndex : plan.artifacts.length
+  const artifacts = [...plan.artifacts]
+  artifacts.splice(insertAt, 0, {
+    type: 'DESIGN',
+    path: 'DESIGN.md',
+    reason: 'Locked visual contract and UI system',
+    isRequired: true,
+  })
+
+  return { ...plan, artifacts }
+}
+
 /**
- * Fallback baseline artifact plan when AI call is not used or fails.
- * Guarantees the mandatory 7 core documents per SRS.
+ * Deterministic baseline artifact plan used when AI planning is unavailable.
  */
 export function getDefaultArtifactPlan(
   classification: ProjectClassification,
+  contextJson?: string,
 ): ArtifactPlanOutput {
   const isMinimal =
     classification === 'STATIC_SITE' || classification === 'LANDING_PAGE'
 
+  const needsDesign = requiresDesignArtifact(classification, contextJson)
+
   const mandatory = [
     { type: 'PRD' as const, path: 'PRD.md', reason: 'Product requirements', isRequired: true },
     { type: 'SRS' as const, path: 'SRS.md', reason: 'Software specification', isRequired: true },
+    ...(needsDesign
+      ? [{ type: 'DESIGN' as const, path: 'DESIGN.md', reason: 'Locked visual contract and UI system', isRequired: true }]
+      : []),
     { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'System architecture', isRequired: true },
     { type: 'AGENT' as const, path: 'Agent.md', reason: 'Coding agent contract', isRequired: true },
     { type: 'RULES' as const, path: 'RULES.md', reason: 'Coding standards', isRequired: true },
@@ -93,15 +182,26 @@ export async function planProjectArtifacts({
     project.classification as ProjectClassification,
     currentContextRecord.contentJson,
   )
-  const plan: ArtifactPlanOutput = await provider.generateStructured(
-    userPrompt,
-    ArtifactPlanSchema,
-    {
-      system: ARTIFACT_PLANNER_SYSTEM_PROMPT,
-      maxTokens: 2048,
-      temperature: 0.2,
-    },
-  )
+  let plan: ArtifactPlanOutput
+  try {
+    const rawPlan = await provider.generateStructured(
+      userPrompt,
+      ArtifactPlanSchema,
+      {
+        system: ARTIFACT_PLANNER_SYSTEM_PROMPT,
+        maxTokens: 2048,
+        temperature: 0.2,
+      },
+    )
+    plan = ensureDesignArtifact(rawPlan, currentContextRecord.contentJson)
+  } catch {
+    // If AI fails (e.g. invalid enum values, schema validation error),
+    // use the deterministic baseline plan for this classification!
+    plan = getDefaultArtifactPlan(
+      project.classification as ProjectClassification,
+      currentContextRecord.contentJson,
+    )
+  }
 
   // Persist the authoritative artifact plan for the current context and
   // create placeholder Artifact rows for workspace visibility. Readiness is

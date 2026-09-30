@@ -62,6 +62,9 @@ CORE MANDATORY DOCUMENTS (ALWAYS REQUIRED for every project type):
 - SKILLS (SKILLS.md)
 - BACKLOG (BACKLOG.md)
 
+CONDITIONAL DESIGN DOCUMENT:
+- DESIGN (DESIGN.md): REQUIRED for UI/product-facing scope including STATIC_SITE, LANDING_PAGE, CRUD_APP, DASHBOARD, SAAS, MOBILE_APP, AI_APP, IOT_DASHBOARD, FULLSTACK_COMPLEX, or when the context contains design_direction/styling preferences. Optional or omitted only for backend-only API_SERVICE projects with no user interface scope.
+
 OPTIONAL CONDITIONAL DOCUMENTS (Include based on project complexity):
 - DATABASE (docs/DATABASE.md): Include if the project has a database or data persistence.
 - API (docs/API.md): Include for SaaS, API services, or fullstack apps.

@@ -4,8 +4,10 @@ import {
   buildArtifactPlannerUserPrompt,
 } from '@/lib/prompts/artifact-planner'
 import {
+  ensureDesignArtifact,
   getDefaultArtifactPlan,
   planProjectArtifacts,
+  requiresDesignArtifact,
 } from '@/lib/engine/artifact-planner'
 
 vi.mock('@repo/db', () => ({
@@ -56,12 +58,13 @@ describe('Artifact Plan Schema', () => {
 })
 
 describe('getDefaultArtifactPlan', () => {
-  it('LANDING_PAGE gets minimal pack (7 core mandatory docs)', () => {
+  it('LANDING_PAGE gets minimal pack (8 core mandatory docs including DESIGN)', () => {
     const plan = getDefaultArtifactPlan('LANDING_PAGE')
-    expect(plan.artifacts).toHaveLength(7)
+    expect(plan.artifacts).toHaveLength(8)
     const types = plan.artifacts.map((a) => a.type)
     expect(types).toContain('PRD')
     expect(types).toContain('SRS')
+    expect(types).toContain('DESIGN')
     expect(types).toContain('ARCHITECTURE')
     expect(types).toContain('AGENT')
     expect(types).toContain('RULES')
@@ -70,13 +73,68 @@ describe('getDefaultArtifactPlan', () => {
     expect(types).not.toContain('DATABASE')
   })
 
-  it('SAAS gets extended pack (includes DATABASE, API, SECURITY, TESTING, README)', () => {
+  it('SAAS gets extended pack (includes DESIGN, DATABASE, API, SECURITY, TESTING, README)', () => {
     const plan = getDefaultArtifactPlan('SAAS')
-    expect(plan.artifacts.length).toBeGreaterThan(7)
+    expect(plan.artifacts.length).toBeGreaterThan(8)
     const types = plan.artifacts.map((a) => a.type)
+    expect(types).toContain('DESIGN')
     expect(types).toContain('DATABASE')
     expect(types).toContain('API')
     expect(types).toContain('SECURITY')
+  })
+})
+
+describe('requiresDesignArtifact & ensureDesignArtifact', () => {
+  it('requires DESIGN for UI classifications', () => {
+    expect(requiresDesignArtifact('LANDING_PAGE')).toBe(true)
+    expect(requiresDesignArtifact('SAAS')).toBe(true)
+  })
+
+  it('omits DESIGN for API_SERVICE without design/styling context', () => {
+    expect(requiresDesignArtifact('API_SERVICE')).toBe(false)
+    expect(
+      requiresDesignArtifact(
+        'API_SERVICE',
+        JSON.stringify({ summary: 'Backend API' }),
+      ),
+    ).toBe(false)
+  })
+
+  it('requires DESIGN for API_SERVICE when confirmed styling/design context exists', () => {
+    expect(
+      requiresDesignArtifact(
+        'API_SERVICE',
+        JSON.stringify({
+          design_direction: { value: 'Minimalist dashboard', provenance: 'confirmed' },
+        }),
+      ),
+    ).toBe(true)
+  })
+
+  it('normalizes provider plan to insert required DESIGN before ARCHITECTURE', () => {
+    const rawPlan = {
+      classification: 'SAAS' as const,
+      artifacts: [
+        { type: 'PRD' as const, path: 'PRD.md', reason: 'Reqs', isRequired: true },
+        { type: 'SRS' as const, path: 'SRS.md', reason: 'Specs', isRequired: true },
+        { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'Arch', isRequired: true },
+      ],
+      rationale: 'Missing design',
+    }
+
+    const normalized = ensureDesignArtifact(rawPlan)
+    expect(normalized.artifacts.map((a) => a.type)).toEqual([
+      'PRD',
+      'SRS',
+      'DESIGN',
+      'ARCHITECTURE',
+    ])
+    expect(normalized.artifacts[2]).toEqual({
+      type: 'DESIGN',
+      path: 'DESIGN.md',
+      reason: 'Locked visual contract and UI system',
+      isRequired: true,
+    })
   })
 })
 
@@ -182,6 +240,12 @@ describe('Artifact Planner Engine — planProjectArtifacts', () => {
 
     const plan = await planProjectArtifacts({ userId: 'u-1', projectId: 'p-1' })
     expect(plan.rationale).toBe('AI generated plan')
+    expect(plan.artifacts).toContainEqual({
+      type: 'DESIGN',
+      path: 'DESIGN.md',
+      reason: 'Locked visual contract and UI system',
+      isRequired: true,
+    })
     expect(db.$transaction).toHaveBeenCalledTimes(1)
   })
 })
