@@ -59,6 +59,7 @@ test-results/
 Thumbs.db
 .vscode/settings.json
 .idea/
+.claude/
 *.suo
 *.ntvs*
 *.njsproj
