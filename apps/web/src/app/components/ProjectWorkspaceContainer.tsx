@@ -550,14 +550,15 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const generateOneShotKickoffPrompt = (agent: string) => {
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
     const dashboardUrl = `${currentOrigin}/projects/${initialData.id}`
+    const apiUrl = `${currentOrigin}/api/projects/${initialData.id}`
 
-    return `# 🚀 PROJECT BOOTSTRAP KICKOFF — ${initialData.name}
+    return `# 🚀 AUTONOMOUS ONE-SHOT EXECUTION DIRECTIVE — ${initialData.name}
 
 ## 1. AGENT IDENTITY & RESPONSIBILITY
-You are the primary autonomous coding agent (${formatLabel(agent)}) assigned to implement **${initialData.name}** (${initialData.classification}).
-All requirements, architecture, locked design contracts, and implementation tasks have been prepared in this bootstrap pack.
+You are the primary autonomous coding agent (${formatLabel(agent)}) assigned to implement **${initialData.name}** (${initialData.classification}) from end to end.
+This is an **AUTONOMOUS ONE-SHOT EXECUTION**. You have full authority to inspect the codebase, design implementations, write files, run tests, verify quality gates, and autonomously advance through the entire backlog until the project is 100% complete and production-ready.
 
-## 2. MANDATORY DOCUMENT READING ORDER (DO NOT SKIP)
+## 2. MANDATORY SPECIFICATION READING ORDER (DO NOT SKIP)
 Before authoring or modifying any code in the workspace, you MUST read the specification files in this exact priority order:
 1. \`PRD.md\` — Product Requirements Document (Vision, Goals, Non-Goals, User Flows, Feature Scope)
 2. \`SRS.md\` — Software Requirements Specification (Functional Specs FR-xxx, Data Requirements, Error Behavior)
@@ -572,16 +573,25 @@ Before authoring or modifying any code in the workspace, you MUST read the speci
 - Follow the locked visual system in \`DESIGN.md\`: warm off-white paper (#F7F0DF), near-black ink (#151515), 2-3px solid structural borders, hard offset shadows (4px-6px), asymmetric composition, and clear functional accents.
 - ZERO AI-SLOP: Prohibit generic templates, glassmorphism, decorative gradients, fake metrics, unadapted library widgets, and childish cartoon styling.
 
-## 4. LIVE DASHBOARD & TASK TRACKING
-- Project Workspace Dashboard: ${dashboardUrl}
-- Connect your session to track tasks on the live Trello-style Backlog Board.
-- Execute tasks sequentially following dependency order starting with Phase 1 / task \`BK-001\`.
-- Keep task status updated as you work: Ready → In Progress → Review → Done.
+## 4. CONTINUOUS AUTONOMOUS BACKLOG EXECUTION LOOP
+- **Live Project Dashboard:** ${dashboardUrl}
+- **API Task Synchronization (REST / MCP):**
+  - Fetch latest backlog & tasks: \`GET ${apiUrl}/tasks\`
+  - Update task status in real time: \`PATCH ${apiUrl}/tasks/{taskKey}\` with \`{"status": "IN_PROGRESS"}\` when starting, and \`{"status": "DONE"}\` when finished.
+- **AUTONOMOUS EXECUTION PROTOCOL (DO NOT STOP MIDWAY):**
+  1. Start with Phase 1, task \`BK-001\`. Mark task status as \`IN_PROGRESS\` on the live board.
+  2. Implement the task completely according to its acceptance criteria and \`Agent.md\` guidelines.
+  3. Run quality gates: run typecheck, linter, and unit/integration tests. Verify there are ZERO errors, zero warnings, and zero regressions.
+  4. Once and ONLY once the task is 100% verified clear without any bugs or errors, mark the task as \`DONE\` on the live board.
+  5. Immediately advance to the next unblocked task in dependency order without pausing, asking for permission, or waiting for human intervention.
+  6. Repeat this continuous execution cycle task-by-task across all phases (Foundation → Domain Engine → APIs → Design System → Feature Views → Quality Gates).
+  7. The mission is complete ONLY when ALL tasks across all phases in \`BACKLOG.md\` are marked \`DONE\` and the final test suite and build pass with zero errors.
 
-## 5. FIRST ACTION REQUIRED
-1. Confirm receipt of this kickoff prompt.
-2. Read \`PRD.md\` and \`Agent.md\`.
-3. Present your execution plan for task \`BK-001\` before touching the codebase.`
+## 5. KICKOFF INSTRUCTION
+Begin execution immediately:
+1. Confirm receipt of this autonomous directive.
+2. Read the specification files (\`PRD.md\`, \`SRS.md\`, \`DESIGN.md\`, \`Agent.md\`).
+3. Start implementing task \`BK-001\` and autonomously drive all backlog tasks to completion.`
   }
 
   const handleCopyOneShotPrompt = () => {
