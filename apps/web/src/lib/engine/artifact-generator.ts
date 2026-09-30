@@ -17,11 +17,12 @@ import {
   ArchitectureDocumentSchema,
   buildArchitectureGeneratorUserPrompt,
 } from '@/lib/prompts/architecture-generator'
+import { generateDesignArtifactContent } from '@/lib/engine/design-generator'
 
 export interface GenerateArtifactsOptions {
   userId: string
   projectId: string
-  types?: ('PRD' | 'SRS' | 'ARCHITECTURE')[]
+  types?: ('PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN')[]
 }
 
 export interface GeneratedArtifactResult {
@@ -113,12 +114,62 @@ Modular monolith architecture for ${projectName}.
 }
 
 /**
- * Generates PRD, SRS, Architecture documents consuming Canonical Project Context snapshot.
+ * Fallback generator for Design when AI is not configured or fails.
+ * Produces clean, domain-appropriate design tokens with anti-slop rules.
+ */
+export function generateFallbackDesign(
+  projectName: string,
+  context: Record<string, unknown>,
+): string {
+  const designDir = (context.design_direction as { value?: string })?.value || 'Modern Clean Minimal'
+  const styling = (context.stack_preferences as Record<string, { value?: string }>)?.styling?.value || 'Tailwind CSS'
+
+  return `# DESIGN.md — ${projectName}
+
+## 1. Visual Direction & Design Thesis
+- **Theme & Direction:** ${designDir}
+- **Styling Architecture:** ${styling}
+- **Benchmark Standards:** Awwwards-grade intentional layout, Dribbble UI polish, fluid Anime.js micro-interactions.
+
+## 2. Color System (60-30-10 Rule)
+- **Canvas / Background (60%):** Slate Clean Light (#F8FAFC)
+- **Surfaces & Cards (30%):** Pure White (#FFFFFF) with 1px border (#E2E8F0)
+- **Brand Primary Accent (10%):** Deep Indigo (#4F46E5)
+- **Text Primary:** Slate Deep (#0F172A)
+- **Text Muted:** Slate Medium (#64748B)
+- **Semantic Accents:** Success (#10B981), Warning (#F59E0B), Danger (#EF4444)
+
+## 3. Typography Hierarchy
+- **Heading Font:** Plus Jakarta Sans (Google Fonts)
+- **Body Font:** Inter (Google Fonts)
+- **Code / Technical:** JetBrains Mono
+- **Scale:** Display 3.5rem (bold), H1 2.25rem, H2 1.75rem, H3 1.25rem, Body 1rem, Caption 0.875rem.
+
+## 4. Iconography & Assets
+- **Library:** Lucide Icons (stroke: 1.75px, default optical size: 20px)
+- **Rules:** Strictly zero random emojis as UI icons; zero cheesy 3D stickers.
+
+## 5. Motion & Micro-Interactions (Anime.js Fluid Curves)
+- **Easing:** cubic-bezier(0.16, 1, 0.3, 1)
+- **Hover:** -1px subtle transform with soft ambient shadow
+- **Active / Press:** 0.98 scale compression
+- **Accessibility:** Mandatory prefers-reduced-motion fallback
+
+## 6. Anti-AI-Slop Rejection Checklist
+- NO generic purple/neon-blue gradients on dark backgrounds
+- NO decorative glassmorphic blur blobs with zero functional purpose
+- NO fake dashboard metrics or placeholder charts
+- NO unstyled component library defaults
+`
+}
+
+/**
+ * Generates PRD, SRS, Architecture, and Design documents from Canonical Project Context.
  */
 export async function generateCoreArtifacts({
   userId,
   projectId,
-  types = ['PRD', 'SRS', 'ARCHITECTURE'],
+  types,
 }: GenerateArtifactsOptions): Promise<GeneratedArtifactResult[]> {
   const project = await db.project.findFirst({
     where: { id: projectId, userId },
@@ -126,6 +177,9 @@ export async function generateCoreArtifacts({
       contexts: {
         where: { isCurrent: true },
         take: 1,
+        include: {
+          artifactPlans: true,
+        },
       },
     },
   })
@@ -142,13 +196,23 @@ export async function generateCoreArtifacts({
     throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
   const provider = createProvider(providerConfig)
+  const generatedTypes = types ?? [
+    'PRD',
+    'SRS',
+    ...(currentContextRecord.artifactPlans.some(
+      (item) => item.type === 'DESIGN' && item.isRequired,
+    )
+      ? (['DESIGN'] as const)
+      : []),
+    'ARCHITECTURE',
+  ]
 
   // Update project status to GENERATING only after BYOK is confirmed.
   await updateProject(userId, projectId, { status: 'GENERATING' })
 
   const results: GeneratedArtifactResult[] = []
 
-  for (const artifactType of types) {
+  for (const artifactType of generatedTypes) {
     const path = `${artifactType}.md`
 
     // Set artifact state to GENERATING
@@ -192,6 +256,13 @@ export async function generateCoreArtifacts({
           temperature: 0.2,
         })
         markdownContent = res.markdown_content
+      } else if (artifactType === 'DESIGN') {
+        markdownContent = await generateDesignArtifactContent(
+          provider,
+          project.name,
+          currentContextRecord.contentJson,
+          currentContextRecord.version,
+        )
       }
 
       await db.artifact.update({
@@ -233,4 +304,59 @@ export async function generateCoreArtifacts({
   await updateProject(userId, projectId, { status: finalStatus })
 
   return results
+}
+
+/**
+ * Regenerates ONLY incomplete/failed/stuck artifacts for the project.
+ * Skips all artifacts that are already READY or MODIFIED for current context.
+ */
+export async function regenerateFailedArtifacts({
+  userId,
+  projectId,
+}: {
+  userId: string
+  projectId: string
+}): Promise<GeneratedArtifactResult[]> {
+  const project = await db.project.findFirst({
+    where: { id: projectId, userId },
+    include: {
+      contexts: {
+        where: { isCurrent: true },
+        take: 1,
+        include: {
+          artifactPlans: { where: { isRequired: true } },
+        },
+      },
+      artifacts: true,
+    },
+  })
+
+  if (!project) throw new Error('Project not found')
+  const currentContext = project.contexts[0]
+  if (!currentContext) throw new Error('No Canonical Project Context found.')
+
+  const readyOrModified = new Set(
+    project.artifacts
+      .filter((a) => a.contextId === currentContext.id && (a.status === 'READY' || a.status === 'MODIFIED'))
+      .map((a) => a.type),
+  )
+
+  const requiredPlanTypes = new Set(currentContext.artifactPlans.map((p) => p.type))
+  const coreCandidateTypes = ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'] as const
+
+  const typesToGenerate = coreCandidateTypes.filter((type) => {
+    // Include if required by plan (or default core) and not already READY/MODIFIED
+    const isRequired = type === 'DESIGN' ? requiredPlanTypes.has('DESIGN') : true
+    return isRequired && !readyOrModified.has(type)
+  })
+
+  if (typesToGenerate.length === 0) {
+    return []
+  }
+
+  return generateCoreArtifacts({
+    userId,
+    projectId,
+    types: typesToGenerate as ('PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN')[],
+  })
 }

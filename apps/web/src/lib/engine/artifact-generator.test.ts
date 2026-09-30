@@ -15,10 +15,16 @@ import {
   ARCHITECTURE_GENERATOR_SYSTEM_PROMPT,
 } from '@/lib/prompts/architecture-generator'
 import {
+  DesignDocumentSchema,
+  buildDesignGeneratorUserPrompt,
+  DESIGN_GENERATOR_SYSTEM_PROMPT,
+} from '@/lib/prompts/design-generator'
+import {
   generateCoreArtifacts,
   generateFallbackPrd,
   generateFallbackSrs,
   generateFallbackArchitecture,
+  generateFallbackDesign,
 } from '@/lib/engine/artifact-generator'
 
 vi.mock('@repo/db', () => ({
@@ -127,17 +133,92 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(result.success).toBe(true)
   })
 
+  it('validates a valid DESIGN document object', () => {
+    const designData = {
+      title: 'DESIGN.md',
+      meta: {
+        generatedAt: '2026-09-28T00:00:00.000Z',
+        contextVersion: 3,
+        provenance: { design_direction: 'confirmed' as const },
+      },
+      designSystem: {
+        colorPalette: [
+          { name: 'Paper', role: 'canvas', hex: '#F7F0DF', usage: 'Primary app surface' },
+        ],
+        typography: {
+          scale: 'Editorial modular scale',
+          fontFamilies: { heading: 'Geist Sans', body: 'Geist Sans', mono: 'Geist Mono' },
+          hierarchy: ['Display masthead', 'Panel heading'],
+        },
+        spacing: { baseUnit: '4px', scale: ['4px', '8px'], rules: ['Use compact ledger spacing'] },
+        borders: { width: '2px', radius: '4px', tokens: ['border: 2px solid #151515'] },
+        shadows: [{ elevation: 'default', token: '5px 5px 0 #151515', usage: 'Primary panels' }],
+        motion: {
+          reducedMotion: true,
+          durations: ['120ms'],
+          easings: ['ease-out'],
+          rules: ['Motion communicates state changes only'],
+        },
+        components: [
+          { name: 'Button', variants: ['primary'], states: ['default', 'focus'], a11yNotes: 'Visible focus ring' },
+        ],
+        composition: {
+          grid: 'Asymmetric editorial grid',
+          asymmetry: 'One action panel anchors the page',
+          density: 'Information dense',
+          rules: ['Current step always visible'],
+        },
+        tokens: {
+          cssVariables: { '--color-paper': '#F7F0DF' },
+          tailwindConfig: { colors: { paper: '#F7F0DF' } },
+        },
+      },
+      applicationDesign: {
+        pages: [{ route: '/', purpose: 'Landing', keyComponents: ['Pipeline strip'], responsiveBehavior: 'Stack panels on mobile' }],
+        userFlows: [{ name: 'Create project', steps: ['Enter idea'], entryPoints: ['/'], exitPoints: ['/workspace'] }],
+        responsiveBreakpoints: [{ name: 'mobile', width: '320px', layoutShifts: ['Single column'] }],
+        accessibility: {
+          wcagLevel: 'AA',
+          colorContrast: 'Minimum 4.5:1',
+          keyboardNavigation: 'All actions reachable by keyboard',
+          screenReader: 'Landmarks and labels required',
+        },
+        internationalization: { rtlSupport: false, fontFallbacks: ['system-ui'], textExpansion: 'Allow 30% expansion' },
+      },
+      implementationGuidance: {
+        cssArchitecture: 'Tailwind tokens backed by CSS variables',
+        componentLibrary: 'Local primitives',
+        themingStrategy: 'Warm-paper light theme',
+        darkMode: 'Not required for MVP',
+        performanceBudget: [{ metric: 'LCP', target: '<2.5s' }],
+      },
+      pipelineStrip: { stages: ['IDEA', 'CLARIFY', 'CONTEXT', 'GENERATE', 'REVIEW', 'EXPORT'], variant: 'default' as const },
+      markdown_content: '# DESIGN.md\n\nProject-specific visual contract',
+    }
+
+    const result = DesignDocumentSchema.safeParse(designData)
+    expect(result.success).toBe(true)
+  })
+
   it('builds prompt containing project name and context', () => {
     const promptPrd = buildPrdGeneratorUserPrompt('Acme', '{"name":"Acme"}')
     const promptSrs = buildSrsGeneratorUserPrompt('Acme', '{"name":"Acme"}')
     const promptArch = buildArchitectureGeneratorUserPrompt('Acme', '{"name":"Acme"}')
+    const promptDesign = buildDesignGeneratorUserPrompt('Acme', '{"name":"Acme"}', 3)
 
     expect(promptPrd).toContain('Project Name: Acme')
     expect(promptSrs).toContain('Project Name: Acme')
     expect(promptArch).toContain('Project Name: Acme')
+    expect(promptDesign).toContain('Project Name: Acme')
+    expect(promptDesign).toContain('Canonical Context Version: 3')
+    expect(promptDesign).toContain('DESIGN BRIEF & INSTRUCTIONS')
+    expect(promptDesign).toContain('Awwwards')
     expect(PRD_GENERATOR_SYSTEM_PROMPT).toContain('Principal Product Manager')
     expect(SRS_GENERATOR_SYSTEM_PROMPT).toContain('Lead Systems Architect')
     expect(ARCHITECTURE_GENERATOR_SYSTEM_PROMPT).toContain('Principal Software Architect')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Awwwards')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Dribbble')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Anime.js')
   })
 })
 
@@ -167,6 +248,19 @@ describe('Artifact Generator Fallbacks', () => {
     })
     expect(md).toContain('# ARCHITECTURE.md — Acme App')
     expect(md).toContain('React 19')
+  })
+
+  it('generates fallback Design markdown with bespoke design tokens', () => {
+    const md = generateFallbackDesign('Acme App', {
+      design_direction: { value: 'Clean Minimalist Scandinavian' },
+      stack_preferences: { styling: { value: 'Tailwind CSS v4' } },
+    })
+    expect(md).toContain('# DESIGN.md — Acme App')
+    expect(md).toContain('Clean Minimalist Scandinavian')
+    expect(md).toContain('Tailwind CSS v4')
+    expect(md).toContain('Plus Jakarta Sans')
+    expect(md).toContain('Lucide Icons')
+    expect(md).toContain('Awwwards-grade')
   })
 })
 
@@ -206,7 +300,15 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
       id: 'p-1',
       userId: 'u-1',
       name: 'Test Project',
-      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{"summary":"Test"}' }],
+      contexts: [
+        {
+          id: 'ctx-1',
+          version: 1,
+          isCurrent: true,
+          contentJson: '{"summary":"Test"}',
+          artifactPlans: [],
+        },
+      ],
     } as never)
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
 
@@ -225,7 +327,15 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
       id: 'p-1',
       userId: 'u-1',
       name: 'Test Project',
-      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{"summary":"Test"}' }],
+      contexts: [
+        {
+          id: 'ctx-1',
+          version: 1,
+          isCurrent: true,
+          contentJson: '{"summary":"Test"}',
+          artifactPlans: [],
+        },
+      ],
     } as never)
 
     vi.mocked(getProviderConfig).mockReturnValueOnce({
@@ -251,6 +361,153 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     expect(db.artifact.update).toHaveBeenCalledTimes(1)
   })
 
+  it('supports DESIGN-only regeneration through the structured design generator', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [
+        {
+          id: 'ctx-1',
+          version: 4,
+          isCurrent: true,
+          contentJson: '{"design_direction":{"value":"Editorial","provenance":"confirmed"}}',
+          artifactPlans: [{ type: 'DESIGN', isRequired: true }],
+        },
+      ],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'claude-sonnet-4-5',
+      apiKey: 'test-key',
+    })
+    const generateStructured = vi.fn().mockResolvedValueOnce({
+      markdown_content: '# DESIGN.md — Test Project',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured,
+    })
+
+    const results = await generateCoreArtifacts({
+      userId: 'u-1',
+      projectId: 'p-1',
+      types: ['DESIGN'],
+    })
+
+    expect(results).toEqual([
+      {
+        type: 'DESIGN',
+        status: 'READY',
+        path: 'DESIGN.md',
+        content: '# DESIGN.md — Test Project',
+      },
+    ])
+    expect(generateStructured).toHaveBeenCalledWith(
+      expect.stringContaining('Canonical Context Version: 4'),
+      DesignDocumentSchema,
+      expect.objectContaining({ system: DESIGN_GENERATOR_SYSTEM_PROMPT }),
+    )
+    expect(db.artifact.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } },
+      }),
+    )
+  })
+
+  it('includes required DESIGN in default plan-aware core generation', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [
+        {
+          id: 'ctx-1',
+          version: 2,
+          isCurrent: true,
+          contentJson: '{"summary":"Test"}',
+          artifactPlans: [{ type: 'DESIGN', isRequired: true }],
+        },
+      ],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'claude-sonnet-4-5',
+      apiKey: 'test-key',
+    })
+    const generateStructured = vi.fn().mockResolvedValue({ markdown_content: '# Document' })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured,
+    })
+
+    const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(results.map((result) => result.type)).toEqual([
+      'PRD',
+      'SRS',
+      'DESIGN',
+      'ARCHITECTURE',
+    ])
+    expect(db.artifact.upsert).toHaveBeenCalledTimes(4)
+    expect(generateStructured).toHaveBeenCalledTimes(4)
+  })
+
+  it('marks only the DESIGN artifact failed when design generation fails', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [
+        {
+          id: 'ctx-1',
+          version: 1,
+          isCurrent: true,
+          contentJson: '{}',
+          artifactPlans: [{ type: 'DESIGN', isRequired: true }],
+        },
+      ],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'claude-sonnet-4-5',
+      apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockRejectedValueOnce(new Error('Provider unavailable')),
+    })
+
+    const results = await generateCoreArtifacts({
+      userId: 'u-1',
+      projectId: 'p-1',
+      types: ['DESIGN'],
+    })
+
+    expect(results[0]).toEqual(
+      expect.objectContaining({ type: 'DESIGN', status: 'FAILED', error: 'Provider unavailable' }),
+    )
+    expect(db.artifact.update).toHaveBeenCalledWith({
+      where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } },
+      data: { status: 'FAILED' },
+    })
+  })
+
   it('uses AI provider when BYOK session is active', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
@@ -260,7 +517,15 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
       id: 'p-1',
       userId: 'u-1',
       name: 'Test Project',
-      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{"summary":"Test"}' }],
+      contexts: [
+        {
+          id: 'ctx-1',
+          version: 1,
+          isCurrent: true,
+          contentJson: '{"summary":"Test"}',
+          artifactPlans: [],
+        },
+      ],
     } as never)
 
     vi.mocked(getProviderConfig).mockReturnValueOnce({
