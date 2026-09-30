@@ -212,13 +212,19 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(promptDesign).toContain('Project Name: Acme')
     expect(promptDesign).toContain('Canonical Context Version: 3')
     expect(promptDesign).toContain('DESIGN BRIEF & INSTRUCTIONS')
-    expect(promptDesign).toContain('Awwwards')
+    expect(promptDesign).toContain('styles.refero.design')
+    expect(promptDesign).toContain('saasframe.io')
+    expect(promptDesign).toContain('land-book.com')
+    expect(promptDesign).toContain('mobbin.com')
     expect(PRD_GENERATOR_SYSTEM_PROMPT).toContain('Principal Product Manager')
     expect(SRS_GENERATOR_SYSTEM_PROMPT).toContain('Lead Systems Architect')
     expect(ARCHITECTURE_GENERATOR_SYSTEM_PROMPT).toContain('Principal Software Architect')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Awwwards')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Dribbble')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Anime.js')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('styles.refero.design')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('saasframe.io')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('land-book.com')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('mobbin.com')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('godly.website')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('NEVER default to Neo-Brutalism')
   })
 })
 
@@ -264,6 +270,33 @@ describe('Artifact Generator Fallbacks', () => {
     expect(md).toContain('Primary Logo (Vector Lockup)')
     expect(md).toContain('Adaptive Favicon')
     expect(md).toContain('Luxury Split-Screen Auth')
+    expect(md).toContain('Bento-Grid Dashboard')
+  })
+
+  it('adapts fallback Design archetype based on project domain', () => {
+    // DevTools project
+    const devMd = generateFallbackDesign('Acme CLI', {
+      summary: 'Developer CLI tool and API platform for cloud telemetry',
+      classification: 'API_SERVICE',
+    })
+    expect(devMd).toContain('Precision DevTools & Dark Monolith')
+    expect(devMd).toContain('JetBrains Mono')
+    expect(devMd).toContain('#06B6D4')
+
+    // Fintech project
+    const finMd = generateFallbackDesign('Acme Pay', {
+      summary: 'Invoicing and billing management platform for businesses',
+      classification: 'SAAS',
+    })
+    expect(finMd).toContain('High-Density Fintech & Data Engine')
+    expect(finMd).toContain('#10B981')
+
+    // Only Neo-Brutalist if explicitly requested
+    const neoMd = generateFallbackDesign('Retro Site', {
+      design_direction: { value: 'Vibrant Neo-Brutalism with bold borders' },
+    })
+    expect(neoMd).toContain('Neo-Brutalist Utility')
+    expect(neoMd).toContain('#F7F0DF')
   })
 })
 

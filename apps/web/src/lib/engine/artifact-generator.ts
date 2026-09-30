@@ -117,28 +117,96 @@ Modular monolith architecture for ${projectName}.
  * Fallback generator for Design when AI is not configured or fails.
  * Produces clean, domain-appropriate design tokens with anti-slop rules.
  */
+/**
+ * Fallback generator for Design when AI is not configured or fails.
+ * Produces clean, domain-appropriate design tokens with anti-slop rules
+ * anchored in curated references (styles.refero.design, saasframe.io, mobbin.com, land-book.com).
+ */
 export function generateFallbackDesign(
   projectName: string,
   context: Record<string, unknown>,
 ): string {
-  const designDir = (context.design_direction as { value?: string })?.value || 'Modern Clean Minimal'
+  const summary = String(context.summary || '').toLowerCase()
+  const classification = String(context.classification || '').toLowerCase()
+  const designDir = String((context.design_direction as { value?: string })?.value || '')
   const styling = (context.stack_preferences as Record<string, { value?: string }>)?.styling?.value || 'Tailwind CSS'
+
+  // Dynamic Archetype deduction
+  const dirLower = designDir.toLowerCase()
+  const isExplicitNeoBrutalist = dirLower.includes('neo-brutal') || dirLower.includes('comic')
+  const isDevTools = summary.includes('cli') || summary.includes('api') || summary.includes('developer') || classification.includes('api_service')
+  const isFintech = summary.includes('finance') || summary.includes('billing') || summary.includes('accounting') || summary.includes('payment')
+  const isEditorial = summary.includes('blog') || summary.includes('cms') || summary.includes('publishing') || summary.includes('newsletter')
+  const isHealth = summary.includes('health') || summary.includes('clinic') || summary.includes('medical') || summary.includes('wellness')
+
+  let archetypeName = 'Modern Enterprise SaaS & Corporate Crisp'
+  let benchmarkCitation = 'styles.refero.design Clean SaaS + saasframe.io data tables + Stripe UI'
+  let primaryColor = '#2563EB'
+  let canvasColor = '#F8FAFC'
+  let surfaceColor = '#FFFFFF'
+  let headingFont = 'Plus Jakarta Sans'
+  let bodyFont = 'Inter'
+
+  if (isExplicitNeoBrutalist) {
+    archetypeName = 'Neo-Brutalist Utility'
+    benchmarkCitation = 'Gumroad + Retro Pop'
+    primaryColor = '#FFD84D'
+    canvasColor = '#F7F0DF'
+    surfaceColor = '#FFF9EC'
+    headingFont = 'Space Grotesk'
+  } else if (isDevTools) {
+    archetypeName = 'Precision DevTools & Dark Monolith'
+    benchmarkCitation = 'mobbin.com (Linear, Raycast, Supabase) + godly.website'
+    primaryColor = '#06B6D4'
+    canvasColor = '#08090A'
+    surfaceColor = '#111318'
+    headingFont = 'Geist Sans'
+    bodyFont = 'JetBrains Mono'
+  } else if (isFintech) {
+    archetypeName = 'High-Density Fintech & Data Engine'
+    benchmarkCitation = 'tremor.so + saasframe.io (Mercury, Stripe Dashboard)'
+    primaryColor = '#10B981'
+    canvasColor = '#F9FAFB'
+    surfaceColor = '#FFFFFF'
+    headingFont = 'Inter'
+    bodyFont = 'Inter'
+  } else if (isEditorial) {
+    archetypeName = 'Warm Editorial & Literary Craft'
+    benchmarkCitation = 'minimal.gallery + mobbin.com (Notion, Readwise) + land-book.com'
+    primaryColor = '#78350F'
+    canvasColor = '#FBFBFA'
+    surfaceColor = '#FFFFFF'
+    headingFont = 'Instrument Serif'
+    bodyFont = 'Instrument Sans'
+  } else if (isHealth) {
+    archetypeName = 'Calm HealthTech & Bio-Clean'
+    benchmarkCitation = 'styles.refero.design Soft & Subtle + health benchmarks'
+    primaryColor = '#0D9488'
+    canvasColor = '#F0FDF4'
+    surfaceColor = '#FFFFFF'
+    headingFont = 'Plus Jakarta Sans'
+    bodyFont = 'Inter'
+  }
+
+  const effectiveTheme = designDir || archetypeName
 
   return `# DESIGN.md — ${projectName}
 
 ## 1. Visual Direction & Design Thesis
-- **Theme & Direction:** ${designDir}
+- **Primary Design Archetype:** ${archetypeName}
+- **Benchmark Citations:** ${benchmarkCitation}
+- **Theme & Direction:** ${effectiveTheme}
 - **Styling Architecture:** ${styling}
-- **Benchmark Standards:** Awwwards-grade intentional layout, Dribbble UI polish, fluid Anime.js micro-interactions.
+- **Aesthetic Principles:** Awwwards-grade intentional layout, Dribbble UI polish, fluid Anime.js micro-interactions.
 
 ## 2. Brand Identity: Logo & Favicon Assets
 
 ### 2.1 Primary Logo (Vector Lockup)
 \`\`\`xml
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" fill="none" width="160" height="40">
-  <rect x="2" y="4" width="32" height="32" rx="8" fill="#4F46E5" />
-  <path d="M12 20L18 26L28 14" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-  <text x="44" y="26" font-family="'Plus Jakarta Sans', sans-serif" font-size="18" font-weight="800" fill="#0F172A" letter-spacing="-0.03em">${projectName}</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" fill="none" width="180" height="40">
+  <rect x="2" y="4" width="32" height="32" rx="8" fill="${primaryColor}" />
+  <path d="M12 20L18 26L28 14" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="44" y="26" font-family="'${headingFont}', sans-serif" font-size="18" font-weight="800" fill="#0F172A" letter-spacing="-0.03em">${projectName}</text>
 </svg>
 \`\`\`
 
@@ -146,28 +214,28 @@ export function generateFallbackDesign(
 \`\`\`xml
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
   <style>
-    :root { --bg: #4F46E5; --fg: #FFFFFF; }
+    :root { --bg: ${primaryColor}; --fg: #FFFFFF; }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #6366F1; --fg: #FFFFFF; }
+      :root { --bg: ${primaryColor}; --fg: #FFFFFF; }
     }
   </style>
   <rect width="32" height="32" rx="8" fill="var(--bg)" />
-  <path d="M9 16L14 21L23 11" stroke="var(--fg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M9 16L14 21L23 11" stroke="var(--fg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
 </svg>
 \`\`\`
 
 ## 3. Color System (60-30-10 Rule)
-- **Canvas / Background (60%):** Slate Clean Light (\`#F8FAFC\`) / Dark (\`#090D16\`)
-- **Surfaces & Cards (30%):** Pure White (\`#FFFFFF\`) with 1px subtle border (\`#E2E8F0\`) / Dark (\`#111827\` with \`#1F2937\` border)
-- **Brand Primary Accent (10%):** Deep Indigo (\`#4F46E5\`) / Dark (\`#6366F1\`)
-- **Text Primary:** Slate Deep (\`#0F172A\`) / Dark (\`#F8FAFC\`)
-- **Text Muted:** Slate Medium (\`#64748B\`) / Dark (\`#94A3B8\`)
-- **Semantic Accents:** Success (\`#10B981\`), Warning (\`#F59E0B\`), Danger (\`#EF4444\`)
+- **Canvas / Background (60%):** ${canvasColor}
+- **Surfaces & Cards (30%):** ${surfaceColor} with 1px subtle border (#E2E8F0)
+- **Brand Primary Accent (10%):** ${primaryColor}
+- **Text Primary:** Slate Deep (#0F172A)
+- **Text Muted:** Slate Medium (#64748B)
+- **Semantic Accents:** Success (#10B981), Warning (#F59E0B), Danger (#EF4444)
 
 ## 4. Typography Hierarchy (Google Fonts)
-- **Primary / Heading Font:** Plus Jakarta Sans (\`wght@500;600;700;800\`)
-- **Body / Interface Font:** Inter (\`wght@400;500;600\`)
-- **Mono / Technical Font:** JetBrains Mono (\`wght@400;500\`)
+- **Primary / Heading Font:** ${headingFont}
+- **Body / Interface Font:** ${bodyFont}
+- **Code / Technical Font:** JetBrains Mono
 - **Scale Tokens:**
   - Display: \`3.5rem\` (line-height: \`1.1\`, tracking: \`-0.04em\`, bold)
   - H1: \`2.25rem\` (line-height: \`1.2\`, tracking: \`-0.03em\`, bold)
@@ -179,20 +247,24 @@ export function generateFallbackDesign(
 ## 5. Signature Experience: Luxury Split-Screen Auth (Login / Register)
 *PROHIBITED: Generic centered white box on gray background (bare Laravel default).*
 - **Layout Architecture:** Fullscreen split layout (\`grid grid-cols-1 lg:grid-cols-12 min-h-screen\`).
-  - **Showcase Column (7 cols):** Rich ambient gradient backdrop, headline with Plus Jakarta Sans, live social proof pill (\`★ 4.9/5 satisfaction\`), floating operational KPI card with subtle backdrop blur (\`backdrop-blur-md\`).
+  - **Showcase Column (7 cols):** Rich ambient gradient backdrop, headline with ${headingFont}, live social proof pill (\`★ 4.9/5 satisfaction\`), floating operational KPI card with subtle backdrop blur (\`backdrop-blur-md\`).
   - **Auth Form Column (5 cols):** Dedicated brand header with SVG logo, crisp inputs with subtle 1px border and glowing focus ring (\`focus:ring-2 focus:ring-primary/20 focus:border-primary\`), password visibility toggle with Lucide icon, social OAuth pill buttons with 1px border hover lift, primary button with tactile press feedback (\`active:scale-[0.98]\`).
 
-## 6. Iconography & Visual Assets
+## 6. Signature Experience: Bento-Grid Dashboard & Data Tables
+- **Dashboard Grid:** 12-column responsive layout with 4 distinct card hierarchy tiles (Hero Metric, Live Stream, KPI Cards, Workflow Queue).
+- **Data Table:** Toolbar with search + faceted chips + density toggle, sortable sticky headers, status pills with micro-dots, pagination.
+
+## 7. Iconography & Visual Assets
 - **Library:** Lucide Icons (stroke: \`1.75px\`, default optical size: \`20px\`)
 - **Rules:** Strictly zero random emojis as UI icons; zero cheesy 3D stickers.
 
-## 7. Motion & Micro-Interactions (Anime.js Fluid Curves)
+## 8. Motion & Micro-Interactions (Anime.js Fluid Curves)
 - **Easing:** \`cubic-bezier(0.16, 1, 0.3, 1)\`
 - **Button Hover / Press:** \`-1px\` subtle translateY on hover; \`scale(0.98)\` active press compression.
 - **Card Hover:** Subtle elevation shadow transition with \`border-primary/40\` tint.
 - **Accessibility:** Mandatory \`prefers-reduced-motion\` media query disabling transitions.
 
-## 8. Anti-AI-Slop Rejection Checklist
+## 9. Anti-AI-Slop Rejection Checklist
 - NO generic purple/neon-blue gradients on dark backgrounds
 - NO decorative glassmorphic blur blobs with zero functional purpose
 - NO fake dashboard metrics or placeholder charts
