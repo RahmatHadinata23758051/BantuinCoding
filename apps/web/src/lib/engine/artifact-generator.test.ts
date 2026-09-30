@@ -261,6 +261,9 @@ describe('Artifact Generator Fallbacks', () => {
     expect(md).toContain('Plus Jakarta Sans')
     expect(md).toContain('Lucide Icons')
     expect(md).toContain('Awwwards-grade')
+    expect(md).toContain('Primary Logo (Vector Lockup)')
+    expect(md).toContain('Adaptive Favicon')
+    expect(md).toContain('Luxury Split-Screen Auth')
   })
 })
 
