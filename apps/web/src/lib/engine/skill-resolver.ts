@@ -141,21 +141,46 @@ export async function resolveProjectSkills({
     throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
   const provider = createProvider(providerConfig)
+
+  // Set artifact to GENERATING before provider call
+  await db.artifact.upsert({
+    where: { projectId_type: { projectId, type: 'SKILLS' } },
+    update: { status: 'GENERATING', contextId: currentContextRecord.id },
+    create: {
+      projectId,
+      contextId: currentContextRecord.id,
+      type: 'SKILLS',
+      path: 'SKILLS.md',
+      content: '',
+      status: 'GENERATING',
+    },
+  })
+
   const userPrompt = buildSkillResolverUserPrompt(
     project.name,
     project.classification,
     currentContextRecord.contentJson,
     JSON.stringify(catalogSkills),
   )
-  const resolvedOutput: SkillResolverOutput = await provider.generateStructured(
-    userPrompt,
-    SkillResolverOutputSchema,
-    {
-      system: SKILL_RESOLVER_SYSTEM_PROMPT,
-      maxTokens: 2048,
-      temperature: 0.2,
-    },
-  )
+  let resolvedOutput: SkillResolverOutput
+  try {
+    resolvedOutput = await provider.generateStructured(
+      userPrompt,
+      SkillResolverOutputSchema,
+      {
+        system: SKILL_RESOLVER_SYSTEM_PROMPT,
+        maxTokens: 2048,
+        temperature: 0.2,
+      },
+    )
+  } catch {
+    // If AI fails, use fallback skills catalog
+    resolvedOutput = {
+      skills: internalCatalogFallback,
+      rationale: 'Baseline skills for project classification.',
+      skills_md_content: generateSkillsMdContent(project.name, internalCatalogFallback),
+    }
+  }
 
   // Persist SkillRecommendation DB records (clear prior recommendations first)
   await db.skillRecommendation.deleteMany({ where: { projectId } })
@@ -177,21 +202,10 @@ export async function resolveProjectSkills({
     })
   }
 
-  // Upsert SKILLS.md Artifact record
-  await db.artifact.upsert({
+  // Update artifact to READY
+  await db.artifact.update({
     where: { projectId_type: { projectId, type: 'SKILLS' } },
-    update: {
-      content: resolvedOutput.skills_md_content,
-      status: 'READY',
-      contextId: currentContextRecord.id,
-      provider: providerConfig?.provider ?? 'FALLBACK',
-      model: providerConfig?.model ?? 'BASELINE',
-    },
-    create: {
-      projectId,
-      contextId: currentContextRecord.id,
-      type: 'SKILLS',
-      path: 'SKILLS.md',
+    data: {
       content: resolvedOutput.skills_md_content,
       status: 'READY',
       provider: providerConfig?.provider ?? 'FALLBACK',

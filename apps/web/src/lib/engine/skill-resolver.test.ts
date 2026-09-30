@@ -22,6 +22,7 @@ vi.mock('@repo/db', () => ({
     },
     artifact: {
       upsert: vi.fn(),
+      update: vi.fn(),
     },
   },
 }))
