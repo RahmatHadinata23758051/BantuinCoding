@@ -355,7 +355,32 @@ describe('Context Engine — generateCanonicalContext', () => {
       ],
     } as never)
 
-    vi.mocked(db.projectContext.findFirst).mockResolvedValueOnce({ version: 1 } as never)
+    // First call: inside transaction for preservation (isCurrent: true)
+    // Second call: inside transaction for version (orderBy version desc)
+    // Third call: after transaction for final context (isCurrent: true)
+    const expectedMergedContext = {
+      ...prevContext,
+      confirmed_decisions: [
+        { value: 'Monorepo Architecture', provenance: 'confirmed' as const },
+        { value: 'BYOK Security', provenance: 'confirmed' as const },
+        { value: 'New Decision', provenance: 'confirmed' as const },
+      ],
+      design_direction: { value: 'Editorial developer tool', provenance: 'confirmed' as const },
+      deployment_target: { value: 'Vercel', provenance: 'confirmed' as const },
+      assumptions: [{ value: 'Small initial user base', provenance: 'assumed' as const }],
+      goals: [{ value: 'Launch MVP', provenance: 'confirmed' as const }],
+      functional_requirements: [
+        { id: 'FR-001', title: 'Launch MVP', description: 'Launch the MVP', provenance: 'confirmed' as const },
+      ],
+      technical_constraints: [{ value: 'PostgreSQL', provenance: 'confirmed' as const }],
+      security_requirements: [{ value: 'BYOK keys stay in memory', provenance: 'confirmed' as const }],
+      open_questions: [{ value: 'Billing model', provenance: 'unknown' as const }],
+    }
+
+    vi.mocked(db.projectContext.findFirst)
+      .mockResolvedValueOnce({ version: 1, contentJson: JSON.stringify(prevContext), isCurrent: true } as never)
+      .mockResolvedValueOnce({ version: 1 } as never)
+      .mockResolvedValueOnce({ version: 2, contentJson: JSON.stringify(expectedMergedContext), isCurrent: true } as never)
     vi.mocked(getProviderConfig).mockReturnValueOnce({
       provider: 'ANTHROPIC',
       model: 'claude-sonnet-4-5',

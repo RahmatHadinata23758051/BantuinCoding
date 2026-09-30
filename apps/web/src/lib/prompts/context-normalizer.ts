@@ -75,7 +75,41 @@ CRITICAL PROVENANCE RULES:
    - "assumed": Inferred logically by you based on industry standards, project classification, or best practices.
    - "unknown": Still unresolved or underspecified.
 2. Confirmed decisions cannot be silently downgraded to assumed.
-3. Be explicit, structured, and complete.`
+3. Be explicit, structured, and complete.
+
+REQUIRED JSON SCHEMA (output EXACTLY this structure, no extra fields, no missing fields):
+{
+  "project_name": "string",
+  "summary": "string",
+  "target_users": [{"value": "string", "provenance": "confirmed|assumed|unknown"}],
+  "goals": [{"value": "string", "provenance": "confirmed|assumed|unknown"}],
+  "non_goals": [{"value": "string", "provenance": "confirmed|assumed|unknown"}],
+  "functional_requirements": [{"id": "FR-001", "title": "string", "description": "string", "provenance": "confirmed|assumed|unknown"}],
+  "non_functional_requirements": [{"category": "Security|Performance|Scalability", "requirement": "string", "provenance": "confirmed|assumed|unknown"}],
+  "core_entities": [{"name": "string", "fields": ["string"], "relationships": ["string"]}],
+  "technical_constraints": [{"value": "string", "provenance": "confirmed|assumed|unknown"}],
+  "stack_preferences": {
+    "frontend": {"value": "string", "provenance": "confirmed|assumed|unknown"},
+    "backend": {"value": "string", "provenance": "confirmed|assumed|unknown"},
+    "database": {"value": "string", "provenance": "confirmed|assumed|unknown"},
+    "styling": {"value": "string", "provenance": "confirmed|assumed|unknown"}
+  },
+  "design_direction": {"value": "string", "provenance": "confirmed|assumed|unknown"},
+  "security_requirements": [{"value": "string", "provenance": "confirmed|assumed|unknown"}],
+  "integrations": [{"value": "string", "provenance": "confirmed|assumed|unknown"}],
+  "deployment_target": {"value": "string", "provenance": "confirmed|assumed|unknown"},
+  "agent_target": "string",
+  "confirmed_decisions": [{"value": "string", "provenance": "confirmed"}],
+  "open_questions": [{"value": "string", "provenance": "unknown"}],
+  "assumptions": [{"value": "string", "provenance": "assumed"}]
+}
+
+OUTPUT FORMAT:
+- Return ONLY a valid JSON object matching the schema above.
+- Do NOT wrap in markdown code fences.
+- Do NOT include reasoning, thinking, or explanation text.
+- Do NOT use \`\`\`json blocks.
+- Output the raw JSON object directly.`
 
 export function buildContextNormalizerUserPrompt(
   projectName: string,
@@ -104,5 +138,6 @@ Answered Clarification Questions:
 ${qaJson}
 """
 
-Synthesize all information above into the normalized Canonical Project Context JSON.`
+Synthesize all information above into the normalized Canonical Project Context JSON.
+Output ONLY the raw JSON object. No markdown fences, no prose, no explanation.`
 }

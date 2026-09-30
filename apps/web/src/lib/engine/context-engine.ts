@@ -1,4 +1,5 @@
 import { db } from '@repo/db'
+import { z } from 'zod'
 import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
 import {
@@ -11,8 +12,8 @@ import type { ContextProvenance } from '@repo/types'
 import { getCurrentRequirementAnalysis } from '@/lib/engine/analysis-store'
 import { updateProject } from '@/lib/projects/project-service'
 import {
-  ASSUMPTION_CONFIRMATION_ACCEPTED,
   ASSUMPTION_CONFIRMATION_QUESTION,
+  isAssumptionConfirmationAccepted,
 } from '@/lib/engine/clarification-engine'
 
 export interface GenerateContextOptions {
@@ -95,6 +96,124 @@ function preserveConfirmedContext(
 }
 
 /**
+ * Normalize and repair raw context output from smaller/cheaper AI models
+ * that may produce non-strict variants of the schema. Defaults empty/missing
+ * arrays, coerces object items to ContextItemWithProvenance shape, and fills
+ * required string fields when the model emitted them as descriptive prose.
+ */
+function normalizeContextOutput(
+  raw: unknown,
+): import('@/lib/prompts/context-normalizer').CanonicalContextOutput {
+  type Provenance = 'confirmed' | 'assumed' | 'unknown'
+  type Item = { value: string; provenance: Provenance }
+  const emptyItem: Item = { value: 'Not specified', provenance: 'unknown' }
+
+  const record = (val: unknown): Record<string, unknown> =>
+    (val && typeof val === 'object' ? val : {}) as Record<string, unknown>
+
+  const asStr = (val: unknown, fallback = ''): string =>
+    typeof val === 'string' ? val : (val !== null && val !== undefined ? String(val) : fallback)
+
+  const asProv = (val: unknown): Provenance => {
+    const v = typeof val === 'string' ? val.toLowerCase() : ''
+    return v === 'confirmed' || v === 'assumed' || v === 'unknown' ? (v as Provenance) : 'assumed'
+  }
+
+  const ensureItem = (item: unknown): Item => {
+    if (typeof item === 'string') return { value: item, provenance: 'assumed' }
+    const obj = record(item)
+    if (typeof obj.value === 'string') return { value: obj.value, provenance: asProv(obj.provenance) }
+    for (const key of ['name', 'title', 'description', 'requirement'] as const) {
+      if (typeof obj[key] === 'string') {
+        return { value: obj[key] as string, provenance: asProv(obj.provenance) }
+      }
+    }
+    return emptyItem
+  }
+
+  const ensureArray = (val: unknown): unknown[] =>
+    Array.isArray(val) ? val : val === undefined || val === null ? [] : [val]
+
+  const ensureItemArray = (val: unknown): Item[] => ensureArray(val).map(ensureItem)
+
+  const r = record(raw)
+  const sp = record(r.stack_preferences)
+
+  return {
+    project_name: asStr(r.project_name || r.name, 'Untitled project'),
+    summary: asStr(r.summary || r.description, 'Project context summary not provided.'),
+    target_users: ensureItemArray(r.target_users ?? r.target_audience),
+    goals: ensureItemArray(r.goals ?? r.features),
+    non_goals: ensureItemArray(r.non_goals),
+    functional_requirements: ensureArray(r.functional_requirements).map(
+      (req, idx): {
+        id: string
+        title: string
+        description: string
+        provenance: Provenance
+      } => {
+        if (typeof req === 'string') {
+          return {
+            id: `FR-${String(idx + 1).padStart(3, '0')}`,
+            title: req,
+            description: req,
+            provenance: 'assumed',
+          }
+        }
+        const obj = record(req)
+        return {
+          id: asStr(obj.id ?? obj.key, `FR-${String(idx + 1).padStart(3, '0')}`),
+          title: asStr(obj.title ?? obj.name, 'Untitled requirement'),
+          description: asStr(obj.description ?? obj.summary ?? obj.name, 'No description provided.'),
+          provenance: asProv(obj.provenance),
+        }
+      },
+    ),
+    non_functional_requirements: ensureArray(r.non_functional_requirements).map(
+      (req): { category: string; requirement: string; provenance: Provenance } => {
+        if (typeof req === 'string') {
+          return { category: 'Quality', requirement: req, provenance: 'assumed' }
+        }
+        const obj = record(req)
+        return {
+          category: asStr(obj.category, 'Quality'),
+          requirement: asStr(obj.requirement ?? obj.description, 'Not specified'),
+          provenance: asProv(obj.provenance),
+        }
+      },
+    ),
+    core_entities: ensureArray(r.core_entities ?? r.entities).map((ent) => {
+      if (typeof ent === 'string') return { name: ent, fields: [], relationships: [] }
+      const obj = record(ent)
+      return {
+        name: asStr(obj.name, 'Entity'),
+        fields: ensureArray(obj.fields ?? obj.properties).map((f) =>
+          typeof f === 'string' ? f : asStr(record(f).name ?? record(f).value, 'field'),
+        ),
+        relationships: ensureArray(obj.relationships).map((rel) =>
+          typeof rel === 'string' ? rel : asStr(record(rel).value),
+        ),
+      }
+    }),
+    technical_constraints: ensureItemArray(r.technical_constraints ?? r.constraints),
+    stack_preferences: {
+      frontend: ensureItem(sp.frontend ?? r.stack),
+      backend: ensureItem(sp.backend),
+      database: ensureItem(sp.database),
+      styling: ensureItem(sp.styling),
+    },
+    design_direction: ensureItem(r.design_direction ?? r.design_guidelines),
+    security_requirements: ensureItemArray(r.security_requirements),
+    integrations: ensureItemArray(r.integrations),
+    deployment_target: ensureItem(r.deployment_target ?? r.platform),
+    agent_target: asStr(r.agent_target ?? r.target_agent, 'CLAUDE_CODE'),
+    confirmed_decisions: ensureItemArray(r.confirmed_decisions),
+    open_questions: ensureItemArray(r.open_questions ?? r.clarifications),
+    assumptions: ensureItemArray(r.assumptions),
+  }
+}
+
+/**
  * Generate and save a versioned Canonical Project Context snapshot.
  * Preserves confirmed decisions from previous versions (cannot be overwritten).
  * Updates project status to CONTEXT_READY.
@@ -135,7 +254,7 @@ export async function generateCanonicalContext({
         question.round > 3 &&
         question.question === ASSUMPTION_CONFIRMATION_QUESTION &&
         question.status === 'ANSWERED' &&
-        question.answer === ASSUMPTION_CONFIRMATION_ACCEPTED,
+        isAssumptionConfirmationAccepted(question.answer),
     )
     if (!acceptedAssumptionPath) {
       throw new Error('Confirm unresolved items as explicit assumptions before generating context.')
@@ -172,38 +291,50 @@ export async function generateCanonicalContext({
     qaFormatted,
   )
 
-  const generatedContext = await provider.generateStructured(
+  // Use z.unknown() to accept ANY valid JSON from the model (including extra fields
+  // or slightly different field names from smaller/cheaper models).
+  // Then normalizeContextOutput reshapes and repairs the JSON to fit CanonicalContextSchema.
+  const rawContext = await provider.generateStructured(
     userPrompt,
-    CanonicalContextSchema,
+    z.unknown(),
     {
       system: CONTEXT_NORMALIZER_SYSTEM_PROMPT,
       maxTokens: 4096,
       temperature: 0.2,
     },
   )
-  // Validate again at the engine boundary in case an adapter implementation
-  // violates the generateStructured contract.
-  const newContext = CanonicalContextSchema.parse(generatedContext)
-
-  // Enforce confirmed high-impact decision immutability if a previous context exists.
-  const previousContextRecord = project.contexts[0]
-  if (previousContextRecord) {
-    try {
-      const previousContext = CanonicalContextSchema.parse(
-        JSON.parse(previousContextRecord.contentJson),
-      )
-      preserveConfirmedContext(previousContext, newContext)
-    } catch {
-      // Ignore invalid legacy snapshots rather than corrupting the new validated context.
-    }
-  }
+  // Normalize and repair any model output format into canonical shape
+  let newContext = normalizeContextOutput(rawContext)
+  // Final strict validation to ensure we strictly adhere to the contract
+  newContext = CanonicalContextSchema.parse(newContext)
 
   let createdVersion = 0
   const maxWriteAttempts = 3
 
   for (let attempt = 1; attempt <= maxWriteAttempts; attempt++) {
     try {
+      // Clone the base context for this attempt to avoid accumulating stale
+      // merge data across retries.
+      const contextForAttempt = JSON.parse(JSON.stringify(newContext))
+
       createdVersion = await db.$transaction(async (tx) => {
+        // Re-read the latest current context snapshot inside the transaction
+        // to preserve confirmed decisions from the newest committed version.
+        const latestContextRecord = await tx.projectContext.findFirst({
+          where: { projectId, isCurrent: true },
+          orderBy: { version: 'desc' },
+        })
+        if (latestContextRecord) {
+          try {
+            const latestContext = CanonicalContextSchema.parse(
+              JSON.parse(latestContextRecord.contentJson),
+            )
+            preserveConfirmedContext(latestContext, contextForAttempt)
+          } catch {
+            // Ignore invalid legacy snapshots rather than corrupting the new validated context.
+          }
+        }
+
         const latest = await tx.projectContext.findFirst({
           where: { projectId },
           orderBy: { version: 'desc' },
@@ -220,7 +351,7 @@ export async function generateCanonicalContext({
           data: {
             projectId,
             version: nextVersion,
-            contentJson: JSON.stringify(newContext),
+            contentJson: JSON.stringify(contextForAttempt),
             isCurrent: true,
           },
         })
@@ -236,6 +367,20 @@ export async function generateCanonicalContext({
 
         return nextVersion
       }, { isolationLevel: 'Serializable' })
+
+      // Update newContext with the preserved context from the successful attempt
+      // for the return value
+      if (attempt === 1) {
+        // On first attempt, we need to capture the preserved context
+        // Re-fetch to get the final version
+        const finalContextRecord = await db.projectContext.findFirst({
+          where: { projectId, isCurrent: true },
+          orderBy: { version: 'desc' },
+        })
+        if (finalContextRecord) {
+          newContext = CanonicalContextSchema.parse(JSON.parse(finalContextRecord.contentJson))
+        }
+      }
       break
     } catch (error) {
       const isWriteConflict =
