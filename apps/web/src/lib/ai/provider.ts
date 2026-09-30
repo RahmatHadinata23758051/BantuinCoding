@@ -94,14 +94,85 @@ abstract class BaseProvider implements AIProvider {
 
   /**
    * Extract JSON from a raw AI response string.
-   * Handles markdown code fences (```json ... ```) and bare JSON.
+   * Handles markdown code fences (```json ... ```), bare JSON,
+   * and strips common model reasoning/think tags from 9router models.
+   * Robustly handles nested markdown code fences inside JSON string values
+   * by finding the outermost JSON boundaries (first { to last }).
    */
   protected extractJson(raw: string): unknown {
-    // Strip markdown code fences
-    const fenceMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
-    const jsonStr = fenceMatch ? fenceMatch[1].trim() : raw.trim()
+    let text = raw.trim()
 
-    return JSON.parse(jsonStr)
+    // 1. Strip common reasoning/thinking tags that 9router models may emit
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '')
+    text = text.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    text = text.replace(/<\?xml[^>]*>/gi, '')
+    text = text.replace(/^\s*[\r\n]+/, '')
+
+    // 2. If it's wrapped in an outer ```json ... ``` code fence, strip ONLY the outer wrapper
+    const outerFence = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/)
+    if (outerFence) {
+      text = outerFence[1].trim()
+    }
+
+    // 3. Find the outermost JSON object boundaries: from the FIRST { to the LAST }
+    const firstBrace = text.indexOf('{')
+    const lastBrace = text.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      const candidate = text.slice(firstBrace, lastBrace + 1)
+      try {
+        return JSON.parse(candidate)
+      } catch {
+        // Candidate slicing failed, fallback below
+      }
+    }
+
+    // 4. Find the outermost JSON array boundaries: from the FIRST [ to the LAST ]
+    const firstBracket = text.indexOf('[')
+    const lastBracket = text.lastIndexOf(']')
+    if (firstBracket !== -1 && lastBracket > firstBracket) {
+      const candidate = text.slice(firstBracket, lastBracket + 1)
+      try {
+        return JSON.parse(candidate)
+      } catch {
+        // Fallback below
+      }
+    }
+
+    // 5. Truncated JSON string recovery: if the output was cut off by max_tokens
+    // while emitting "markdown_content": "...", extract the unescaped markdown.
+    const marker = '"markdown_content":'
+    const markerIdx = text.indexOf(marker)
+    if (markerIdx !== -1) {
+      const afterMarker = text.slice(markerIdx + marker.length)
+      const quoteIdx = afterMarker.indexOf('"')
+      if (quoteIdx !== -1) {
+        let contentSlice = afterMarker.slice(quoteIdx + 1)
+        for (let i = 0; i < contentSlice.length; i++) {
+          if (contentSlice[i] === '"' && (i === 0 || contentSlice[i - 1] !== '\\')) {
+            contentSlice = contentSlice.slice(0, i)
+            break
+          }
+        }
+        const unescaped = contentSlice
+          .replace(/\\n/g, '\n')
+          .replace(/\\r/g, '\r')
+          .replace(/\\t/g, '\t')
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\')
+
+        if (unescaped.trim().length > 0) {
+          return { markdown_content: unescaped.trim() }
+        }
+      }
+    }
+
+    // 6. Direct Markdown recovery: if model returned direct markdown starting with #
+    const directMd = text.replace(/^```(?:markdown|md)?\s*\n/i, '').replace(/\n```\s*$/i, '').trim()
+    if (directMd.startsWith('#')) {
+      return { markdown_content: directMd }
+    }
+
+    return JSON.parse(text)
   }
 
   /**
@@ -198,16 +269,48 @@ class AnthropicProvider extends BaseProvider {
 class OpenAIProvider extends BaseProvider {
   readonly type = 'OPENAI' as const
 
+  private getBaseUrl(): string | undefined {
+    return this.config.baseUrl?.replace(/\/+$/, '') || undefined
+  }
+
   async testConnection(): Promise<TestConnectionResult> {
     try {
       const { default: OpenAI } = await import('openai')
-      const client = new OpenAI({ apiKey: this.config.apiKey })
-
-      await client.chat.completions.create({
-        model: this.config.model,
-        max_tokens: 10,
-        messages: [{ role: 'user', content: 'ping' }],
+      const client = new OpenAI({
+        apiKey: this.config.apiKey,
+        baseURL: this.getBaseUrl(),
       })
+
+      // First: verify auth + endpoint with models.list()
+      await client.models.list()
+
+      // If a model is configured, also test that specific model with a timeout
+      // to ensure it's available for chat completions
+      if (this.config.model) {
+        try {
+          const completionPromise = client.chat.completions.create({
+            model: this.config.model,
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'ping' }],
+          })
+          // Race with a 10s timeout to avoid hanging on unresponsive models
+          await Promise.race([
+            completionPromise,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('MODEL_TIMEOUT')), 10_000),
+            ),
+          ])
+        } catch (completionErr) {
+          // IMPORTANT: models.list() already succeeded above. So the user's API key
+          // is valid. Any error from chat.completions.create is a MODEL/UPSTREAM
+          // issue, NEVER a credential issue. Always report MODEL_UNAVAILABLE here.
+          const msg = completionErr instanceof Error ? completionErr.message : String(completionErr)
+          return {
+            status: 'MODEL_UNAVAILABLE',
+            message: `Model ${this.config.model} unavailable: ${msg}. Try another model.`,
+          }
+        }
+      }
 
       return { status: 'VALID', message: 'Connection successful' }
     } catch (err) {
@@ -221,7 +324,11 @@ class OpenAIProvider extends BaseProvider {
     options: GenerateOptions = {},
   ): Promise<T> {
     const { default: OpenAI } = await import('openai')
-    const client = new OpenAI({ apiKey: this.config.apiKey })
+    const client = new OpenAI({
+      apiKey: this.config.apiKey,
+      baseURL: this.getBaseUrl(),
+      timeout: 180_000, // 3 minutes timeout for document generation
+    })
 
     const systemContent =
       (options.system ?? '') +
@@ -244,12 +351,17 @@ class OpenAIProvider extends BaseProvider {
   async listModels(): Promise<ModelInfo[]> {
     try {
       const { default: OpenAI } = await import('openai')
-      const client = new OpenAI({ apiKey: this.config.apiKey })
+      const client = new OpenAI({
+        apiKey: this.config.apiKey,
+        baseURL: this.getBaseUrl(),
+      })
       const list = await client.models.list()
 
-      return list.data
-        .filter((m) => m.id.startsWith('gpt-'))
-        .map((m) => ({ id: m.id, name: m.id }))
+      return list.data.map((m) => ({
+        id: m.id,
+        name: m.id,
+        contextWindow: (m as { context_window?: number }).context_window,
+      }))
     } catch {
       return [
         { id: 'gpt-4o', name: 'GPT-4o', contextWindow: 128000 },
@@ -318,21 +430,42 @@ class GeminiProvider extends BaseProvider {
 class OpenRouterProvider extends BaseProvider {
   readonly type = 'OPENROUTER' as const
 
-  private readonly baseURL = 'https://openrouter.ai/api/v1'
+  private getBaseUrl(): string {
+    return this.config.baseUrl?.replace(/\/+$/, '') || 'https://openrouter.ai/api/v1'
+  }
 
   async testConnection(): Promise<TestConnectionResult> {
     try {
       const { default: OpenAI } = await import('openai')
       const client = new OpenAI({
         apiKey: this.config.apiKey,
-        baseURL: this.baseURL,
+        baseURL: this.getBaseUrl(),
       })
 
-      await client.chat.completions.create({
-        model: this.config.model,
-        max_tokens: 10,
-        messages: [{ role: 'user', content: 'ping' }],
-      })
+      // First: verify auth with models endpoint
+      await client.models.list()
+
+      if (this.config.model) {
+        try {
+          const completionPromise = client.chat.completions.create({
+            model: this.config.model,
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'ping' }],
+          })
+          await Promise.race([
+            completionPromise,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('MODEL_TIMEOUT')), 10_000),
+            ),
+          ])
+        } catch (completionErr) {
+          const msg = completionErr instanceof Error ? completionErr.message : String(completionErr)
+          return {
+            status: 'MODEL_UNAVAILABLE',
+            message: `Model ${this.config.model} unavailable: ${msg}. Try another model.`,
+          }
+        }
+      }
 
       return { status: 'VALID', message: 'Connection successful' }
     } catch (err) {
@@ -348,7 +481,8 @@ class OpenRouterProvider extends BaseProvider {
     const { default: OpenAI } = await import('openai')
     const client = new OpenAI({
       apiKey: this.config.apiKey,
-      baseURL: this.baseURL,
+      baseURL: this.getBaseUrl(),
+      timeout: 180_000, // 3 minutes timeout for document generation
     })
 
     const systemContent =
@@ -370,8 +504,9 @@ class OpenRouterProvider extends BaseProvider {
   }
 
   async listModels(): Promise<ModelInfo[]> {
+    const baseUrl = this.getBaseUrl()
     try {
-      const res = await fetch(`${this.baseURL}/models`, {
+      const res = await fetch(`${baseUrl}/models`, {
         headers: { Authorization: `Bearer ${this.config.apiKey}` },
       })
       if (!res.ok) throw new Error('Failed to fetch models')

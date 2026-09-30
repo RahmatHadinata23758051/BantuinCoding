@@ -7,8 +7,11 @@ const SAFE_ERROR_PATTERNS: Array<[RegExp, string]> = [
   [/invalid json body/i, 'Invalid JSON body'],
   [/invalid input/i, 'Invalid input'],
   [/rate limit|429/i, 'Provider rate limit exceeded. Please wait and retry.'],
+  // Model-specific errors first — upstream model issues should not blame user's API key
+  [/model.*(not found|does not exist|invalid|unavailable|no active credentials for provider)/i, 'The selected provider model is unavailable. Choose another model and retry.'],
+  [/no active credentials for provider/i, 'The selected model is currently unavailable in this provider. Choose another model and retry.'],
   [/unauthorized|invalid api key|authentication|401/i, 'Provider rejected the configured credentials. Please verify your API key.'],
-  [/model.*(not found|does not exist|invalid|unavailable)/i, 'The selected provider model is unavailable. Choose another model and retry.'],
+  [/rate limit|429/i, 'Provider rate limit exceeded. Please wait and retry.'],
   [/network|fetch failed|econnrefused|enotfound/i, 'Network error while contacting the provider. Check connectivity and retry.'],
   [/schema|validation|parse/i, 'Provider response could not be validated. Retry or choose a more capable model.'],
 ]
