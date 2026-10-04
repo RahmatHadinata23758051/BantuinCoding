@@ -1,10 +1,18 @@
 'use client'
 
-import { AlertTriangle, CheckCircle2, ChevronDown, KeyRound, LoaderCircle, Search, Server, ShieldCheck, RefreshCw } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  KeyRound,
+  LoaderCircle,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { cn } from '@/lib/ui'
-
 import { Button, Input, Panel, Select, StatusBadge } from './ui'
 
 interface ProviderMeta {
@@ -15,6 +23,17 @@ interface ProviderMeta {
   status?: string
   message?: string
   error?: string
+}
+
+interface SavedKeyItem {
+  id: string
+  name: string
+  provider: string
+  model: string
+  baseUrl?: string | null
+  isActive: boolean
+  lastValidated?: string | null
+  keyHint?: string
 }
 
 interface ModelInfo {
@@ -39,11 +58,16 @@ const DEFAULT_MODELS: Record<Provider, string> = {
   OPENROUTER: 'anthropic/claude-opus-5-5',
 }
 
-// Providers that support custom base URL (OpenAI-compatible)
 const CUSTOM_URL_PROVIDERS: ReadonlySet<Provider> = new Set<Provider>(['OPENAI', 'OPENROUTER'])
 
 export function ProviderSetupPanel() {
   const [meta, setMeta] = useState<ProviderMeta | null>(null)
+  const [savedKeys, setSavedKeys] = useState<SavedKeyItem[]>([])
+  const [loadingKeys, setLoadingKeys] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  // Form state
+  const [keyName, setKeyName] = useState('')
   const [provider, setProvider] = useState<Provider>('ANTHROPIC')
   const [model, setModel] = useState(DEFAULT_MODELS.ANTHROPIC)
   const [apiKey, setApiKey] = useState('')
@@ -58,6 +82,35 @@ export function ProviderSetupPanel() {
   const [modelSearch, setModelSearch] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const loadSavedKeys = async () => {
+    setLoadingKeys(true)
+    try {
+      const res = await fetch('/api/provider/keys')
+      if (res.ok) {
+        const data = (await res.json()) as { keys?: SavedKeyItem[] }
+        setSavedKeys(data.keys || [])
+        const activeKey = data.keys?.find((k) => k.isActive)
+        if (activeKey) {
+          setMeta({
+            configured: true,
+            provider: activeKey.provider,
+            model: activeKey.model,
+            configuredAt: activeKey.lastValidated || undefined,
+          })
+        }
+      }
+    } catch {} finally {
+      setLoadingKeys(false)
+    }
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadSavedKeys()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
+
   const runAutoTest = async (key: string, providerName: Provider, customUrl?: string) => {
     if (!key || key.length < 8) {
       setAvailableModels([])
@@ -67,10 +120,8 @@ export function ProviderSetupPanel() {
     }
 
     setAutoTestStatus('testing')
-    // Clear stale error banner from previous failed tests
     setMessage(null)
 
-    // First: fetch available models without requiring a specific model
     try {
       const modelsResponse = await fetch('/api/provider/models', {
         method: 'POST',
@@ -91,7 +142,6 @@ export function ProviderSetupPanel() {
         return
       }
 
-      // Fallback: if provider doesn't support model listing, try test connection
       const testResponse = await fetch('/api/provider/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,68 +172,6 @@ export function ProviderSetupPanel() {
   }
 
   useEffect(() => {
-    let active = true
-
-    const restoreSession = async () => {
-      try {
-        const response = await fetch('/api/provider/configure')
-        const data = (await response.json()) as ProviderMeta
-
-        if (data.configured) {
-          if (active) setMeta(data)
-          return
-        }
-
-        // Server in-memory session was lost (e.g. server rebuild/restart).
-        // Check if current browser tab has session-scoped credentials to restore.
-        if (typeof window !== 'undefined' && window.sessionStorage) {
-          const stored = window.sessionStorage.getItem('byok_session')
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored) as {
-                provider?: Provider
-                model?: string
-                apiKey?: string
-                baseUrl?: string
-              }
-              if (parsed.apiKey && parsed.provider && parsed.model) {
-                const res = await fetch('/api/provider/configure', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(parsed),
-                })
-                if (res.ok) {
-                  const restoredMeta = (await res.json()) as ProviderMeta
-                  if (active) {
-                    setMeta(restoredMeta)
-                    setProvider(parsed.provider)
-                    setModel(parsed.model)
-                    if (parsed.baseUrl) setBaseUrl(parsed.baseUrl)
-                    // Trigger loading models for the restored provider
-                    void runAutoTest(parsed.apiKey, parsed.provider, parsed.baseUrl)
-                  }
-                  return
-                }
-              }
-            } catch {}
-          }
-        }
-
-        if (active) setMeta({ configured: false })
-      } catch {
-        if (active) setMeta({ configured: false })
-      }
-    }
-
-    void restoreSession()
-
-    return () => {
-      active = false
-    }
-  }, [])
-
-  // Auto-test on API key or base URL change with debounce
-  useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
 
     if (apiKey.length < 8) {
@@ -204,9 +192,35 @@ export function ProviderSetupPanel() {
     }
   }, [apiKey, provider, baseUrl])
 
-  async function handleTestConnection() {
-    if (!apiKey) return
+  const handleActivateKey = async (keyId: string) => {
+    try {
+      const res = await fetch(`/api/provider/keys/${keyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: true }),
+      })
+      if (res.ok) {
+        const data = (await res.json()) as { key: SavedKeyItem }
+        setMessage({ type: 'ok', text: `Switched active provider to ${data.key.name} (${data.key.provider} / ${data.key.model})` })
+        await loadSavedKeys()
+      }
+    } catch {
+      setMessage({ type: 'err', text: 'Failed to switch provider key.' })
+    }
+  }
 
+  const handleDeleteKey = async (keyId: string, name: string) => {
+    if (!confirm(`Delete key "${name}" from vault?`)) return
+    try {
+      const res = await fetch(`/api/provider/keys/${keyId}`, { method: 'DELETE' })
+      if (res.ok) {
+        await loadSavedKeys()
+      }
+    } catch {}
+  }
+
+  const handleTestConnection = async () => {
+    if (!apiKey) return
     setTesting(true)
     setMessage(null)
 
@@ -214,20 +228,12 @@ export function ProviderSetupPanel() {
       const response = await fetch('/api/provider/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider,
-          model,
-          apiKey,
-          baseUrl: baseUrl || undefined,
-        }),
+        body: JSON.stringify({ provider, model, apiKey, baseUrl: baseUrl || undefined }),
       })
       const data = (await response.json()) as TestResult
 
       if (!response.ok) {
-        setMessage({
-          type: 'err',
-          text: data.message ?? 'Connection test failed.',
-        })
+        setMessage({ type: 'err', text: data.message ?? 'Connection test failed.' })
         return
       }
 
@@ -235,86 +241,49 @@ export function ProviderSetupPanel() {
         setMessage({ type: 'ok', text: `Connection successful: ${provider}` })
         setAvailableModels(data.models ?? [])
         setModelsLoaded(true)
-        if (data.models && data.models.length > 0 && !data.models.some((m) => m.id === model)) {
-          setModel(data.models[0].id)
-        }
       } else {
-        const errText = data.message ?? 'Connection failed.'
-        // If models are already loaded, show model-specific error without wiping the list
-        if (modelsLoaded) {
-          setMessage({ type: 'err', text: `Model "${model}" unavailable: ${errText}. Try another model.` })
-        } else {
-          setMessage({ type: 'err', text: errText })
-          setAvailableModels([])
-          setModelsLoaded(false)
-        }
+        setMessage({ type: 'err', text: data.message ?? 'Connection failed.' })
       }
     } catch {
-      if (!modelsLoaded) {
-        setMessage({ type: 'err', text: 'Network error. Check your connection and retry.' })
-        setAvailableModels([])
-        setModelsLoaded(false)
-      } else {
-        setMessage({ type: 'err', text: 'Network error. Your saved models are still available.' })
-      }
+      setMessage({ type: 'err', text: 'Network error. Check connection.' })
     } finally {
       setTesting(false)
     }
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  const handleSaveToVault = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setLoading(true)
     setMessage(null)
 
+    const nameToUse = keyName.trim() || `${provider} - ${model}`
+
     try {
-      const response = await fetch('/api/provider/configure', {
+      const res = await fetch('/api/provider/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: nameToUse,
           provider,
           model,
           apiKey,
           baseUrl: baseUrl || undefined,
         }),
       })
-      const data = (await response.json()) as ProviderMeta
 
-      if (!response.ok) {
-        setMessage({
-          type: 'err',
-          text: data.error ?? 'Provider configuration could not be saved.',
-        })
+      const data = (await res.json()) as { key?: SavedKeyItem; error?: string; message?: string }
+      if (!res.ok) {
+        setMessage({ type: 'err', text: data.error || data.message || 'Failed to save key.' })
         return
       }
 
-      if (data.status === 'VALID') {
-        setMessage({ type: 'ok', text: `Connected: ${data.provider} / ${data.model}` })
-        setMeta({
-          configured: true,
-          provider: data.provider,
-          model: data.model,
-          configuredAt: data.configuredAt,
-        })
-        // Save session-scoped credentials in current browser tab to survive dev server rebuilds
-        if (typeof window !== 'undefined' && window.sessionStorage) {
-          window.sessionStorage.setItem(
-            'byok_session',
-            JSON.stringify({
-              provider,
-              model,
-              apiKey,
-              baseUrl: baseUrl || undefined,
-            }),
-          )
-        }
-        setApiKey('')
-        setOpen(false)
-      } else {
-        setMessage({ type: 'err', text: data.message ?? 'Connection failed.' })
-      }
+      setMessage({ type: 'ok', text: `Key "${nameToUse}" saved and activated successfully!` })
+      setApiKey('')
+      setKeyName('')
+      setShowAddForm(false)
+      await loadSavedKeys()
     } catch {
-      setMessage({ type: 'err', text: 'Network error. Check your connection and retry.' })
+      setMessage({ type: 'err', text: 'Network error saving key.' })
     } finally {
       setLoading(false)
     }
@@ -324,117 +293,244 @@ export function ProviderSetupPanel() {
   const showModelSelect = modelsLoaded && availableModels.length > 0
 
   return (
-    <Panel className="overflow-hidden">
+    <Panel className="overflow-hidden border border-slate-200/80 bg-white shadow-sm rounded-xl">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-controls="provider-setup-content"
         className={cn(
-          'flex w-full items-center justify-between gap-4 px-4 py-4 text-left sm:px-5',
-          isConfigured ? 'bg-[var(--mint)]' : 'bg-[var(--electric-yellow)]',
+          'flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors',
+          isConfigured ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'bg-amber-50/50 hover:bg-amber-50',
         )}
       >
-        <span className="flex min-w-0 items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-xs)]">
-            {isConfigured ? (
-              <CheckCircle2 size={20} strokeWidth={2.5} aria-hidden="true" />
-            ) : (
-              <KeyRound size={20} strokeWidth={2.5} aria-hidden="true" />
-            )}
+        <span className="flex min-w-0 items-center gap-3">
+          <span className={cn(
+            'flex size-10 shrink-0 items-center justify-center rounded-lg border text-sm',
+            isConfigured ? 'border-emerald-200 bg-emerald-100/70 text-emerald-800' : 'border-amber-200 bg-amber-100/70 text-amber-800',
+          )}>
+            {isConfigured ? <CheckCircle2 size={18} strokeWidth={2.5} /> : <KeyRound size={18} strokeWidth={2.5} />}
           </span>
           <span className="min-w-0">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-black">AI provider</span>
+              <span className="text-sm font-bold text-slate-900">AI Provider Vault</span>
               <StatusBadge tone={isConfigured ? 'success' : 'pending'}>
-                {isConfigured ? 'configured' : 'action required'}
+                {isConfigured ? 'Active & Ready' : 'Key Required'}
               </StatusBadge>
             </span>
-            <span className="mt-1 block truncate font-mono text-xs font-bold">
+            <span className="mt-0.5 block truncate font-mono text-xs text-slate-500">
               {isConfigured && meta?.provider
                 ? `${meta.provider} / ${meta.model}`
-                : 'Add a session key before analysis and generation.'}
+                : 'Save multiple provider profiles and switch seamlessly.'}
             </span>
           </span>
         </span>
         <ChevronDown
-          aria-hidden="true"
-          size={22}
-          className={cn('shrink-0 transition-transform', open && 'rotate-180')}
+          size={18}
+          className={cn('shrink-0 text-slate-400 transition-transform duration-200', open && 'rotate-180')}
         />
       </button>
 
-      <div aria-live="polite">
-        {message && (
-          <div
-            role={message.type === 'err' ? 'alert' : 'status'}
-            className={cn(
-              'flex items-start gap-3 border-t-2 border-[var(--ink)] px-4 py-3 text-sm font-bold sm:px-5',
-              message.type === 'ok' ? 'bg-[var(--mint-dim)]' : 'bg-[var(--action-red-dim)]',
-            )}
-          >
-            {message.type === 'ok' ? (
-              <CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-            ) : (
-              <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-            )}
-            <span>{message.text}</span>
-          </div>
-        )}
-      </div>
+      {message && (
+        <div
+          role={message.type === 'err' ? 'alert' : 'status'}
+          className={cn(
+            'flex items-center gap-2.5 border-t px-5 py-2.5 text-xs font-semibold',
+            message.type === 'ok' ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-rose-100 bg-rose-50 text-rose-800',
+          )}
+        >
+          {message.type === 'ok' ? <CheckCircle2 size={15} className="shrink-0" /> : <AlertTriangle size={15} className="shrink-0" />}
+          <span>{message.text}</span>
+        </div>
+      )}
 
       {open && (
-        <div id="provider-setup-content" className="border-t-2 border-[var(--ink)] bg-[var(--paper-raised)] p-4 sm:p-5">
-          <form onSubmit={handleSubmit} className="grid gap-5" aria-busy={loading}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="provider" className="text-sm font-black">
-                  Provider
-                </label>
-                <Select
-                  id="provider"
-                  value={provider}
-                  onChange={(event) => {
-                    const nextProvider = event.target.value as Provider
-                    setProvider(nextProvider)
-                    setModel(DEFAULT_MODELS[nextProvider])
-                    setAvailableModels([])
-                    setModelsLoaded(false)
-                  }}
+        <div className="border-t border-slate-100 p-5 space-y-6">
+          {/* Saved Keys Vault Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Saved Provider Keys</h3>
+              <p className="text-xs text-slate-500">Manage multiple keys across providers and switch anytime.</p>
+            </div>
+            <Button
+              type="button"
+              variant={showAddForm ? 'neutral' : 'secondary'}
+              size="sm"
+              onClick={() => setShowAddForm((v) => !v)}
+              className="gap-1.5 text-xs font-semibold"
+            >
+              <Plus size={14} className={cn('transition-transform', showAddForm && 'rotate-45')} />
+              {showAddForm ? 'Cancel' : 'Add New Key'}
+            </Button>
+          </div>
+
+          {/* Saved Keys List */}
+          {savedKeys.length > 0 ? (
+            <div className="divide-y divide-slate-100 rounded-lg border border-slate-200/80 bg-slate-50/50 overflow-hidden">
+              {savedKeys.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    'flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 transition-colors',
+                    item.isActive ? 'bg-emerald-50/60' : 'hover:bg-white',
+                  )}
                 >
-                  {PROVIDERS.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </Select>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => handleActivateKey(item.id)}
+                      className={cn(
+                        'flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors',
+                        item.isActive
+                          ? 'border-emerald-600 bg-emerald-600 text-white'
+                          : 'border-slate-300 hover:border-slate-400 bg-white',
+                      )}
+                      title={item.isActive ? 'Active Key' : 'Click to activate this key'}
+                    >
+                      {item.isActive && <Check size={12} strokeWidth={3} />}
+                    </button>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-900 truncate">{item.name}</span>
+                        {item.isActive && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-800">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-500 font-mono">
+                        <span className="font-semibold text-slate-700">{item.provider}</span>
+                        <span>•</span>
+                        <span className="text-indigo-600 font-medium">{item.model}</span>
+                        {item.baseUrl && (
+                          <>
+                            <span>•</span>
+                            <span className="text-slate-400 truncate max-w-[180px]">{item.baseUrl}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center">
+                    {!item.isActive && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleActivateKey(item.id)}
+                        className="text-xs h-7 px-2.5 font-medium"
+                      >
+                        Activate
+                      </Button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteKey(item.id, item.name)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                      title="Delete key"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !loadingKeys && (
+            <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
+              No API keys saved in your vault yet. Add one below to get started.
+            </div>
+          )}
+
+          {/* Add Key Form (Collapsible or toggle) */}
+          {(showAddForm || savedKeys.length === 0) && (
+            <form onSubmit={handleSaveToVault} className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Add Key to Vault</span>
+                <span className="text-xs text-slate-400 font-mono">Encrypted with AES-256</span>
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label htmlFor="model" className="text-sm font-black">
-                  Model
-                </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label htmlFor="keyName" className="text-xs font-bold text-slate-700">Profile / Key Name</label>
+                  <Input
+                    id="keyName"
+                    value={keyName}
+                    onChange={(e) => setKeyName(e.target.value)}
+                    placeholder="e.g. 9Router Local, OpenRouter Free"
+                    className="text-xs bg-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="provider" className="text-xs font-bold text-slate-700">Provider</label>
+                  <Select
+                    id="provider"
+                    value={provider}
+                    onChange={(e) => {
+                      const next = e.target.value as Provider
+                      setProvider(next)
+                      setModel(DEFAULT_MODELS[next])
+                    }}
+                    className="text-xs bg-white"
+                  >
+                    {PROVIDERS.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="apiKey" className="text-xs font-bold text-slate-700">API Key</label>
+                <div className="relative">
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    required
+                    placeholder="Paste provider key"
+                    className="text-xs font-mono bg-white"
+                  />
+                  {autoTestStatus !== 'idle' && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                      {autoTestStatus === 'testing' && <LoaderCircle size={14} className="animate-spin text-slate-400" />}
+                      {autoTestStatus === 'valid' && <CheckCircle2 size={14} className="text-emerald-600" />}
+                      {autoTestStatus === 'invalid' && <AlertTriangle size={14} className="text-rose-600" />}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {CUSTOM_URL_PROVIDERS.has(provider) && (
+                <div className="space-y-1">
+                  <label htmlFor="baseUrl" className="text-xs font-bold text-slate-700">Custom Base URL (optional)</label>
+                  <Input
+                    id="baseUrl"
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder="e.g. http://127.0.0.1:20128/v1"
+                    className="text-xs font-mono bg-white"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label htmlFor="model" className="text-xs font-bold text-slate-700">Model</label>
                 {showModelSelect ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="relative">
-                      <Input
-                        id="model-search"
-                        type="search"
-                        value={modelSearch}
-                        onChange={(event) => setModelSearch(event.target.value)}
-                        placeholder="Search models..."
-                        className="font-mono pr-10"
-                      />
-                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--paper-muted)]" size={16} aria-hidden="true" />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Input
+                      type="search"
+                      value={modelSearch}
+                      onChange={(e) => setModelSearch(e.target.value)}
+                      placeholder="Search models..."
+                      className="text-xs bg-white font-mono"
+                    />
                     <Select
                       id="model"
                       value={model}
-                      onChange={(event) => {
-                        setModel(event.target.value)
-                        setMessage(null)
-                      }}
-                      required
+                      onChange={(e) => setModel(e.target.value)}
+                      className="text-xs bg-white font-mono"
                     >
                       {availableModels
                         .filter((m) =>
@@ -443,127 +539,42 @@ export function ProviderSetupPanel() {
                           m.id.toLowerCase().includes(modelSearch.toLowerCase()),
                         )
                         .map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} {m.contextWindow && `(${m.contextWindow.toLocaleString()} ctx)`}
-                          </option>
+                          <option key={m.id} value={m.id}>{m.name}</option>
                         ))}
                     </Select>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      id="model"
-                      type="text"
-                      value={model}
-                      onChange={(event) => setModel(event.target.value)}
-                      required
-                      className="font-mono flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleTestConnection}
-                      disabled={testing || !apiKey}
-                      className="shrink-0"
-                      aria-label="Test connection and fetch models"
-                    >
-                      {testing ? <LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> : <RefreshCw size={16} aria-hidden="true" />}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="apiKey" className="text-sm font-black">
-                API key
-              </label>
-              <div className="relative">
-                <Input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  required
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="Paste a provider key for this server session"
-                  className="font-mono"
-                />
-                {autoTestStatus !== 'idle' && (
-                  <span
-                    className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs font-mono font-bold"
-                    aria-live="polite"
-                  >
-                    {autoTestStatus === 'testing' && (
-                      <LoaderCircle className="animate-spin text-[var(--cobalt)]" size={16} aria-hidden="true" />
-                    )}
-                    {autoTestStatus === 'valid' && (
-                      <CheckCircle2 className="text-[var(--pass-teal)]" size={16} aria-hidden="true" />
-                    )}
-                    {autoTestStatus === 'invalid' && (
-                      <AlertTriangle className="text-[var(--action-red)]" size={16} aria-hidden="true" />
-                    )}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-start gap-2 text-xs leading-5 text-[var(--paper-muted)]">
-                <ShieldCheck className="mt-0.5 shrink-0 text-[var(--pass-teal)]" size={16} aria-hidden="true" />
-                <p>
-                  Session-scoped only. The full key is never returned, logged, stored in the database,
-                  added to generated Markdown, or included in a ZIP.
-                </p>
-                {autoTestStatus === 'valid' && (
-                  <span className="text-[var(--pass-teal)]">Auto-validated — models loaded</span>
-                )}
-                {autoTestStatus === 'invalid' && (
-                  <span className="text-[var(--action-red)]">Invalid key or no models found</span>
-                )}
-              </div>
-            </div>
-
-            {CUSTOM_URL_PROVIDERS.has(provider) && (
-              <div className="flex flex-col gap-2">
-                <label htmlFor="baseUrl" className="text-sm font-black">
-                  Custom Base URL <span className="text-[var(--paper-muted)] font-normal">(optional)</span>
-                </label>
-                <div className="relative">
-                  <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--paper-muted)]" size={16} aria-hidden="true" />
                   <Input
-                    id="baseUrl"
-                    type="url"
-                    value={baseUrl}
-                    onChange={(event) => setBaseUrl(event.target.value)}
-                    placeholder="e.g. http://127.0.0.1:20128/v1"
-                    className="font-mono pl-10"
-                    autoComplete="off"
-                    spellCheck={false}
+                    id="model"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="text-xs bg-white font-mono"
                   />
-                </div>
-                <p className="text-xs leading-5 text-[var(--paper-muted)]">
-                  Use a custom endpoint for OpenAI-compatible providers (e.g. 9router local at <code className="font-mono">http://127.0.0.1:20128/v1</code>).
-                </p>
+                )}
               </div>
-            )}
 
-            <div className="flex flex-wrap gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleTestConnection}
-                disabled={testing || !apiKey}
-                className="w-full sm:w-auto"
-              >
-                {testing && <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />}
-                {testing ? 'Testing…' : 'Test Connection'}
-              </Button>
-              <Button type="submit" disabled={loading || !apiKey} className="w-full sm:w-auto">
-                {loading && <LoaderCircle className="animate-spin" size={17} aria-hidden="true" />}
-                {loading ? 'Testing connection…' : 'Test and Save'}
-              </Button>
-            </div>
-          </form>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleTestConnection}
+                  disabled={testing || !apiKey}
+                  className="text-xs"
+                >
+                  {testing ? 'Testing...' : 'Test Connection'}
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={loading || !apiKey}
+                  className="text-xs font-semibold"
+                >
+                  {loading ? 'Saving...' : 'Save & Encrypt to Vault'}
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
       )}
     </Panel>
