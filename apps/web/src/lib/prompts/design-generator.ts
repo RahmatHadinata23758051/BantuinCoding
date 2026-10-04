@@ -253,19 +253,26 @@ DESIGN SYSTEM DELIVERABLES (IN EVERY GENERATED DESIGN.MD):
 4. Typography System:
    - Google Fonts pairing (e.g. Plus Jakarta Sans + Inter) with import URL.
    - Complete modular scale (Display, H1-H4, Body, Caption, Mono) with exact font-size, line-height, and tracking.
-5. Signature Screen Blueprints:
-   - LUXURY SPLIT-SCREEN AUTH (Login & Register): 60% visual showcase column (ambient mesh/texture, display headline, live social proof pill, floating metrics card) + 40% high-intent form card (branded header, 1px bordered inputs with focus ring, password toggle, OAuth pill buttons, tactile submit button). NO plain Laravel Breeze centered white boxes!
-   - BENTO-GRID DASHBOARD: 12-column responsive layout with 4 distinct card hierarchy tiles (Hero Metric, Live Stream, KPI Cards, Workflow Queue).
-   - FILTERABLE DATA TABLE: Toolbar with search + faceted chips + density toggle, sortable sticky headers, status pills with micro-dots, pagination.
-6. Iconography & Assets:
-   - Lucide Icons (stroke 1.5px/1.75px, optical sizes 16/20/24px). Strictly ZERO emojis as UI icons.
+5. SIGNATURE SCREEN BLUEPRINTS (only when appropriate for this project):
+   - AUTHENTICATION (Login & Register): Design a domain-specific entry experience, NOT a generic centered white card. It MAY use a split-screen composition only when it strengthens this product's story: a relevant product preview, domain-relevant visual anchor, editorial composition, or purposeful illustration direction alongside a high-intent form. Define responsive/mobile behavior, copy tone, password visibility, loading, invalid credential, network failure, recovery, and session-expired states.
+   - AUTH ANTI-PATTERNS (always reject): Default Laravel/Breeze centered card, random stock imagery, random 3D illustration, fake metrics/social proof, generic 'Welcome to the future' copy, giant logo with no brand context, decorative gradients, or arbitrary icon tiles.
+   - BENTO-GRID DASHBOARD: Use only when the project's information architecture benefits from distinct card hierarchy. Define a 12-column responsive layout with purposeful Hero Metric, Live Stream, KPI, or Workflow tiles; never invent fake metrics.
+   - FILTERABLE DATA TABLE: Define toolbar search/facets/density, sortable sticky headers, semantic status indicators, keyboard navigation, and pagination for data-heavy products.
+6. ICONOGRAPHY & ASSET DIRECTION (semantic, never decorative):
+   - Select ONE coherent professional family based on the project: Lucide, Tabler, Phosphor, Heroicons, Iconoir, or Material Symbols.
+   - Specify exact family, outline/filled style, stroke width (1.5px or 2px), optical sizes (16/20/24px), alignment, and semantic usage.
+   - Every icon MUST represent a meaningful action, state, relationship, or navigation destination. If an icon is removed, the UI meaning must not be lost.
+   - Prefer icon + visible label for unfamiliar actions. Icon-only controls MUST include an accessible name and tooltip.
+   - STRICTLY REJECT: random repeated icons in every card, emoji as primary UI icons, magic sparkle for every AI feature, gradient icon containers, repeated pastel icon tiles, mixed icon families, semantic-free decoration, and inaccessible icon-only buttons.
+   - Define a text fallback or screen-reader label for every functional icon.
 7. Motion Choreography (Anime.js / Fluid Spring):
    - Custom easing curve: cubic-bezier(0.16, 1, 0.3, 1), active:scale-[0.98] press compression, -1px to -2px hover lifts.
+   - Specify durations for micro interaction (100-150ms), component transition (200-300ms), and page transition (300-400ms).
    - Mandatory prefers-reduced-motion fallback.
 8. Ready-to-Use Tokens:
    - Complete CSS Custom Properties (:root { ... } and .dark { ... }).
    - Complete Tailwind CSS config (theme.extend).
-9. Anti-AI-Slop Checklist: Explicit rejections for this project.`
+9. Anti-AI-Slop Checklist: Explicit rejections for this project, including generic login cards, random icon repetition, emoji icons, fake metrics, fake product screenshots, decorative gradients, and unstyled library defaults.`
 
 export function buildDesignGeneratorUserPrompt(
   projectName: string,
@@ -281,13 +288,12 @@ ${contextJson}
 """
 
 DESIGN BRIEF & INSTRUCTIONS:
-1. Analyze the project domain, classification, target users, and summary from the Canonical Project Context.
+1. Analyze the project domain, classification, target users, summary, and design_direction from the Canonical Project Context.
 2. Select the single best-fitting design archetype from the Curated Reference Library (styles.refero.design, saasframe.io, land-book.com, mobbin.com, godly.website, bentogrids.com). DO NOT default to Neo-Brutalism unless explicitly requested!
-3. BRAND ASSETS: Create a unique Logo concept and provide COMPLETE INLINE SVG CODE for both the Brand Logo (180x40) and Adaptive Favicon (32x32).
-4. AUTH & SIGNATURE SCREENS: Provide architectural blueprints for:
-   - Luxury Split-Screen Auth (Login / Register) with visual showcase + high-intent form card (strictly avoid plain centered white boxes).
-   - Bento-Grid Dashboard (12-column responsive card layout).
-   - Filterable Data Table (search toolbar, status chips, pagination).
-5. TYPOGRAPHY & COLOR: Prescribe professional font pairings (e.g. Plus Jakarta Sans + Inter), 60-30-10 palette with multi-stop ambient shadows, and complete copy-pasteable CSS Variables + Tailwind config.
-6. Generate the complete, project-specific DESIGN.md document output according to the schema.`
+3. BRAND ASSETS: Create a unique contextual logo concept and complete inline SVG for a brand mark and favicon. Do not use generic checkmarks, cubes, sparkles, or random geometric shapes.
+4. AUTH & SIGNATURE SCREENS: Provide blueprints only for screens relevant to this project. If authentication exists, create a domain-specific login/register experience with purposeful visual anchor, meaningful copy, responsive behavior, and complete recovery/error/loading states. Never use a generic centered login card, random stock image, fake metrics, or decorative icon tiles.
+5. ICONOGRAPHY: Choose one professional icon family and specify semantic usage, stroke width, optical sizes, alignment, accessible labels, and when visible text must accompany an icon. No emojis or decorative repeated icons.
+6. DASHBOARD & DATA VIEWS: If relevant, define a purposeful bento dashboard and/or filterable data table based on actual project data; never invent fake metrics.
+7. TYPOGRAPHY & COLOR: Prescribe domain-appropriate font pairings (e.g. Plus Jakarta Sans + Inter, Satoshi + Manrope, Instrument Serif + Instrument Sans), 60-30-10 palette with WCAG AA contrast, exact type scale, and complete copy-pasteable CSS Variables + Tailwind config.
+8. Generate the complete, project-specific DESIGN.md document output according to the schema.`
 }
