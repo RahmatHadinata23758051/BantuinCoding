@@ -12,6 +12,7 @@ import type { ProjectStatus } from '@repo/types'
 
 vi.mock('@/lib/byok/session-store', () => ({
   hasProviderSession: vi.fn(() => true),
+  restoreProviderSession: vi.fn(async () => null),
 }))
 
 vi.mock('@repo/db', () => ({

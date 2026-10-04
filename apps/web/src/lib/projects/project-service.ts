@@ -1,7 +1,7 @@
 import { db } from '@repo/db'
 import type { ProjectStatus } from '@repo/types'
 import { z } from 'zod'
-import { hasProviderSession } from '@/lib/byok/session-store'
+import { hasProviderSession, restoreProviderSession } from '@/lib/byok/session-store'
 
 // ============================================================
 // Project State Machine
@@ -68,7 +68,10 @@ export async function requireProjectAction(
   }
 
   if (AI_BACKED_ACTIONS.has(action) && !hasProviderSession(userId)) {
-    throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
+    const restored = await restoreProviderSession(userId)
+    if (!restored) {
+      throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
+    }
   }
 
   return project

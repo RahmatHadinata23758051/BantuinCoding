@@ -1,4 +1,6 @@
 import type { AIProviderConfig, AIProviderType } from '@repo/types'
+import { db } from '@repo/db'
+import { decryptSecret } from '@/lib/security/encryption'
 
 // ============================================================
 // BYOK Session Store
@@ -71,13 +73,37 @@ export function setProviderSession(
  */
 export function getProviderConfig(userId: string): AIProviderConfig | null {
   const session = getActiveSession(userId)
-  if (!session) return null
-  return {
-    provider: session.provider,
-    model: session.model,
-    apiKey: session._apiKey,
-    baseUrl: session.baseUrl,
+  if (session) {
+    return {
+      provider: session.provider,
+      model: session.model,
+      apiKey: session._apiKey,
+      baseUrl: session.baseUrl,
+    }
   }
+
+  // Restore the active encrypted vault key after a process restart.
+  // This is intentionally synchronous at the trust boundary; callers already
+  // require a provider session before starting AI work.
+  // The async restoration happens through restoreProviderSession below.
+  return null
+}
+
+export async function restoreProviderSession(userId: string): Promise<AIProviderConfig | null> {
+  const active = await db.providerKey.findFirst({
+    where: { userId, isActive: true },
+    orderBy: { updatedAt: 'desc' },
+  })
+  if (!active) return null
+
+  const config: AIProviderConfig = {
+    provider: active.provider as AIProviderType,
+    model: active.model,
+    apiKey: decryptSecret(active.encryptedKey),
+    baseUrl: active.baseUrl ?? undefined,
+  }
+  setProviderSession(userId, config)
+  return config
 }
 
 /**
