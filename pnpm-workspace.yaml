@@ -8,3 +8,5 @@ allowBuilds:
   prisma: true
   unrs-resolver: true
   tsx: true
+  '@parcel/watcher': true
+  '@swc/core': true
