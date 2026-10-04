@@ -18,9 +18,32 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  projects Project[]
+  projects     Project[]
+  providerKeys ProviderKey[]
 
   @@map("users")
+}
+
+// ============================================================
+// Provider Key Vault
+// ============================================================
+model ProviderKey {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  name          String
+  provider      String
+  model         String
+  encryptedKey  String   @map("encrypted_key") @db.Text
+  baseUrl       String?  @map("base_url")
+  isActive      Boolean  @default(false) @map("is_active")
+  lastValidated DateTime? @map("last_validated")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@map("provider_keys")
 }
 
 // ============================================================
