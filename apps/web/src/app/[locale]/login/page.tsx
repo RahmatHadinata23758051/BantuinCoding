@@ -7,7 +7,7 @@ import { Suspense, useState } from 'react'
 
 import { loginAction } from '@/lib/auth/actions'
 
-import { Button, Caption, Input, Panel, StatusBadge } from '../components/ui'
+import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
 
 export default function LoginPage() {
   return (

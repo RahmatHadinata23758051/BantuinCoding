@@ -1,8 +1,8 @@
 import { ArrowRight, FileText, KeyRound, PackageCheck } from 'lucide-react'
 import Link from 'next/link'
 
-import { PipelineSpine } from './components/PipelineSpine'
-import { Caption, Panel, StatusBadge, buttonClassName } from './components/ui'
+import { PipelineSpine } from '@/app/components/PipelineSpine'
+import { Caption, Panel, StatusBadge, buttonClassName } from '@/app/components/ui'
 
 const PACK_FILES = [
   'PRD.md',

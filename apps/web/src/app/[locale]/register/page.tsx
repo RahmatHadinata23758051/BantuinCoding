@@ -7,7 +7,7 @@ import { useState } from 'react'
 
 import { registerAction } from '@/lib/auth/actions'
 
-import { Button, Caption, Input, Panel, StatusBadge } from '../components/ui'
+import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
 
 export default function RegisterPage() {
   const router = useRouter()
