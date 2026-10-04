@@ -293,40 +293,41 @@ export function ProviderSetupPanel() {
   const showModelSelect = modelsLoaded && availableModels.length > 0
 
   return (
-    <Panel className="overflow-hidden border border-slate-200/80 bg-white shadow-sm rounded-xl">
+    <Panel className="overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className={cn(
-          'flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors',
-          isConfigured ? 'bg-emerald-50/50 hover:bg-emerald-50' : 'bg-amber-50/50 hover:bg-amber-50',
+          'flex w-full items-center justify-between gap-4 border-b-2 border-[var(--ink)] px-4 py-4 text-left transition-colors sm:px-5',
+          isConfigured ? 'bg-[var(--mint)] hover:bg-[var(--mint-dim)]' : 'bg-[var(--electric-yellow)] hover:bg-[var(--electric-yellow-dim)]',
         )}
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className={cn(
-            'flex size-10 shrink-0 items-center justify-center rounded-lg border text-sm',
-            isConfigured ? 'border-emerald-200 bg-emerald-100/70 text-emerald-800' : 'border-amber-200 bg-amber-100/70 text-amber-800',
+            'flex size-10 shrink-0 items-center justify-center border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-xs)]',
+            isConfigured ? 'text-[var(--ink)]' : 'text-[var(--ink)]',
           )}>
-            {isConfigured ? <CheckCircle2 size={18} strokeWidth={2.5} /> : <KeyRound size={18} strokeWidth={2.5} />}
+            {isConfigured ? <CheckCircle2 size={20} strokeWidth={2.5} /> : <KeyRound size={20} strokeWidth={2.5} />}
           </span>
           <span className="min-w-0">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-slate-900">AI Provider Vault</span>
+              <span className="text-sm font-black text-[var(--ink)]">AI Provider Vault</span>
               <StatusBadge tone={isConfigured ? 'success' : 'pending'}>
                 {isConfigured ? 'Active & Ready' : 'Key Required'}
               </StatusBadge>
             </span>
-            <span className="mt-0.5 block truncate font-mono text-xs text-slate-500">
+            <span className="mt-0.5 block truncate font-mono text-xs font-bold text-[var(--ink)]">
               {isConfigured && meta?.provider
                 ? `${meta.provider} / ${meta.model}`
                 : 'Save multiple provider profiles and switch seamlessly.'}
             </span>
           </span>
         </span>
+
         <ChevronDown
-          size={18}
-          className={cn('shrink-0 text-slate-400 transition-transform duration-200', open && 'rotate-180')}
+          size={22}
+          className={cn('shrink-0 text-[var(--ink)] transition-transform duration-200', open && 'rotate-180')}
         />
       </button>
 
@@ -334,8 +335,8 @@ export function ProviderSetupPanel() {
         <div
           role={message.type === 'err' ? 'alert' : 'status'}
           className={cn(
-            'flex items-center gap-2.5 border-t px-5 py-2.5 text-xs font-semibold',
-            message.type === 'ok' ? 'border-emerald-100 bg-emerald-50 text-emerald-800' : 'border-rose-100 bg-rose-50 text-rose-800',
+            'flex items-center gap-2.5 border-t-2 border-[var(--ink)] px-5 py-2.5 text-xs font-bold text-[var(--ink)]',
+            message.type === 'ok' ? 'bg-[var(--mint-dim)]' : 'bg-[var(--action-red-dim)]',
           )}
         >
           {message.type === 'ok' ? <CheckCircle2 size={15} className="shrink-0" /> : <AlertTriangle size={15} className="shrink-0" />}
@@ -344,19 +345,19 @@ export function ProviderSetupPanel() {
       )}
 
       {open && (
-        <div className="border-t border-slate-100 p-5 space-y-6">
+        <div className="border-t-2 border-[var(--ink)] bg-[var(--paper-raised)] p-5 space-y-6">
           {/* Saved Keys Vault Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Saved Provider Keys</h3>
-              <p className="text-xs text-slate-500">Manage multiple keys across providers and switch anytime.</p>
+              <h3 className="text-sm font-black text-[var(--ink)]">Saved Provider Keys</h3>
+              <p className="text-xs font-semibold text-[var(--paper-muted)]">Manage multiple keys across providers and switch anytime.</p>
             </div>
             <Button
               type="button"
               variant={showAddForm ? 'neutral' : 'secondary'}
               size="sm"
               onClick={() => setShowAddForm((v) => !v)}
-              className="gap-1.5 text-xs font-semibold"
+              className="gap-1.5 text-xs font-bold uppercase tracking-wider"
             >
               <Plus size={14} className={cn('transition-transform', showAddForm && 'rotate-45')} />
               {showAddForm ? 'Cancel' : 'Add New Key'}
@@ -365,13 +366,13 @@ export function ProviderSetupPanel() {
 
           {/* Saved Keys List */}
           {savedKeys.length > 0 ? (
-            <div className="divide-y divide-slate-100 rounded-lg border border-slate-200/80 bg-slate-50/50 overflow-hidden">
+            <div className="divide-y-2 divide-[var(--ink)] rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper)] shadow-[var(--shadow-sm)] overflow-hidden">
               {savedKeys.map((item) => (
                 <div
                   key={item.id}
                   className={cn(
                     'flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 transition-colors',
-                    item.isActive ? 'bg-emerald-50/60' : 'hover:bg-white',
+                    item.isActive ? 'bg-[var(--mint-dim)]' : 'hover:bg-[var(--paper-raised)]',
                   )}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -379,32 +380,32 @@ export function ProviderSetupPanel() {
                       type="button"
                       onClick={() => handleActivateKey(item.id)}
                       className={cn(
-                        'flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors',
+                        'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
                         item.isActive
-                          ? 'border-emerald-600 bg-emerald-600 text-white'
-                          : 'border-slate-300 hover:border-slate-400 bg-white',
+                          ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-raised)]'
+                          : 'border-[var(--ink)] bg-[var(--paper-raised)] hover:bg-[var(--electric-yellow)]',
                       )}
                       title={item.isActive ? 'Active Key' : 'Click to activate this key'}
                     >
-                      {item.isActive && <Check size={12} strokeWidth={3} />}
+                      {item.isActive && <Check size={12} strokeWidth={4} />}
                     </button>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900 truncate">{item.name}</span>
+                        <span className="text-sm font-black text-[var(--ink)] truncate">{item.name}</span>
                         {item.isActive && (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-800">
+                          <span className="rounded-[3px] border-2 border-[var(--ink)] bg-[var(--mint)] px-1.5 py-0.5 text-[0.6rem] font-bold text-[var(--ink)] uppercase tracking-wider">
                             Active
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-500 font-mono">
-                        <span className="font-semibold text-slate-700">{item.provider}</span>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-[var(--paper-muted)] font-mono font-bold">
+                        <span className="text-[var(--ink)]">{item.provider}</span>
                         <span>•</span>
-                        <span className="text-indigo-600 font-medium">{item.model}</span>
+                        <span className="text-[var(--cobalt)]">{item.model}</span>
                         {item.baseUrl && (
                           <>
                             <span>•</span>
-                            <span className="text-slate-400 truncate max-w-[180px]">{item.baseUrl}</span>
+                            <span className="text-[var(--paper-faint)] truncate max-w-[180px]">{item.baseUrl}</span>
                           </>
                         )}
                       </div>
@@ -418,7 +419,7 @@ export function ProviderSetupPanel() {
                         variant="secondary"
                         size="sm"
                         onClick={() => handleActivateKey(item.id)}
-                        className="text-xs h-7 px-2.5 font-medium"
+                        className="text-[0.65rem] h-7 px-2.5 font-bold uppercase tracking-wider"
                       >
                         Activate
                       </Button>
@@ -426,43 +427,43 @@ export function ProviderSetupPanel() {
                     <button
                       type="button"
                       onClick={() => handleDeleteKey(item.id, item.name)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                      className="nb-button-press p-1.5 border-2 border-transparent text-[var(--ink-soft)] hover:border-[var(--ink)] hover:bg-[var(--action-red)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-xs)] rounded-[3px] transition-all"
                       title="Delete key"
                     >
-                      <Trash2 size={15} />
+                      <Trash2 size={16} strokeWidth={2.5} />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
           ) : !loadingKeys && (
-            <div className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
+            <div className="rounded-[4px] border-2 border-dashed border-[var(--ink)] p-6 text-center text-xs font-bold text-[var(--paper-muted)]">
               No API keys saved in your vault yet. Add one below to get started.
             </div>
           )}
 
           {/* Add Key Form (Collapsible or toggle) */}
           {(showAddForm || savedKeys.length === 0) && (
-            <form onSubmit={handleSaveToVault} className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
-              <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Add Key to Vault</span>
-                <span className="text-xs text-slate-400 font-mono">Encrypted with AES-256</span>
+            <form onSubmit={handleSaveToVault} className="space-y-4 rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper)] p-4 shadow-[var(--shadow-sm)]">
+              <div className="flex items-center justify-between border-b-2 border-[var(--ink)] pb-2.5">
+                <span className="text-xs font-black uppercase tracking-wider text-[var(--ink)]">Add Key to Vault</span>
+                <span className="text-[10px] font-bold text-[var(--paper-muted)] font-mono uppercase tracking-wider">AES-256 Encrypted</span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <label htmlFor="keyName" className="text-xs font-bold text-slate-700">Profile / Key Name</label>
+                <div className="space-y-1.5">
+                  <label htmlFor="keyName" className="text-xs font-bold text-[var(--ink)]">Profile / Key Name</label>
                   <Input
                     id="keyName"
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
                     placeholder="e.g. 9Router Local, OpenRouter Free"
-                    className="text-xs bg-white"
+                    className="text-xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label htmlFor="provider" className="text-xs font-bold text-slate-700">Provider</label>
+                <div className="space-y-1.5">
+                  <label htmlFor="provider" className="text-xs font-bold text-[var(--ink)]">Provider</label>
                   <Select
                     id="provider"
                     value={provider}
@@ -471,7 +472,7 @@ export function ProviderSetupPanel() {
                       setProvider(next)
                       setModel(DEFAULT_MODELS[next])
                     }}
-                    className="text-xs bg-white"
+                    className="text-xs"
                   >
                     {PROVIDERS.map((p) => (
                       <option key={p} value={p}>{p}</option>
@@ -480,8 +481,8 @@ export function ProviderSetupPanel() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label htmlFor="apiKey" className="text-xs font-bold text-slate-700">API Key</label>
+              <div className="space-y-1.5">
+                <label htmlFor="apiKey" className="text-xs font-bold text-[var(--ink)]">API Key</label>
                 <div className="relative">
                   <Input
                     id="apiKey"
@@ -490,47 +491,47 @@ export function ProviderSetupPanel() {
                     onChange={(e) => setApiKey(e.target.value)}
                     required
                     placeholder="Paste provider key"
-                    className="text-xs font-mono bg-white"
+                    className="text-xs font-mono"
                   />
                   {autoTestStatus !== 'idle' && (
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                      {autoTestStatus === 'testing' && <LoaderCircle size={14} className="animate-spin text-slate-400" />}
-                      {autoTestStatus === 'valid' && <CheckCircle2 size={14} className="text-emerald-600" />}
-                      {autoTestStatus === 'invalid' && <AlertTriangle size={14} className="text-rose-600" />}
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-white px-1">
+                      {autoTestStatus === 'testing' && <LoaderCircle size={16} strokeWidth={2.5} className="animate-spin text-[var(--ink-soft)]" />}
+                      {autoTestStatus === 'valid' && <CheckCircle2 size={16} strokeWidth={2.5} className="text-[var(--mint)]" />}
+                      {autoTestStatus === 'invalid' && <AlertTriangle size={16} strokeWidth={2.5} className="text-[var(--action-red)]" />}
                     </span>
                   )}
                 </div>
               </div>
 
               {CUSTOM_URL_PROVIDERS.has(provider) && (
-                <div className="space-y-1">
-                  <label htmlFor="baseUrl" className="text-xs font-bold text-slate-700">Custom Base URL (optional)</label>
+                <div className="space-y-1.5">
+                  <label htmlFor="baseUrl" className="text-xs font-bold text-[var(--ink)]">Custom Base URL (optional)</label>
                   <Input
                     id="baseUrl"
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
                     placeholder="e.g. http://127.0.0.1:20128/v1"
-                    className="text-xs font-mono bg-white"
+                    className="text-xs font-mono"
                   />
                 </div>
               )}
 
-              <div className="space-y-1">
-                <label htmlFor="model" className="text-xs font-bold text-slate-700">Model</label>
+              <div className="space-y-1.5">
+                <label htmlFor="model" className="text-xs font-bold text-[var(--ink)]">Model</label>
                 {showModelSelect ? (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Input
                       type="search"
                       value={modelSearch}
                       onChange={(e) => setModelSearch(e.target.value)}
                       placeholder="Search models..."
-                      className="text-xs bg-white font-mono"
+                      className="text-xs font-mono"
                     />
                     <Select
                       id="model"
                       value={model}
                       onChange={(e) => setModel(e.target.value)}
-                      className="text-xs bg-white font-mono"
+                      className="text-xs font-mono"
                     >
                       {availableModels
                         .filter((m) =>
@@ -548,29 +549,30 @@ export function ProviderSetupPanel() {
                     id="model"
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    className="text-xs bg-white font-mono"
+                    className="text-xs font-mono"
                   />
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-3 pt-3">
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="neutral"
                   size="sm"
                   onClick={handleTestConnection}
                   disabled={testing || !apiKey}
-                  className="text-xs"
+                  className="text-[0.7rem] uppercase tracking-wider"
                 >
                   {testing ? 'Testing...' : 'Test Connection'}
                 </Button>
                 <Button
                   type="submit"
+                  variant="primary"
                   size="sm"
                   disabled={loading || !apiKey}
-                  className="text-xs font-semibold"
+                  className="text-[0.7rem] uppercase tracking-wider"
                 >
-                  {loading ? 'Saving...' : 'Save & Encrypt to Vault'}
+                  {loading ? 'Saving...' : 'Save & Encrypt'}
                 </Button>
               </div>
             </form>
