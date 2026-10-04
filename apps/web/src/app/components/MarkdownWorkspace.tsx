@@ -143,16 +143,45 @@ export function MarkdownWorkspace({
 
       const data = (await response.json()) as {
         artifacts?: Array<WorkspaceArtifactItem & { error?: string }>
+        backlog?: { backlog_md_content: string }
+        result?: { skills_md_content: string }
       }
-      const updated = data.artifacts?.find((a) => a.type === activeArtifact.type)
-      if (updated) {
-        if (updated.status === 'FAILED') {
-          setSaveMessage(`Generation failed: ${updated.error || 'The model failed to produce document output. Please retry.'}`)
-        } else {
-          setContent(updated.content)
-          setSaveMessage('Saved. Document regenerated successfully!')
+
+      // Determine updated content based on endpoint type
+      let newContent = ''
+      let isFailed = false
+      let errorMsg = ''
+
+      if (activeArtifact.type === 'SKILLS' && data.result) {
+        newContent = data.result.skills_md_content
+      } else if (activeArtifact.type === 'BACKLOG' && data.backlog) {
+        newContent = data.backlog.backlog_md_content
+      } else if (data.artifacts) {
+        const updated = data.artifacts.find((a) => a.type === activeArtifact.type)
+        if (updated) {
+          if (updated.status === 'FAILED') {
+            isFailed = true
+            errorMsg = updated.error || 'The model failed to produce document output. Please retry.'
+          } else {
+            newContent = updated.content
+          }
         }
-        if (onArtifactUpdated) onArtifactUpdated(updated)
+      }
+
+      if (isFailed) {
+        setSaveMessage(`Generation failed: ${errorMsg}`)
+      } else if (newContent) {
+        setContent(newContent)
+        setSaveMessage('Saved. Document regenerated successfully!')
+        if (onArtifactUpdated) {
+          // Tell parent to update the artifact in the list
+          onArtifactUpdated({
+            ...activeArtifact,
+            content: newContent,
+            status: 'READY',
+            updatedAt: new Date().toISOString(),
+          })
+        }
       } else {
         setSaveMessage('Regenerated. Refreshing…')
         window.location.reload()
