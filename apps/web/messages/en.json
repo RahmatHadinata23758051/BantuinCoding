@@ -1,0 +1,53 @@
+{
+  "Common": {
+    "backToHome": "← bantuin.dev",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "newProject": "New project",
+    "loading": "Loading...",
+    "language": "Language"
+  },
+  "Auth": {
+    "loginCaption": "Workspace entrance",
+    "loginHeading": "Back to the documentation control room.",
+    "loginDesc": "Continue from idea capture to an exportable bootstrap pack for your coding agent.",
+    "registerCaption": "Account registration",
+    "registerHeading": "Create your workspace access.",
+    "registerDesc": "Start converting project ideas into structured coding agent documentation.",
+    "emailLabel": "Email address",
+    "passwordLabel": "Password",
+    "nameLabel": "Full name",
+    "submitLoginBtn": "Enter workspace",
+    "submitRegisterBtn": "Create account",
+    "haveAccount": "Already have an account? Sign in",
+    "needAccount": "Need an account? Register"
+  },
+  "Dashboard": {
+    "controlDesk": "Control desk",
+    "title": "Your project files.",
+    "subtitle": "Configure a provider, open a project, and move its context toward an exportable pack.",
+    "emptyTitle": "The ledger is empty.",
+    "emptyDesc": "Add a raw project idea. BantuinCoding will identify missing decisions and build the documents your agent needs."
+  },
+  "Project": {
+    "newCaption": "Chapter 01 · capture intent",
+    "newTitle": "Give the system a useful raw idea—not a perfect spec.",
+    "newDesc": "Drop an idea with rough boundaries. The analyzer will identify what is known, what is missing, and what requires confirmation.",
+    "nameLabel": "Project name",
+    "ideaLabel": "Project idea",
+    "submitBtn": "Analyze project idea"
+  },
+  "Status": {
+    "DRAFT": "Draft",
+    "CONFIGURED": "Configured",
+    "ANALYZING": "Analyzing",
+    "CLARIFYING": "Clarifying",
+    "CONTEXT_READY": "Context Ready",
+    "GENERATING": "Generating",
+    "READY": "Ready",
+    "EXPORTABLE": "Exportable",
+    "GENERATION_FAILED": "Failed"
+  }
+}

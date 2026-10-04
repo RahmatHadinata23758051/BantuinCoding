@@ -1,0 +1,53 @@
+{
+  "Common": {
+    "backToHome": "← bantuin.dev",
+    "signIn": "Masuk",
+    "signOut": "Keluar",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "newProject": "Proyek baru",
+    "loading": "Memuat...",
+    "language": "Bahasa"
+  },
+  "Auth": {
+    "loginCaption": "Pintu masuk ruang kerja",
+    "loginHeading": "Kembali ke ruang kontrol dokumentasi.",
+    "loginDesc": "Lanjutkan dari ide awal hingga menjadi paket bootstrap yang siap diekspor untuk agen koding Anda.",
+    "registerCaption": "Pendaftaran akun",
+    "registerHeading": "Buat akses ruang kerja Anda.",
+    "registerDesc": "Mulai mengubah ide proyek mentah menjadi dokumentasi terstruktur untuk agen koding.",
+    "emailLabel": "Alamat email",
+    "passwordLabel": "Kata sandi",
+    "nameLabel": "Nama lengkap",
+    "submitLoginBtn": "Masuk ruang kerja",
+    "submitRegisterBtn": "Buat akun",
+    "haveAccount": "Sudah punya akun? Masuk",
+    "needAccount": "Belum punya akun? Daftar"
+  },
+  "Dashboard": {
+    "controlDesk": "Meja kontrol",
+    "title": "File proyek Anda.",
+    "subtitle": "Atur penyedia layanan, buka proyek, dan lanjutkan penyusunan konteks menuju paket ekspor.",
+    "emptyTitle": "Buku besar kosong.",
+    "emptyDesc": "Tambahkan ide proyek mentah. BantuinCoding akan menyusun keputusan dan dokumen yang dibutuhkan agen Anda."
+  },
+  "Project": {
+    "newCaption": "Bab 01 · tangkap niat",
+    "newTitle": "Berikan ide mentah yang berguna—bukan spesifikasi sempurna.",
+    "newDesc": "Masukkan ide dengan batasan umum. Penganalisis akan mengidentifikasi apa yang sudah diketahui, apa yang kurang, dan apa yang butuh konfirmasi.",
+    "nameLabel": "Nama proyek",
+    "ideaLabel": "Ide proyek",
+    "submitBtn": "Analisis ide proyek"
+  },
+  "Status": {
+    "DRAFT": "Draf",
+    "CONFIGURED": "Dikonfigurasi",
+    "ANALYZING": "Menganalisis",
+    "CLARIFYING": "Klarifikasi",
+    "CONTEXT_READY": "Konteks Siap",
+    "GENERATING": "Membuat Dokumen",
+    "READY": "Siap",
+    "EXPORTABLE": "Siap Diekspor",
+    "GENERATION_FAILED": "Gagal"
+  }
+}
