@@ -238,22 +238,21 @@ export function MarkdownWorkspace({
 
   return (
     <section
-      className="flex min-h-[760px] w-full flex-col overflow-hidden border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-[var(--shadow-hard)] lg:h-[760px] lg:flex-row"
+      className="flex min-h-[760px] w-full flex-col overflow-hidden border-4 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-[var(--shadow-hero)] lg:h-[760px] lg:flex-row"
       aria-label="Markdown workspace"
     >
       <aside className="border-b-2 border-[var(--ink)] bg-[var(--lavender-dim)] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r-2">
-        <div className="flex items-start gap-3 border-b-2 border-[var(--ink)] bg-[var(--lavender)] px-4 py-4">
-          <PanelLeft className="mt-0.5 size-5 flex-shrink-0" aria-hidden="true" />
+        <div className="flex items-center gap-2.5 border-b-2 border-[var(--ink)] bg-[var(--lavender)] px-4 py-4">
+          <PanelLeft className="size-5 text-[var(--ink)]" aria-hidden="true" />
           <div className="min-w-0">
-            <h2 className="text-base font-black tracking-[-0.03em]">Project documents</h2>
-            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--ink-soft)]">
-              Select an artifact to edit, compare, or preview.
-            </p>
+            <h2 className="text-base font-black tracking-[-0.03em] text-[var(--ink)]">Project documents</h2>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--ink-soft)]">Select an artifact to edit, compare, or preview.</p>
           </div>
         </div>
 
+
         <nav
-          className="flex gap-3 overflow-x-auto p-3 lg:max-h-[calc(760px-82px)] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
+          className="flex gap-2 overflow-x-auto p-2.5 lg:max-h-[calc(760px-57px)] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
           aria-label="Generated artifacts"
         >
           {artifacts.map((artifact) => {
@@ -299,91 +298,91 @@ export function MarkdownWorkspace({
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--paper)]">
         <header className="border-b-2 border-[var(--ink)] bg-[var(--paper-raised)]">
-          <div className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:justify-between lg:px-5">
+          <div className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate font-mono text-base font-black tracking-tight">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate font-mono text-base font-black tracking-tight text-[var(--ink)]">
                   {activeArtifact?.path}
                 </h1>
                 {activeArtifact && <StatusBadge tone={statusTone(activeArtifact.status)}>{badge?.label}</StatusBadge>}
               </div>
-              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--paper-muted)]">
+              <p className="mt-0.5 text-xs font-semibold leading-5 text-[var(--paper-muted)]">
                 {activeArtifact
                   ? `Last updated ${formatUpdatedAt(activeArtifact.updatedAt)}`
                   : 'No artifact selected'}
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
-              <p
-                className={cn(
-                  'min-h-5 text-xs font-bold leading-5',
-                  isSaveError ? 'text-[var(--action-red)]' : 'text-[var(--paper-muted)]',
-                )}
-                role={isSaveError ? 'alert' : undefined}
-                aria-live="polite"
-              >
-                {saveMessage || 'Edits stay local until saved.'}
-              </p>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {activeArtifact && (
-                  <Button
-                    type="button"
-                    onClick={handleRegenerate}
-                    disabled={isRegenerating || isSaving}
-                    variant="secondary"
-                    className="gap-2"
-                    aria-busy={isRegenerating}
-                  >
-                    {isRegenerating ? (
-                      <Loader2 className="animate-spin size-4" aria-hidden="true" />
-                    ) : (
-                      <RefreshCw className="size-4" aria-hidden="true" />
-                    )}
-                    {isRegenerating ? 'Regenerating…' : 'Regenerate'}
-                  </Button>
-                )}
-
-                <div
-                  className="grid grid-cols-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-1 shadow-[var(--shadow-xs)]"
-                  role="group"
-                  aria-label="Workspace view mode"
-                >
-                  {viewModes.map(({ id, label, icon: Icon }) => {
-                    const isActive = activeTab === id
-
-                    return (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setActiveTab(id)}
-                        aria-pressed={isActive}
-                        className={cn(
-                          'inline-flex items-center justify-center gap-2 border-2 border-transparent px-3 py-2 text-xs font-black transition-colors sm:min-w-24',
-                          isActive
-                            ? 'border-[var(--ink)] bg-[var(--electric-yellow)] text-[var(--ink)]'
-                            : 'text-[var(--paper-muted)] hover:border-[var(--ink)] hover:bg-white hover:text-[var(--ink)]',
-                        )}
-                      >
-                        <Icon className="size-3.5" aria-hidden="true" />
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <Button type="button" onClick={handleSave} disabled={isSaving} variant="success">
-                  {isSaving ? (
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  ) : saveMessage?.startsWith('Saved') ? (
-                    <CheckCircle2 className="size-4" aria-hidden="true" />
-                  ) : (
-                    <Save className="size-4" aria-hidden="true" />
+            <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
+              {saveMessage && (
+                <span
+                  className={cn(
+                    'text-xs font-bold mr-2',
+                    isSaveError ? 'text-[var(--action-red)]' : 'text-[var(--pass-teal)]',
                   )}
-                  {isSaving ? 'Saving…' : 'Save changes'}
+                  role={isSaveError ? 'alert' : undefined}
+                >
+                  {saveMessage}
+                </span>
+              )}
+
+              {activeArtifact && (
+                <Button
+                  type="button"
+                  onClick={handleRegenerate}
+                  disabled={isRegenerating || isSaving}
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  aria-busy={isRegenerating}
+                >
+                  {isRegenerating ? (
+                    <Loader2 className="animate-spin size-4" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw className="size-4" aria-hidden="true" />
+                  )}
+                  {isRegenerating ? 'Regenerating…' : 'Regenerate'}
                 </Button>
+              )}
+
+              <div
+                className="grid grid-cols-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-1 shadow-[var(--shadow-xs)]"
+                role="group"
+                aria-label="Workspace view mode"
+              >
+                {viewModes.map(({ id, label, icon: Icon }) => {
+                  const isActive = activeTab === id
+
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setActiveTab(id)}
+                      aria-pressed={isActive}
+                      className={cn(
+                        'inline-flex items-center justify-center gap-1.5 border-2 border-transparent px-3 py-1.5 text-xs font-black transition-colors',
+                        isActive
+                          ? 'border-[var(--ink)] bg-[var(--electric-yellow)] text-[var(--ink)]'
+                          : 'text-[var(--paper-muted)] hover:border-[var(--ink)] hover:bg-white hover:text-[var(--ink)]',
+                      )}
+                    >
+                      <Icon className="size-3.5" aria-hidden="true" />
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
+
+              <Button type="button" onClick={handleSave} disabled={isSaving} variant="success">
+                {isSaving ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : saveMessage?.startsWith('Saved') ? (
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
+                ) : (
+                  <Save className="size-4" aria-hidden="true" />
+                )}
+                {isSaving ? 'Saving…' : 'Save changes'}
+              </Button>
             </div>
           </div>
         </header>
@@ -403,7 +402,7 @@ export function MarkdownWorkspace({
               aria-labelledby="markdown-editor-title"
             >
               <div className="flex items-center justify-between border-b-2 border-[var(--paper-raised)] bg-[var(--ink)] px-4 py-2.5">
-                <h2 id="markdown-editor-title" className="text-sm font-black">
+                <h2 id="markdown-editor-title" className="text-sm font-black text-[var(--paper-raised)]">
                   Markdown source
                 </h2>
                 <span className="font-mono text-xs text-[var(--paper-dim)]">
@@ -427,7 +426,7 @@ export function MarkdownWorkspace({
               aria-labelledby="markdown-preview-title"
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[var(--ink)] bg-[var(--mint-dim)] px-4 py-2.5">
-                <h2 id="markdown-preview-title" className="text-sm font-black">
+                <h2 id="markdown-preview-title" className="text-sm font-black text-[var(--ink)]">
                   Sanitized preview
                 </h2>
                 <span className="text-xs font-bold text-[var(--paper-muted)]">
@@ -436,7 +435,7 @@ export function MarkdownWorkspace({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 <article
-                  className="prose-doc bg-[var(--paper-raised)] p-5 shadow-[var(--shadow-sm)]"
+                  className="prose-doc bg-[var(--paper-raised)] p-5 shadow-[var(--shadow-sm)] border-2 border-[var(--ink)]"
                   dangerouslySetInnerHTML={{
                     __html: renderedPreview,
                   }}
