@@ -20,7 +20,7 @@ export type ResolvedSkill = z.infer<typeof ResolvedSkillSchema>
 export const SkillResolverOutputSchema = z.object({
   skills: z.array(ResolvedSkillSchema),
   rationale: z.string(),
-  skills_md_content: z.string().describe('Full SKILLS.md file formatted in GitHub-flavored Markdown'),
+  skills_md_content: z.string().default('').describe('Legacy compatibility field; leave empty because skills are stored as recommendations and embedded in Agent.md'),
 })
 
 export type SkillResolverOutput = z.infer<typeof SkillResolverOutputSchema>

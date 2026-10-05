@@ -47,8 +47,7 @@ describe('Artifact Plan Schema', () => {
       classification: 'SAAS' as const,
       artifacts: [
         { type: 'PRD' as const, path: 'PRD.md', reason: 'Reqs', isRequired: true },
-        { type: 'SRS' as const, path: 'SRS.md', reason: 'Specs', isRequired: true },
-      ],
+              ],
       rationale: 'Standard SaaS pack',
     }
 
@@ -116,8 +115,7 @@ describe('requiresDesignArtifact & ensureDesignArtifact', () => {
       classification: 'SAAS' as const,
       artifacts: [
         { type: 'PRD' as const, path: 'PRD.md', reason: 'Reqs', isRequired: true },
-        { type: 'SRS' as const, path: 'SRS.md', reason: 'Specs', isRequired: true },
-        { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'Arch', isRequired: true },
+                { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'Arch', isRequired: true },
       ],
       rationale: 'Missing design',
     }
@@ -125,11 +123,10 @@ describe('requiresDesignArtifact & ensureDesignArtifact', () => {
     const normalized = ensureDesignArtifact(rawPlan)
     expect(normalized.artifacts.map((a) => a.type)).toEqual([
       'PRD',
-      'SRS',
       'DESIGN',
       'ARCHITECTURE',
     ])
-    expect(normalized.artifacts[2]).toEqual({
+    expect(normalized.artifacts[1]).toEqual({
       type: 'DESIGN',
       path: 'DESIGN.md',
       reason: 'Locked visual contract and UI system',
@@ -222,8 +219,7 @@ describe('Artifact Planner Engine — planProjectArtifacts', () => {
       classification: 'SAAS' as const,
       artifacts: [
         { type: 'PRD' as const, path: 'PRD.md', reason: 'Reqs', isRequired: true },
-        { type: 'SRS' as const, path: 'SRS.md', reason: 'Specs', isRequired: true },
-        { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'Arch', isRequired: true },
+                { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'Arch', isRequired: true },
         { type: 'AGENT' as const, path: 'Agent.md', reason: 'Agent', isRequired: true },
         { type: 'RULES' as const, path: 'RULES.md', reason: 'Rules', isRequired: true },
         { type: 'SKILLS' as const, path: 'SKILLS.md', reason: 'Skills', isRequired: true },

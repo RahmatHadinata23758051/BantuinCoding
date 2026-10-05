@@ -1,4 +1,5 @@
 import { db } from '@repo/db'
+import { z } from 'zod'
 import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
 import {
@@ -73,29 +74,6 @@ export class SkillsLLMCatalogAdapter implements SkillCatalogAdapter {
   }
 }
 
-export function generateSkillsMdContent(projectName: string, skills: ResolvedSkill[]): string {
-  const skillListMd = skills
-    .map(
-      (s) => `### \`${s.name}\` (${s.source})
-- **Purpose:** ${s.purpose}
-- **Trigger:** ${s.trigger}
-- **Phases:** ${s.applicable_phases.join(', ')}
-- **Task Types:** ${s.applicable_task_types.join(', ')}
-${s.installation_hint ? `- **Install:** \`${s.installation_hint}\`` : ''}`,
-    )
-    .join('\n\n')
-
-  return `# SKILLS.md — Recommended Agent Skills
-
-> Tailored skill recommendations for coding agents working on **${projectName}**.
-
----
-
-## Recommended Skills
-
-${skillListMd}
-`
-}
 
 export interface ResolveSkillsOptions {
   userId: string
@@ -104,7 +82,7 @@ export interface ResolveSkillsOptions {
 }
 
 /**
- * Resolves skills for a project and updates DB records + SKILLS.md artifact.
+ * Resolves skills for a project and updates SkillRecommendation DB records.
  */
 export async function resolveProjectSkills({
   userId,
@@ -142,19 +120,7 @@ export async function resolveProjectSkills({
   }
   const provider = createProvider(providerConfig)
 
-  // Set artifact to GENERATING before provider call
-  await db.artifact.upsert({
-    where: { projectId_type: { projectId, type: 'SKILLS' } },
-    update: { status: 'GENERATING', contextId: currentContextRecord.id },
-    create: {
-      projectId,
-      contextId: currentContextRecord.id,
-      type: 'SKILLS',
-      path: 'SKILLS.md',
-      content: '',
-      status: 'GENERATING',
-    },
-  })
+  // Skills are stored as recommendations and embedded into Agent.md; no standalone SKILLS.md artifact is created.
 
   const userPrompt = buildSkillResolverUserPrompt(
     project.name,
@@ -164,21 +130,22 @@ export async function resolveProjectSkills({
   )
   let resolvedOutput: SkillResolverOutput
   try {
-    resolvedOutput = await provider.generateStructured(
+    const rawOutput = await provider.generateStructured(
       userPrompt,
-      SkillResolverOutputSchema,
+      z.unknown(),
       {
         system: SKILL_RESOLVER_SYSTEM_PROMPT,
         maxTokens: 2048,
         temperature: 0.2,
       },
     )
+    resolvedOutput = SkillResolverOutputSchema.parse(rawOutput)
   } catch {
     // If AI fails, use fallback skills catalog
     resolvedOutput = {
       skills: internalCatalogFallback,
       rationale: 'Baseline skills for project classification.',
-      skills_md_content: generateSkillsMdContent(project.name, internalCatalogFallback),
+      skills_md_content: '',
     }
   }
 
@@ -202,16 +169,7 @@ export async function resolveProjectSkills({
     })
   }
 
-  // Update artifact to READY
-  await db.artifact.update({
-    where: { projectId_type: { projectId, type: 'SKILLS' } },
-    data: {
-      content: resolvedOutput.skills_md_content,
-      status: 'READY',
-      provider: providerConfig?.provider ?? 'FALLBACK',
-      model: providerConfig?.model ?? 'BASELINE',
-    },
-  })
-
   return resolvedOutput
+
+  // Skill recommendations are intentionally stored in SkillRecommendation rows only.
 }

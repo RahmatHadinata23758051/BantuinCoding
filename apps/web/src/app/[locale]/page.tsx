@@ -8,12 +8,9 @@ import { getTranslations } from 'next-intl/server'
 
 const PACK_FILES = [
   'PRD.md',
-  'SRS.md',
-  'DESIGN.md',
   'ARCHITECTURE.md',
+  'DESIGN.md',
   'Agent.md',
-  'RULES.md',
-  'SKILLS.md',
   'BACKLOG.md',
 ]
 

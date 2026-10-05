@@ -58,13 +58,10 @@ export function generateBootstrapReadme(projectName: string, targetAgent = 'CLAU
 
 This Project Bootstrap Pack contains structured specifications and operational guides for your AI coding agent:
 
-- \`PRD.md\` — Product Requirements Document (goals, non-goals, user flows, features)
-- \`SRS.md\` — Software Requirements Specification (functional specs, data models, error handling)
-- \`DESIGN.md\` — Project-specific visual and interaction contract when UI scope requires it
+- \`PRD.md\` — Product and Functional Requirements (business goals, flows, FR/NFR, data, errors)
 - \`ARCHITECTURE.md\` — System Architecture (components, boundaries, stack, database design)
-- \`Agent.md\` — Agent Operational Contract (precedence, quality gates, definition of done)
-- \`RULES.md\` — Non-negotiable Hard Constraints (immutability rules, secret protection)
-- \`SKILLS.md\` — Recommended Coding Agent Skills (tailored capabilities & triggers)
+- \`DESIGN.md\` — Sole visual and interaction contract when UI scope requires it
+- \`Agent.md\` — Unified Agent Operational Contract (rules, security, quality gates, recommended skills)
 - \`BACKLOG.md\` — Phased, Dependency-Aware Backlog (atomic tasks with acceptance criteria)
 
 ---
@@ -78,7 +75,7 @@ This Project Bootstrap Pack contains structured specifications and operational g
    \`\`\`
 3. Open your CLI agent (e.g., \`claude\`) in this directory.
 4. Instruct your agent to read the mandatory documentation order:
-   > "Read in order: 1. PRD.md -> 2. SRS.md -> 3. DESIGN.md (if present) -> 4. Agent.md -> 5. BACKLOG.md -> 6. ARCHITECTURE.md -> 7. RULES.md -> 8. SKILLS.md"
+   > "Read in order: 1. PRD.md -> 2. ARCHITECTURE.md -> 3. DESIGN.md (if present) -> 4. Agent.md -> 5. BACKLOG.md"
 5. Instruct your agent to execute tasks sequentially starting from task \`BK-001\` in \`BACKLOG.md\`.
 
 ---
