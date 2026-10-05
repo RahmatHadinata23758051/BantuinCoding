@@ -40,9 +40,20 @@ export async function GET(
     return NextResponse.json({ error: 'Project not found' }, { status: 404 })
   }
 
-  const questions = await db.clarificationQuestion.findMany({
+  const rawQuestions = await db.clarificationQuestion.findMany({
     where: { projectId: project.id },
     orderBy: [{ round: 'asc' }, { createdAt: 'asc' }],
+  })
+
+  const questions = rawQuestions.map(q => {
+    let optionsList = []
+    try {
+      if (q.options) optionsList = JSON.parse(q.options)
+    } catch {}
+    return {
+      ...q,
+      options: optionsList
+    }
   })
 
   return NextResponse.json({ questions })

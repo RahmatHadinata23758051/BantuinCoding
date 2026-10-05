@@ -1501,9 +1501,9 @@ Begin execution immediately:
                                   {t('impact')}: {question.impact}
                                 </p>
                               )}
-                              {question.options && question.options.length > 0 ? (
+                              {(Array.isArray(question.options) ? question.options : []).length > 0 ? (
                                 <div className="mt-4 space-y-3">
-                                  {question.options.map((opt, i) => (
+                                  {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
                                     <label key={i} className={`flex cursor-pointer items-start gap-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-3 shadow-[2px_2px_0_var(--workspace-ink)] hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
                                       <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
                                       <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
