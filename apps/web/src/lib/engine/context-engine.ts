@@ -295,12 +295,13 @@ export async function generateCanonicalContext({
   // Use z.unknown() to accept ANY valid JSON from the model (including extra fields
   // or slightly different field names from smaller/cheaper models).
   // Then normalizeContextOutput reshapes and repairs the JSON to fit CanonicalContextSchema.
+  // Increased maxTokens to 16384 to prevent truncation on large contexts.
   const rawContext = await provider.generateStructured(
     userPrompt,
     z.unknown(),
     {
       system: CONTEXT_NORMALIZER_SYSTEM_PROMPT,
-      maxTokens: 4096,
+      maxTokens: 16384,
       temperature: 0.2,
     },
   )
