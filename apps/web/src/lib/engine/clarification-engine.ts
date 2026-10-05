@@ -25,8 +25,12 @@ export function isAssumptionConfirmationAccepted(answer: string | null | undefin
   if (/\b(no|not|don t|do not|decline|reject|stop|batal|tidak)\b/.test(normalized)) return false
 
   const canonical = ASSUMPTION_CONFIRMATION_ACCEPTED.toLowerCase()
+  // Accept "[AUTO]" or any variation as confirmation to proceed with assumptions
   return (
     normalized === canonical ||
+    normalized === 'auto' ||
+    normalized.includes('auto') ||
+    answer.trim() === '[AUTO]' ||
     /\b(yes|confirm|confirmed|proceed|continue|accept|accepted|ok|oke|setuju|lanjut|siap|iya|y)\b/.test(
       normalized,
     )
