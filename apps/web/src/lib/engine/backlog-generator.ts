@@ -1,4 +1,5 @@
 import { db } from '@repo/db'
+import { z } from 'zod'
 import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
 import {
@@ -11,8 +12,8 @@ import {
 import { validateBacklogDependencies } from '@/lib/engine/backlog-validator'
 
 /**
- * Baseline rule-based fallback backlog when AI call is disabled or fails.
- * Contains comprehensive 14+ tasks across 5 phases broken down by workstream.
+ * Renders BACKLOG.md from structured phases. The server owns Markdown rendering
+ * so the model never has to duplicate the task graph as Markdown.
  */
 export function generateBacklogMdContent(
   projectName: string,
@@ -53,6 +54,41 @@ ${phasesMd}
 export interface GenerateBacklogOptions {
   userId: string
   projectId: string
+}
+
+function normalizeBacklogOutput(raw: unknown): BacklogGeneratorOutput {
+  const value = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const phases = Array.isArray(value.phases) ? value.phases : []
+  if (phases.length === 0) {
+    throw new Error('Provider returned no backlog phases. Please regenerate.')
+  }
+
+  return {
+    phases: phases.map((phase, phaseIndex) => {
+      const p = phase && typeof phase === 'object' ? (phase as Record<string, unknown>) : {}
+      const tasks = Array.isArray(p.tasks) ? p.tasks : []
+      return {
+        name: typeof p.name === 'string' ? p.name : `Phase ${phaseIndex + 1}`,
+        order: typeof p.order === 'number' ? p.order : phaseIndex + 1,
+        description: typeof p.description === 'string' ? p.description : undefined,
+        tasks: tasks.map((task, taskIndex) => {
+          const t = task && typeof task === 'object' ? (task as Record<string, unknown>) : {}
+          const asStrings = (input: unknown): string[] =>
+            Array.isArray(input) ? input.map(String) : []
+          return {
+            id: typeof t.id === 'string' ? t.id : `BK-${String(taskIndex + 1).padStart(3, '0')}`,
+            title: typeof t.title === 'string' ? t.title : 'Untitled task',
+            description: typeof t.description === 'string' ? t.description : 'No description provided.',
+            dependencies: asStrings(t.dependencies),
+            acceptance_criteria: asStrings(t.acceptance_criteria),
+            definition_of_done: typeof t.definition_of_done === 'string' ? t.definition_of_done : 'Verified and tested.',
+            relevant_docs: asStrings(t.relevant_docs),
+            recommended_skills: asStrings(t.recommended_skills),
+          }
+        }),
+      }
+    }),
+  }
 }
 
 /**
@@ -116,10 +152,10 @@ export async function generateProjectBacklog({
   )
   let backlogOutput: BacklogGeneratorOutput
   try {
-    backlogOutput = await Promise.race([
+    const rawOutput = await Promise.race([
       provider.generateStructured(
         userPrompt,
-        BacklogGeneratorOutputSchema,
+        z.unknown(),
         {
           system: BACKLOG_GENERATOR_SYSTEM_PROMPT,
           maxTokens: 32000,
@@ -130,6 +166,7 @@ export async function generateProjectBacklog({
         setTimeout(() => reject(new Error('Backlog generation timed out after 120 seconds. Please regenerate.')), 120_000)
       }),
     ])
+    backlogOutput = BacklogGeneratorOutputSchema.parse(normalizeBacklogOutput(rawOutput))
   } catch (error) {
     await db.artifact.update({
       where: { projectId_type: { projectId, type: 'BACKLOG' } },
