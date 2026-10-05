@@ -9,7 +9,6 @@ import { validateBacklogDependencies } from '@/lib/engine/backlog-validator'
 import {
   generateProjectBacklog,
   generateBacklogMdContent,
-  defaultFallbackPhases,
 } from '@/lib/engine/backlog-generator'
 
 const dbMocks = vi.hoisted(() => {
@@ -37,6 +36,37 @@ vi.mock('@/lib/byok/session-store', () => ({
   getProviderConfig: vi.fn(),
 }))
 
+
+const mockPhases: GeneratedBacklogPhase[] = [
+  {
+    name: 'Phase 1',
+    order: 1,
+    description: 'Desc',
+    tasks: [
+      {
+        id: 'BK-001',
+        title: 'Initialize project scaffold and tooling',
+        description: '...',
+        dependencies: [],
+        acceptance_criteria: [],
+        definition_of_done: 'done',
+        relevant_docs: [],
+        recommended_skills: []
+      },
+      {
+        id: 'BK-002',
+        title: 'Define Prisma database schema and migrations',
+        description: '...',
+        dependencies: ['BK-001'],
+        acceptance_criteria: [],
+        definition_of_done: 'done',
+        relevant_docs: [],
+        recommended_skills: []
+      }
+    ]
+  }
+]
+
 vi.mock('@/lib/ai/provider', () => ({
   createProvider: vi.fn(),
 }))
@@ -44,7 +74,7 @@ vi.mock('@/lib/ai/provider', () => ({
 describe('Backlog Generator Schema & Prompt', () => {
   it('validates a valid BacklogGeneratorOutput object', () => {
     const data = {
-      phases: defaultFallbackPhases,
+      phases: mockPhases,
       backlog_md_content: '# BACKLOG.md',
     }
     const result = BacklogGeneratorOutputSchema.safeParse(data)
@@ -226,7 +256,7 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
     vi.mocked(createProvider).mockReturnValueOnce({
       type: 'ANTHROPIC', testConnection: vi.fn(),
       generateStructured: vi.fn().mockResolvedValueOnce({
-        phases: defaultFallbackPhases,
+        phases: mockPhases,
         backlog_md_content: '# BACKLOG',
       }),
     })
@@ -256,7 +286,7 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
     vi.mocked(createProvider).mockReturnValueOnce({
       type: 'ANTHROPIC', testConnection: vi.fn(),
       generateStructured: vi.fn().mockResolvedValueOnce({
-        phases: defaultFallbackPhases,
+        phases: mockPhases,
         backlog_md_content: '# BACKLOG',
       }),
     })
@@ -274,7 +304,7 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
   })
 
   it('generates backlog markdown content correctly', () => {
-    const md = generateBacklogMdContent('Acme Project', defaultFallbackPhases)
+    const md = generateBacklogMdContent('Acme Project', mockPhases)
     expect(md).toContain('# BACKLOG.md — Acme Project')
     expect(md).toContain('BK-001 — Initialize project scaffold and tooling')
     expect(md).toContain('BK-002 — Define Prisma database schema and migrations')

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { generateFallbackPrd, generateFallbackSrs, generateFallbackArchitecture } from '@/lib/engine/artifact-generator'
 import { generateFallbackAgentMd, generateFallbackRulesMd } from '@/lib/engine/agent-rules-generator'
 import { internalCatalogFallback } from '@/lib/engine/skill-resolver'
-import { defaultFallbackPhases } from '@/lib/engine/backlog-generator'
 import { validateBacklogDependencies } from '@/lib/engine/backlog-validator'
 import { validateRuleBasedConsistency } from '@/lib/engine/consistency-validator'
 import { validateZipPath, scanContentForSecrets, generateBootstrapReadme } from '@/lib/export/export-service'
@@ -40,7 +39,25 @@ describe('End-to-End Pipeline & Final Quality Control Suite', () => {
     expect(internalCatalogFallback[0]?.source).toBe('skillsllm.com')
 
     // 3. Backlog Dependency Graph Validation & Readiness
-    const backlogValidation = validateBacklogDependencies(defaultFallbackPhases)
+    const samplePhases = [
+      {
+        name: 'Phase 1',
+        order: 1,
+        tasks: [
+          {
+            id: 'BK-001',
+            title: 'Init',
+            description: 'Init project',
+            dependencies: [],
+            acceptance_criteria: ['Done'],
+            definition_of_done: 'Done',
+            relevant_docs: [],
+            recommended_skills: [],
+          },
+        ],
+      },
+    ]
+    const backlogValidation = validateBacklogDependencies(samplePhases)
     expect(backlogValidation.isValid).toBe(true)
     expect(backlogValidation.errors.length).toBe(0)
     expect(backlogValidation.taskStatusMap['BK-001']).toBe('READY')
