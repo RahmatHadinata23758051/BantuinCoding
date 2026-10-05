@@ -343,7 +343,8 @@ abstract class BaseProvider implements AIProvider {
       if (!result.success) {
         throw new Error(
           `[${this.type}] AI response failed schema validation.\n` +
-            `Issues: ${JSON.stringify(result.error.issues, null, 2)}`,
+            `Issues: ${JSON.stringify(result.error.issues, null, 2)}
+Raw (first 1000 chars): ${raw.slice(0, 1000)}`,
         )
       }
     }
