@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { useTranslations } from 'next-intl'
 import {
   useRef,
   useState,
@@ -143,37 +144,38 @@ const SECTION_ITEMS: {
 ]
 
 const PIPELINE_STAGES: {
+  id: string
   label: string
   description: string
   icon: LucideIcon
 }[] = [
   {
-    label: 'Idea',
+    id: 'Idea', label: 'Idea',
     description: 'Intent and scope captured',
     icon: Lightbulb,
   },
   {
-    label: 'Clarify',
+    id: 'Clarify', label: 'Clarify',
     description: 'Unknowns resolved',
     icon: MessageSquareText,
   },
   {
-    label: 'Context',
+    id: 'Context', label: 'Context',
     description: 'Decisions normalized',
     icon: Braces,
   },
   {
-    label: 'Generate',
+    id: 'Generate', label: 'Generate',
     description: 'Pack assembled',
     icon: Play,
   },
   {
-    label: 'Review',
+    id: 'Review', label: 'Review',
     description: 'Documents checked',
     icon: ScanText,
   },
   {
-    label: 'Export',
+    id: 'Export', label: 'Export',
     description: 'Archive prepared',
     icon: Download,
   },
@@ -501,6 +503,9 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
 }
 
 export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps) {
+  const t = useTranslations('Workspace')
+  const tCommon = useTranslations('Common')
+  const tStatus = useTranslations('Status')
   const [activeTab, setActiveTab] = useState<WorkspaceSection>('overview')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -996,7 +1001,7 @@ Begin execution immediately:
       className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
     >
       <MessageSquareText aria-hidden="true" className="size-4" />
-      Continue clarification
+      {t('actionClarify')}
     </button>
   ) : projectStatus === 'CLARIFYING' && answeredClarifications.length > 0 ? (
     <button
@@ -1010,7 +1015,7 @@ Begin execution immediately:
       ) : (
         <Braces aria-hidden="true" className="size-4" />
       )}
-      {isAnalyzing ? 'Normalizing context…' : 'Generate canonical context'}
+      {isAnalyzing ? 'Normalizing context…' : t('actionGenerate')}
     </button>
   ) : (
     <button
@@ -1024,7 +1029,7 @@ Begin execution immediately:
       ) : (
         <ScanText aria-hidden="true" className="size-4" />
       )}
-      {isAnalyzing ? 'Analyzing project…' : 'Start requirement analysis'}
+      {isAnalyzing ? 'Analyzing project…' : t('actionGenerate')}
     </button>
   )
 
@@ -1043,11 +1048,7 @@ Begin execution immediately:
         ) : (
           <Play aria-hidden="true" className="size-4" />
         )}
-        {isGenerating
-          ? 'Generating pack…'
-          : readyArtifacts.length > 0
-            ? 'Regenerate full pack'
-            : 'Generate full pack'}
+        {isGenerating ? tCommon('loading') : readyArtifacts.length > 0 ? t('actionRegenerate') : t('actionGenerate')}
       </button>
       {attentionArtifacts.length > 0 && (
         <button
@@ -1089,10 +1090,10 @@ Begin execution immediately:
                 <span
                   className={`border-2 px-2.5 py-1 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${statusTone(projectStatus)}`}
                 >
-                  {formatStatus(projectStatus)}
+                  {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
                 </span>
                 <span className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                  Updated {formatDate(initialData.updatedAt)}
+                  {t('updated', { date: formatDate(initialData.updatedAt) })}
                 </span>
               </div>
               <h1 className="mt-4 max-w-5xl text-4xl font-black leading-[0.95] tracking-[-0.06em] sm:text-6xl lg:text-7xl">
@@ -1100,13 +1101,13 @@ Begin execution immediately:
               </h1>
               <p className="mt-5 max-w-3xl border-l-4 border-[var(--workspace-ink)] pl-4 text-base font-semibold leading-7 text-[var(--workspace-muted)]">
                 {initialData.description ||
-                  'No project brief has been recorded yet. Add the problem, intended users, and expected outcome before generation.'}
+                  t('noBrief')}
               </p>
             </div>
 
             <div className={`${PANEL_CLASS} bg-[var(--workspace-yellow-soft)] p-5`}>
               <p className="font-mono text-xs font-black text-[var(--workspace-ink)]">
-                Control-room action
+                {t('controlRoomAction')}
               </p>
               <div className="mt-4">{generateButton}</div>
               <p
@@ -1134,9 +1135,9 @@ Begin execution immediately:
         <aside className="border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r-4">
           <div className="px-4 py-5 sm:px-6 lg:px-5 lg:py-8">
             <div className={`${PANEL_SOFT_CLASS} bg-[var(--workspace-paper)] p-4`}>
-              <h2 className="text-xl font-black tracking-[-0.04em]">Pipeline spine</h2>
+              <h2 className="text-xl font-black tracking-[-0.04em]">{t('pipelineSpine')}</h2>
               <p className="mt-1 font-mono text-xs font-bold leading-5 text-[var(--workspace-muted)]">
-                Step {activePipelineIndex + 1} of {PIPELINE_STAGES.length}. Real project state.
+                {t('stepXofY', { current: activePipelineIndex + 1, total: PIPELINE_STAGES.length })}
               </p>
             </div>
 
@@ -1193,7 +1194,7 @@ Begin execution immediately:
                       )}
                     </div>
                     <p className="mt-1 text-xs font-semibold leading-5 text-[var(--workspace-muted)]">
-                      {stage.description}
+                      {t(`pl${stage.id}Desc` as Parameters<typeof t>[0])}
                     </p>
                   </li>
                 )
@@ -1239,7 +1240,7 @@ Begin execution immediately:
                     }`}
                   >
                     <Icon aria-hidden="true" className="size-4" />
-                    {section.label}
+                    {t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}
                   </button>
                 )
               })}
@@ -1255,37 +1256,37 @@ Begin execution immediately:
             >
               <div className={activeTab === 'overview' ? 'space-y-10' : 'hidden'}>
                 <SectionHeading
-                  title="Documentation control room"
-                  description="A direct view of what the coding agent can rely on now, what still needs attention, and the next safe action."
+                  title={t('docControlRoom')}
+                  description={t('docControlRoomDesc')}
                 />
 
                 <section className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.8fr)]">
                   <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6 lg:-rotate-1`}>
                     <div className="border-l-8 border-[var(--workspace-primary)] pl-5">
                       <p className="font-mono text-xs font-black text-[var(--workspace-ink)]">
-                        Next checkpoint
+                        {t('nextCheckpoint')}
                       </p>
                       <h3 className="mt-2 text-3xl font-black leading-none tracking-[-0.05em] sm:text-4xl">
                         {!contextReady
-                          ? 'Establish the canonical context'
+                          ? t('stateEstablishContext')
                           : readyArtifacts.length === 0
-                            ? 'Generate the first documentation pack'
+                            ? t('stateGenerateFirst')
                             : attentionArtifacts.length > 0
-                              ? 'Resolve document warnings before export'
+                              ? t('stateResolveWarnings')
                               : projectStatus === 'EXPORTABLE'
-                                ? 'The bootstrap pack is exportable'
-                                : 'Review the generated pack'}
+                                ? t('stateExportable')
+                                : t('stateReviewPack')}
                       </h3>
                       <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
                         {!contextReady
-                          ? 'The project has no normalized context yet. Complete analysis and clarification so generators do not invent high-impact decisions.'
+                          ? t('descEstablishContext')
                           : readyArtifacts.length === 0
-                            ? 'The context exists, but no documents are ready. Generation will create the core artifacts, resolve skills, and assemble dependency-aware work.'
+                            ? t('descGenerateFirst')
                             : attentionArtifacts.length > 0
-                              ? `${attentionArtifacts.length} document${attentionArtifacts.length === 1 ? '' : 's'} are failed or outdated. Review their status in Documents before packaging the project.`
+                              ? t('descResolveWarnings', { count: attentionArtifacts.length })
                               : projectStatus === 'EXPORTABLE'
-                                ? 'A previous export completed successfully. Review modified documents before downloading a fresh archive.'
-                                : 'The current documents can be inspected, edited, and packaged. Modified documents remain eligible for export.'}
+                                ? t('descExportable')
+                                : t('descReviewPack')}
                       </p>
                     </div>
 
@@ -1331,32 +1332,26 @@ Begin execution immediately:
                   >
                     <div className="flex items-center justify-between border-b-4 border-[var(--workspace-ink)] pb-4">
                       <h3 id="readiness-title" className="text-2xl font-black tracking-[-0.04em]">
-                        Actual readiness
+                        {t('actualReadiness')}
                       </h3>
                       <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
-                        Live data
+                        {t('liveData')}
                       </span>
                     </div>
                     <ul>
                       <ReadinessLine
-                        label="Canonical context"
-                        value={contextReady ? 'Available' : 'Missing'}
+                        label={t("canonicalContext")}
+                        value={contextReady ? t('available') : t('missing')}
                         detail={
-                          contextReady
-                            ? `Snapshot v${initialData.contextVersion}`
-                            : 'Required before reliable generation'
+                          contextReady ? t('snapshot', { version: initialData.contextVersion }) : t('reqBeforeGen')
                         }
                         tone={contextReady ? 'ready' : 'idle'}
                       />
                       <ReadinessLine
-                        label="Documents"
-                        value={`${readyArtifacts.length} of ${artifacts.length} ready`}
+                        label={t("tabDocuments")}
+                        value={t('docsReady', { ready: readyArtifacts.length, total: artifacts.length })}
                         detail={
-                          attentionArtifacts.length > 0
-                            ? `${attentionArtifacts.length} need attention`
-                            : artifacts.length > 0
-                              ? 'Ready and modified files can export'
-                              : 'No artifacts generated'
+                          attentionArtifacts.length > 0 ? t('needAttention', { count: attentionArtifacts.length }) : artifacts.length > 0 ? t('readyExportable') : t('noDocsGenerated')
                         }
                         tone={
                           attentionArtifacts.length > 0
@@ -1367,24 +1362,18 @@ Begin execution immediately:
                         }
                       />
                       <ReadinessLine
-                        label="Resolved skills"
-                        value={`${initialData.skills.length} selected`}
+                        label={t("resolvedSkills")}
+                        value={t('selectedCount', { count: initialData.skills.length })}
                         detail={
-                          initialData.skills.length > 0
-                            ? 'Triggers and phases are mapped'
-                            : 'Resolution has not produced recommendations'
+                          initialData.skills.length > 0 ? t('triggersMapped') : t('noRecommendations')
                         }
                         tone={initialData.skills.length > 0 ? 'ready' : 'idle'}
                       />
                       <ReadinessLine
-                        label="Backlog"
-                        value={`${readyTasks.length} of ${allTasks.length} ready`}
+                        label={t("tabBacklog")}
+                        value={t('tasksReadyOfTotal', { ready: readyTasks.length, total: allTasks.length })}
                         detail={
-                          blockedTasks.length > 0
-                            ? `${blockedTasks.length} blocked; ${doneTasks.length} done`
-                            : allTasks.length > 0
-                              ? `${doneTasks.length} completed; no tasks blocked`
-                              : 'No implementation tasks generated'
+                          blockedTasks.length > 0 ? t('blockedAndDone', { blocked: blockedTasks.length, done: doneTasks.length }) : allTasks.length > 0 ? t('completedNoBlocked', { done: doneTasks.length }) : t('noTasksGenerated')
                         }
                         tone={
                           blockedTasks.length > 0
@@ -1395,12 +1384,10 @@ Begin execution immediately:
                         }
                       />
                       <ReadinessLine
-                        label="ZIP export"
-                        value={canExport ? 'Available' : 'Unavailable'}
+                        label={t("zipExport")}
+                        value={canExport ? t('available') : t('unavailable')}
                         detail={
-                          canExport
-                            ? `${readyArtifacts.length} document${readyArtifacts.length === 1 ? '' : 's'} eligible`
-                            : 'At least one ready document is required'
+                          canExport ? t('docsEligible', { count: readyArtifacts.length }) : t('atLeastOneReq')
                         }
                         tone={canExport ? 'ready' : 'idle'}
                       />
@@ -1887,7 +1874,7 @@ Begin execution immediately:
                               <span
                                 className={`w-fit border-2 px-2 py-0.5 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${statusTone(artifact.status)}`}
                               >
-                                {formatStatus(artifact.status)}
+                                {tStatus(artifact.status as Parameters<typeof tStatus>[0]) ?? formatStatus(artifact.status)}
                               </span>
                             </li>
                           ))}
