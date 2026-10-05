@@ -224,7 +224,7 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('land-book.com')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('mobbin.com')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('godly.website')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('NEVER default to Neo-Brutalism')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('sole visual authority')
   })
 })
 

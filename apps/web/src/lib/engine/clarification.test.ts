@@ -63,9 +63,9 @@ describe('Clarification Generator Schemas', () => {
   it('validates a round with 3-7 questions', () => {
     const round = {
       questions: [
-        { question: 'Q1 text here?', impact: 'Impact 1' },
-        { question: 'Q2 text here?', impact: 'Impact 2' },
-        { question: 'Q3 text here?', impact: 'Impact 3' },
+        { question: 'Q1 text here?', impact: 'Impact 1', suggested_options: ['A', 'B'] },
+        { question: 'Q2 text here?', impact: 'Impact 2', suggested_options: ['A', 'B'] },
+        { question: 'Q3 text here?', impact: 'Impact 3', suggested_options: ['A', 'B'] },
       ],
       is_context_sufficient: false,
     }
