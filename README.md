@@ -34,6 +34,34 @@ The generated context keeps requirements, technical decisions, design constraint
 
 Each stage has an explicit project state in the application. Generation does not depend on an unstructured chat transcript as its source of truth.
 
+### Workflow graph
+
+```mermaid
+flowchart LR
+    A[Raw idea] --> B[Requirement analysis]
+    B --> C{Decisions missing?}
+    C -- Yes --> D[Clarification]
+    D --> C
+    C -- No --> E[Canonical context]
+    E --> F[Artifact plan]
+    F --> G[Generate pack]
+    G --> H[Consistency check]
+    H --> I[ZIP export]
+    I --> J[Coding agent]
+
+    classDef input fill:#FFD84D,stroke:#151515,stroke-width:2px,color:#151515;
+    classDef process fill:#FFF9EC,stroke:#151515,stroke-width:2px,color:#151515;
+    classDef output fill:#57D9A3,stroke:#151515,stroke-width:2px,color:#151515;
+    classDef decision fill:#BBA7FF,stroke:#151515,stroke-width:2px,color:#151515;
+
+    class A input;
+    class B,D,E,F,G,H process;
+    class C decision;
+    class I,J output;
+```
+
+The loop is deliberate: unresolved high-impact decisions return to clarification instead of being silently invented downstream.
+
 ## Specification pack
 
 The pack is a set of Markdown documents that can be reviewed, edited, and exported as a ZIP. Together, the documents provide the implementation context for a coding agent.
@@ -237,17 +265,22 @@ A task is not ready when a required dependency is incomplete.
 
 All artifact generators consume the current canonical project context. The main generation flow is:
 
-```text
-Requirement analysis
-  → Clarification
-  → Context normalization
-  → Artifact planning
-  → PRD and technical document generation
-  → Agent contract generation
-  → Skill resolution
-  → Backlog generation
-  → Consistency validation
-  → ZIP export
+```mermaid
+flowchart TD
+    A[Canonical context] --> B[Artifact planning]
+    B --> C[PRD]
+    B --> D[Architecture]
+    B --> E[Design]
+    C --> F[Agent contract]
+    D --> F
+    E --> F
+    F --> G[Skill resolution]
+    G --> H[Backlog]
+    C --> H
+    D --> H
+    E --> H
+    H --> I[Consistency validation]
+    I --> J[ZIP export]
 ```
 
 Prompts are separated by responsibility. The repository includes dedicated prompt modules for analysis, clarification, context normalization, planning, document generation, skill resolution, backlog generation, and consistency validation.
