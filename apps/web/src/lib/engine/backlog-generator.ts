@@ -105,13 +105,14 @@ export async function generateProjectBacklog({
     },
   })
 
+  const summarizeReference = (content: string) => content.slice(0, 2500)
   const userPrompt = buildBacklogGeneratorUserPrompt(
     project.name,
     currentContextRecord.contentJson,
-    prdArtifact,
-    srsArtifact,
-    archArtifact,
-    designArtifact,
+    summarizeReference(prdArtifact),
+    summarizeReference(srsArtifact),
+    summarizeReference(archArtifact),
+    summarizeReference(designArtifact),
   )
   let backlogOutput: BacklogGeneratorOutput
   try {
@@ -197,7 +198,7 @@ export async function generateProjectBacklog({
       await tx.artifact.update({
         where: { projectId_type: { projectId, type: 'BACKLOG' } },
         data: {
-          content: backlogOutput.backlog_md_content,
+          content: generateBacklogMdContent(project.name, backlogOutput.phases),
           status: 'READY',
           contextId: currentContextRecord.id,
           provider: providerConfig.provider,

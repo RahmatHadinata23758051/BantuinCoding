@@ -257,7 +257,6 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
       type: 'ANTHROPIC', testConnection: vi.fn(),
       generateStructured: vi.fn().mockResolvedValueOnce({
         phases: mockPhases,
-        backlog_md_content: '# BACKLOG',
       }),
     })
     dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: `phase-${data.order}`, ...data }))
@@ -287,7 +286,6 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
       type: 'ANTHROPIC', testConnection: vi.fn(),
       generateStructured: vi.fn().mockResolvedValueOnce({
         phases: mockPhases,
-        backlog_md_content: '# BACKLOG',
       }),
     })
     vi.mocked(db.$transaction).mockRejectedValueOnce(new Error('write failed'))

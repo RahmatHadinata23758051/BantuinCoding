@@ -29,7 +29,6 @@ export type GeneratedBacklogPhase = z.infer<typeof GeneratedBacklogPhaseSchema>
 
 export const BacklogGeneratorOutputSchema = z.object({
   phases: z.array(GeneratedBacklogPhaseSchema),
-  backlog_md_content: z.string().describe('Full BACKLOG.md file formatted in GitHub-flavored Markdown'),
 })
 
 export type BacklogGeneratorOutput = z.infer<typeof BacklogGeneratorOutputSchema>
@@ -54,8 +53,8 @@ TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
    - Every task MUST specify concrete acceptance criteria with testable conditions.
    - Definition of done must name verification commands (e.g., "Passes pnpm typecheck and unit tests").
    - Frontend, interaction, responsive, accessibility, and design-system tasks MUST consume DESIGN.md and include DESIGN.md in relevant_docs.
-6. The backlog_md_content field must contain a beautifully rendered, phase-grouped BACKLOG.md file in Markdown with clear task ledger format.
-7. BACKLOG.md must reference DESIGN.md for every visual decision and must not define a palette, border system, radius system, shadow system, typography system, or visual archetype of its own.`
+6. Only return the phases and structured task graph. The Markdown file will be generated automatically by the server based on your structured tasks.
+7. Any UI or design tasks must reference DESIGN.md for every visual decision and must not define a palette, border system, radius system, shadow system, typography system, or visual archetype of its own.`
 
 export function buildBacklogGeneratorUserPrompt(
   projectName: string,
