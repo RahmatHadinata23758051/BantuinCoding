@@ -84,3 +84,10 @@ logs/
 .netlify
 *.tsbuildinfo
 next-env.d.ts
+
+# Local testing and scratchpad files
+# ============================================
+check_*.js
+test_*.js
+scratch*.js
+*_HANDOFF.md

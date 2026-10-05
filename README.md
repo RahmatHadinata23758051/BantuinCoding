@@ -1,91 +1,94 @@
-# BantuinCoding / Project Bootstrapper
+<h1 align="center">Project Bootstrapper / BantuinCoding</h1>
 
-Project Bootstrapper is a disciplined documentation control room and Bring-Your-Own-Key (BYOK) web application. It transforms raw, unstructured project ideas into strict, execution-ready documentation packs designed specifically for autonomous coding agents (Claude Code, Cursor, Codex).
+<p align="center">
+  <strong>A disciplined documentation control room that transforms raw ideas into strict, execution-ready documentation packs for autonomous coding agents (Claude Code, Cursor, Codex).</strong>
+</p>
 
-It is not a code generator, an IDE, or a chatbot. It is a systematic pipeline that extracts intent, resolves ambiguities through targeted clarification, and compiles a canonical project context into a lean, 5-file specification architecture.
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-16.3-black?style=flat&logo=next.js" alt="Next.js">
+  <img src="https://img.shields.io/badge/React-19.2-blue?style=flat&logo=react" alt="React">
+  <img src="https://img.shields.io/badge/TypeScript-Strict-blue?style=flat&logo=typescript" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Prisma-ORM-1B222D?style=flat&logo=prisma" alt="Prisma">
+  <img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat" alt="License">
+</p>
 
-## Overview
+## Features
 
-Modern coding agents fail when given ambiguous prompts. Project Bootstrapper bridges the gap between a human's raw intent and an agent's need for deterministic constraints. 
+- **Lean Specification Architecture**: Compiles intent into a strict 5-file pack (`PRD.md`, `ARCHITECTURE.md`, `DESIGN.md`, `Agent.md`, `BACKLOG.md`).
+- **Bring-Your-Own-Key (BYOK)**: API keys remain session-scoped or AES-256 encrypted in the vault. Zero secret leakage into exported Markdown.
+- **Multi-Provider AI**: Unified integration with Anthropic, OpenAI, Gemini, and OpenRouter for context analysis and generation.
+- **Smart Clarification Flow**: Resolves ambiguities by asking targeted questions before generating documents, with an auto-pick mode for non-technical users.
+- **Bilingual Interface**: Full i18n support generating UI and specifications in English and Indonesian.
+- **Monorepo Setup**: Architected with Turborepo separating the Next.js `web` app, Prisma `db` layer, and shared `types`.
 
-By analyzing the initial input, the system identifies missing architectural decisions, asks the user focused clarification questions, and locks down the project scope. The result is a downloadable, secret-safe ZIP archive containing a phased, dependency-aware backlog and strict operational guidelines.
-
-## Lean Specification Architecture
-
-The system enforces a consolidated, highly efficient documentation pack tailored to project complexity (Static Site, SaaS, IoT Dashboard, etc.). All projects yield a maximum of 5 deterministic files:
-
-- **`PRD.md`** — Product and Functional Specification. Absorbs traditional SRS components (FR-xxx, NFR-xxx, data models, error handling).
-- **`ARCHITECTURE.md`** — System, Stack, and Data Architecture. Details database schemas, API surfaces, and deployment strategies.
-- **`DESIGN.md`** — Visual and Interaction Authority. The sole source of truth for UI tokens, typography, and neo-brutalist or editorial design directives.
-- **`Agent.md`** — Unified Operational Contract. Contains hard technology constraints, security rules, BYOK isolation directives, and mapped agent skills.
-- **`BACKLOG.md`** — Phased Execution Ledger. Atomic, dependency-aware task graph with strict acceptance criteria and Definition of Done.
-
-## Core Features
-
-- **BYOK Architecture**: API keys are session-scoped and never persisted to the database unless explicitly saved to an AES-256 encrypted vault. Secrets never leak into the generated Markdown or ZIP exports.
-- **Multi-Provider Support**: Supports Anthropic, OpenAI, Gemini, and OpenRouter via a unified AI provider interface.
-- **Context Normalization**: Converts conversational clarifications into a structured, versioned canonical context (`ProjectContext`).
-- **Resilient Generation**: Gracefully handles model output limitations, automatically recovers from JSON truncation, and manages dependency validation.
-- **Multi-language Support (i18n)**: Fully localized UI and documentation generation in English and Indonesian (Bahasa Indonesia).
-- **Expertise Modes**: Supports both highly technical users and business-focused founders through an auto-pick "CTO" mode during clarification.
-
-## Tech Stack
-
-- **Framework**: Next.js 16 (App Router)
-- **Library**: React 19
-- **Language**: TypeScript (Strict Mode)
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: Auth.js (NextAuth v5)
-- **Styling**: Tailwind CSS v4
-- **Localization**: next-intl
-- **Validation**: Zod
-- **Testing**: Vitest, React Testing Library
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
+
 - Node.js >= 20.x
 - pnpm >= 9.x
 - PostgreSQL database
 
-### Installation
+### Install
 
-1. Clone the repository and install dependencies:
 ```bash
+# Clone the repository
 git clone https://github.com/RahmatHadinata23758051/BantuinCoding.git
 cd BantuinCoding
+
+# Install dependencies across the monorepo
 pnpm install
-```
 
-2. Configure environment variables:
-Create a `.env` file in `apps/web/` based on `.env.example`.
-```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/bantuincoding"
-AUTH_SECRET="your-32-byte-secret"
-```
+# Setup environment variables (copy from .env.example)
+# Add your DATABASE_URL and a generated AUTH_SECRET
+cp apps/web/.env.example apps/web/.env
 
-3. Run database migrations and generate the Prisma client:
-```bash
+# Sync database schema and generate Prisma client
 cd packages/db
 pnpm run db:push
 pnpm run db:generate
+cd ../..
 ```
 
-4. Start the development server:
+### Run
+
 ```bash
-cd ../..
+# Start the Turborepo development server
 pnpm run dev
 ```
+Access the application at `http://localhost:3000`.
 
-The application will be available at `http://localhost:3000`.
+## Configuration
 
-## Architecture & Monorepo Structure
+Environment variables configured in `apps/web/.env`:
 
-This project uses a monorepo setup managed by Turborepo:
-- `apps/web`: The core Next.js application, UI components, AI engines, and export services.
-- `packages/db`: Prisma schema, migrations, and database client.
-- `packages/types`: Shared TypeScript interfaces and domain types.
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string for Prisma. |
+| `AUTH_SECRET` | 32-byte secret used for NextAuth session encryption. |
+
+## Project Structure
+
+```text
+BantuinCoding/
+├── apps/
+│   └── web/            # Next.js 16 App Router application
+│       ├── messages/   # i18n translation dictionaries (en, id)
+│       ├── src/app/    # Application routes and UI components
+│       └── src/lib/    # AI engine, prompt generators, BYOK vault, export services
+├── packages/
+│   ├── db/             # Prisma schema, migrations, and generated client
+│   └── types/          # Shared domain interfaces and schemas
+└── turbo.json          # Monorepo build pipeline configuration
+```
+
+## Tech Stack
+
+- **Frontend & Backend:** Next.js 16, React 19, Tailwind CSS v4
+- **Database & ORM:** PostgreSQL, Prisma, Auth.js (NextAuth v5)
+- **AI & Validation:** @anthropic-ai/sdk, @google/generative-ai, openai, Zod
+- **Testing:** Vitest, React Testing Library
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the [MIT License](LICENSE).
