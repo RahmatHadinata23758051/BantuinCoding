@@ -44,7 +44,7 @@ TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
    - Backend Foundation: Project scaffold, ORM/Prisma schema, migration files, seed scripts, database client singleton.
    - Domain Engines & Business Logic: Domain services, state machines, business validation rules, utility functions.
    - API Route Handlers: Individual REST/Server Action endpoints, request validation (Zod), auth middleware, error mapping.
-   - Frontend Primitives & Tokens: Component tokens (colors, borders, shadows matching DESIGN.md), base UI components (Button, Input, Panel, Select, Badge).
+   - Frontend Primitives & Tokens: Implement the exact component tokens defined in DESIGN.md. Do not invent or duplicate visual tokens in BACKLOG.md.
    - Frontend Feature Views: Specific screens, page layouts, form handling, client-side validation, loading/empty/error states.
    - Integration & Security: API client fetchers, session handling, CSRF/secret protection, input sanitization.
    - Quality Gates & Testing: Unit tests per service, route integration tests, typecheck & lint verification.
@@ -54,7 +54,8 @@ TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
    - Every task MUST specify concrete acceptance criteria with testable conditions.
    - Definition of done must name verification commands (e.g., "Passes pnpm typecheck and unit tests").
    - Frontend, interaction, responsive, accessibility, and design-system tasks MUST consume DESIGN.md and include DESIGN.md in relevant_docs.
-6. The backlog_md_content field must contain a beautifully rendered, phase-grouped BACKLOG.md file in Markdown with clear task ledger format.`
+6. The backlog_md_content field must contain a beautifully rendered, phase-grouped BACKLOG.md file in Markdown with clear task ledger format.
+7. BACKLOG.md must reference DESIGN.md for every visual decision and must not define a palette, border system, radius system, shadow system, typography system, or visual archetype of its own.`
 
 export function buildBacklogGeneratorUserPrompt(
   projectName: string,

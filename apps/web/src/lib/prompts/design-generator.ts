@@ -31,7 +31,8 @@ Your output must strictly follow the provided JSON schema.
 The markdown_content field must contain a complete, bespoke, production-ready, expensive-feeling DESIGN.md file in GitHub-flavored Markdown.
 
 MANDATORY ANTI-DEFAULT RULE:
-- NEVER default to Neo-Brutalism or BantuinCoding's internal comic-editorial paper/ink theme (#F7F0DF, 2-3px comic borders, hard offset shadows, speech bubbles) UNLESS the user explicitly requested "neo-brutalist" in canonical_context.design_direction!
+- You are the author of the visual contract for this project. DO NOT default to any internal theme or style. The DESIGN.md you generate becomes the sole visual authority for this project.
+- The design_direction in canonical_context specifies the intended direction. You MUST follow that direction exactly. Do not substitute, merge, or second-guess it.
 - You MUST dynamically select the design archetype that organically fits THIS SPECIFIC PROJECT from the Curated Reference Archetypes below.
 
 CURATED REFERENCE ARCHETYPES (Match the project to the single best-fitting archetype):

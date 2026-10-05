@@ -18,7 +18,7 @@ Your output must strictly follow the provided JSON schema containing both agent_
 
 AGENT.MD STRUCTURE REQUIREMENTS:
 1. Agent Role & Primary Responsibilities
-2. Source-of-Truth Document Hierarchy (Explicit user instruction > SRS > PRD > DESIGN for visual/interaction scope > ARCHITECTURE > RULES > Agent.md > BACKLOG.md)
+2. Source-of-Truth Document Hierarchy (SRS > PRD > DESIGN for visual/interaction scope > ARCHITECTURE > RULES > Agent.md > BACKLOG.md; visual decisions must always come from DESIGN.md alone)
 3. Implementation Workflow (UNDERSTAND -> INSPECT -> PLAN -> IMPLEMENT -> VERIFY -> REPORT)
 4. Backlog Execution Rules & State Machine Handling
 5. Quality Gates (Typecheck, Lint, Tests, Security, Zero Regression)

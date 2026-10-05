@@ -598,9 +598,11 @@ Before authoring or modifying any code in the workspace, you MUST read the speci
 7. \`RULES.md\` — Non-Negotiable Hard Constraints (Tech Stack Immutability, Secret Protection, Zero-Warning Rule)
 8. \`SKILLS.md\` — Recommended Agent Skills & Triggers
 
-## 3. DESIGN SYSTEM CONTRACT (LOCKED)
-- Follow the locked visual system in \`DESIGN.md\`: warm off-white paper (#F7F0DF), near-black ink (#151515), 2-3px solid structural borders, hard offset shadows (4px-6px), asymmetric composition, and clear functional accents.
-- ZERO AI-SLOP: Prohibit generic templates, glassmorphism, decorative gradients, fake metrics, unadapted library widgets, and childish cartoon styling.
+## 3. VISUAL SOURCE OF TRUTH (LOCKED)
+- \`DESIGN.md\` is the sole authority for visual design. Follow its chosen archetype, references, palette, typography, spacing, borders, radii, shadows, components, motion, responsive behavior, and accessibility rules exactly.
+- Do not infer, invent, copy, or override visual tokens from this prompt, PRD.md, SRS.md, Agent.md, BACKLOG.md, RULES.md, or any internal BantuinCoding theme.
+- If another file conflicts with \`DESIGN.md\`, stop and resolve the conflict in favor of \`DESIGN.md\`; never silently substitute a different visual system.
+- ZERO AI-SLOP: Prohibit generic templates, glassmorphism, decorative gradients, fake metrics, unadapted library widgets, and childish cartoon styling unless \`DESIGN.md\` explicitly requires an equivalent direction.
 
 ## 4. CONTINUOUS AUTONOMOUS BACKLOG EXECUTION LOOP
 - **Live Project Dashboard:** ${dashboardUrl}
