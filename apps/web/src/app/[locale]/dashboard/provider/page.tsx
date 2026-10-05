@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { ProviderSetupPanel } from '@/app/components/ProviderSetupPanel'
+import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Caption, Panel, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 
@@ -20,7 +21,10 @@ export default async function ProviderSettingsPage() {
             </Link>
             <span>/ provider desk</span>
           </div>
-          <span className="max-w-56 truncate font-mono text-xs font-bold">{session.user.email}</span>
+          <div className="flex items-center gap-3">
+            <span className="max-w-56 truncate font-mono text-xs font-bold">{session.user.email}</span>
+            <LanguageSwitcher />
+          </div>
         </header>
 
         <section className="grid lg:grid-cols-[0.85fr_1.15fr]">

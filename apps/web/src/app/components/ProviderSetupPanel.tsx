@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 import { cn } from '@/lib/ui'
 import { Button, Input, Panel, Select, StatusBadge } from './ui'
@@ -61,6 +62,7 @@ const DEFAULT_MODELS: Record<Provider, string> = {
 const CUSTOM_URL_PROVIDERS: ReadonlySet<Provider> = new Set<Provider>(['OPENAI', 'OPENROUTER'])
 
 export function ProviderSetupPanel() {
+  const t = useTranslations('ProviderSetup')
   const [meta, setMeta] = useState<ProviderMeta | null>(null)
   const [savedKeys, setSavedKeys] = useState<SavedKeyItem[]>([])
   const [loadingKeys, setLoadingKeys] = useState(false)
@@ -210,7 +212,7 @@ export function ProviderSetupPanel() {
   }
 
   const handleDeleteKey = async (keyId: string, name: string) => {
-    if (!confirm(`Delete key "${name}" from vault?`)) return
+    if (!confirm(`{t('deleteKey')} "${name}" from vault?`)) return
     try {
       const res = await fetch(`/api/provider/keys/${keyId}`, { method: 'DELETE' })
       if (res.ok) {
@@ -312,15 +314,15 @@ export function ProviderSetupPanel() {
           </span>
           <span className="min-w-0">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-black text-[var(--ink)]">AI Provider Vault</span>
+              <span className="text-sm font-black text-[var(--ink)]">{t('vault')}</span>
               <StatusBadge tone={isConfigured ? 'success' : 'pending'}>
-                {isConfigured ? 'Active & Ready' : 'Key Required'}
+                {isConfigured ? t('activeReady') : t('keyRequired')}
               </StatusBadge>
             </span>
             <span className="mt-0.5 block truncate font-mono text-xs font-bold text-[var(--ink)]">
               {isConfigured && meta?.provider
                 ? `${meta.provider} / ${meta.model}`
-                : 'Save multiple provider profiles and switch seamlessly.'}
+                : t('saveProfiles')}
             </span>
           </span>
         </span>
@@ -349,8 +351,8 @@ export function ProviderSetupPanel() {
           {/* Saved Keys Vault Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-black text-[var(--ink)]">Saved Provider Keys</h3>
-              <p className="text-xs font-semibold text-[var(--paper-muted)]">Manage multiple keys across providers and switch anytime.</p>
+              <h3 className="text-sm font-black text-[var(--ink)]">{t('savedKeys')}</h3>
+              <p className="text-xs font-semibold text-[var(--paper-muted)]">{t('manageKeys')}</p>
             </div>
             <Button
               type="button"
@@ -360,7 +362,7 @@ export function ProviderSetupPanel() {
               className="gap-1.5 text-xs font-bold uppercase tracking-wider"
             >
               <Plus size={14} className={cn('transition-transform', showAddForm && 'rotate-45')} />
-              {showAddForm ? 'Cancel' : 'Add New Key'}
+              {showAddForm ? t('cancel') : t('addNewKey')}
             </Button>
           </div>
 
@@ -385,7 +387,7 @@ export function ProviderSetupPanel() {
                           ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-raised)]'
                           : 'border-[var(--ink)] bg-[var(--paper-raised)] hover:bg-[var(--electric-yellow)]',
                       )}
-                      title={item.isActive ? 'Active Key' : 'Click to activate this key'}
+                      title={item.isActive ? t('active') : t('activate')}
                     >
                       {item.isActive && <Check size={12} strokeWidth={4} />}
                     </button>
@@ -394,7 +396,7 @@ export function ProviderSetupPanel() {
                         <span className="text-sm font-black text-[var(--ink)] truncate">{item.name}</span>
                         {item.isActive && (
                           <span className="rounded-[3px] border-2 border-[var(--ink)] bg-[var(--mint)] px-1.5 py-0.5 text-[0.6rem] font-bold text-[var(--ink)] uppercase tracking-wider">
-                            Active
+                            {t('active')}
                           </span>
                         )}
                       </div>
@@ -421,7 +423,7 @@ export function ProviderSetupPanel() {
                         onClick={() => handleActivateKey(item.id)}
                         className="text-[0.65rem] h-7 px-2.5 font-bold uppercase tracking-wider"
                       >
-                        Activate
+                        {t('activate')}
                       </Button>
                     )}
                     <button
@@ -438,7 +440,7 @@ export function ProviderSetupPanel() {
             </div>
           ) : !loadingKeys && (
             <div className="rounded-[4px] border-2 border-dashed border-[var(--ink)] p-6 text-center text-xs font-bold text-[var(--paper-muted)]">
-              No API keys saved in your vault yet. Add one below to get started.
+              {t('noKeys')}
             </div>
           )}
 
@@ -446,13 +448,13 @@ export function ProviderSetupPanel() {
           {(showAddForm || savedKeys.length === 0) && (
             <form onSubmit={handleSaveToVault} className="space-y-4 rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper)] p-4 shadow-[var(--shadow-sm)]">
               <div className="flex items-center justify-between border-b-2 border-[var(--ink)] pb-2.5">
-                <span className="text-xs font-black uppercase tracking-wider text-[var(--ink)]">Add Key to Vault</span>
-                <span className="text-[10px] font-bold text-[var(--paper-muted)] font-mono uppercase tracking-wider">AES-256 Encrypted</span>
+                <span className="text-xs font-black uppercase tracking-wider text-[var(--ink)]">{t('addKeyVault')}</span>
+                <span className="text-[10px] font-bold text-[var(--paper-muted)] font-mono uppercase tracking-wider">{t('encrypted')}</span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="keyName" className="text-xs font-bold text-[var(--ink)]">Profile / Key Name</label>
+                  <label htmlFor="keyName" className="text-xs font-bold text-[var(--ink)]">{t('profileName')}</label>
                   <Input
                     id="keyName"
                     value={keyName}
@@ -463,7 +465,7 @@ export function ProviderSetupPanel() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="provider" className="text-xs font-bold text-[var(--ink)]">Provider</label>
+                  <label htmlFor="provider" className="text-xs font-bold text-[var(--ink)]">{t("provider")}</label>
                   <Select
                     id="provider"
                     value={provider}
@@ -482,7 +484,7 @@ export function ProviderSetupPanel() {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="apiKey" className="text-xs font-bold text-[var(--ink)]">API Key</label>
+                <label htmlFor="apiKey" className="text-xs font-bold text-[var(--ink)]">{t("apiKey")}</label>
                 <div className="relative">
                   <Input
                     id="apiKey"
@@ -505,7 +507,7 @@ export function ProviderSetupPanel() {
 
               {CUSTOM_URL_PROVIDERS.has(provider) && (
                 <div className="space-y-1.5">
-                  <label htmlFor="baseUrl" className="text-xs font-bold text-[var(--ink)]">Custom Base URL (optional)</label>
+                  <label htmlFor="baseUrl" className="text-xs font-bold text-[var(--ink)]">{t('customBaseUrl')}</label>
                   <Input
                     id="baseUrl"
                     value={baseUrl}
@@ -517,14 +519,14 @@ export function ProviderSetupPanel() {
               )}
 
               <div className="space-y-1.5">
-                <label htmlFor="model" className="text-xs font-bold text-[var(--ink)]">Model</label>
+                <label htmlFor="model" className="text-xs font-bold text-[var(--ink)]">{t("model")}</label>
                 {showModelSelect ? (
                   <div className="space-y-2">
                     <Input
                       type="search"
                       value={modelSearch}
                       onChange={(e) => setModelSearch(e.target.value)}
-                      placeholder="Search models..."
+                      placeholder={t('searchModels')}
                       className="text-xs font-mono"
                     />
                     <Select
@@ -563,7 +565,7 @@ export function ProviderSetupPanel() {
                   disabled={testing || !apiKey}
                   className="text-[0.7rem] uppercase tracking-wider"
                 >
-                  {testing ? 'Testing...' : 'Test Connection'}
+                  {testing ? t('testing') : t('testConnection')}
                 </Button>
                 <Button
                   type="submit"
@@ -572,7 +574,7 @@ export function ProviderSetupPanel() {
                   disabled={loading || !apiKey}
                   className="text-[0.7rem] uppercase tracking-wider"
                 >
-                  {loading ? 'Saving...' : 'Save & Encrypt'}
+                  {loading ? t('saving') : t('saveEncrypt')}
                 </Button>
               </div>
             </form>

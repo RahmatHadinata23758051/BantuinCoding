@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { PipelineSpine } from '@/app/components/PipelineSpine'
+import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Caption, Input, Panel, Select, StatusBadge, Textarea, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { createProject } from '@/lib/projects/project-service'
@@ -73,7 +74,10 @@ export default async function NewProjectPage() {
             </Link>
             <span>/ new project</span>
           </div>
-          <StatusBadge tone="neutral">initial state · DRAFT</StatusBadge>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <StatusBadge tone="neutral">initial state · DRAFT</StatusBadge>
+          </div>
         </header>
 
         <div className="border-b-2 border-[var(--ink)] bg-[var(--paper)] p-4 sm:p-6">

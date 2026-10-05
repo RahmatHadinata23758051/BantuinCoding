@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import {
   useRef,
   useState,
@@ -1071,13 +1072,16 @@ Begin execution immediately:
     >
       <header className="border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]">
         <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
-          <Link
-            href="/dashboard"
-            className={`inline-flex items-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-3 py-1.5 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-[3px_3px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 ${BUTTON_FOCUS_CLASS}`}
-          >
-            <ArrowLeft aria-hidden="true" className="size-4" />
-            Projects
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link
+              href="/dashboard"
+              className={`inline-flex items-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-3 py-1.5 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-[3px_3px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 ${BUTTON_FOCUS_CLASS}`}
+            >
+              <ArrowLeft aria-hidden="true" className="size-4" />
+              Projects
+            </Link>
+            <LanguageSwitcher />
+          </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-end">
             <div className="min-w-0">

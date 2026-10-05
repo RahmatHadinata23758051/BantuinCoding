@@ -9,6 +9,7 @@ import { Caption, Panel, StatusBadge, buttonClassName } from '@/app/components/u
 import { auth } from '@/lib/auth'
 import { logoutAction } from '@/lib/auth/actions'
 import { getUserProjects } from '@/lib/projects/project-service'
+import { getTranslations } from 'next-intl/server'
 
 const STATUS_TONE: Record<
   string,
@@ -25,18 +26,6 @@ const STATUS_TONE: Record<
   GENERATION_FAILED: 'danger',
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: 'Draft',
-  CONFIGURED: 'Configured',
-  ANALYZING: 'Analyzing',
-  CLARIFYING: 'Clarifying',
-  CONTEXT_READY: 'Context ready',
-  GENERATING: 'Generating',
-  READY: 'Ready',
-  EXPORTABLE: 'Exportable',
-  GENERATION_FAILED: 'Failed',
-}
-
 function formatRelative(value: Date | string): string {
   const date = typeof value === 'string' ? new Date(value) : value
   const diff = Date.now() - date.getTime()
@@ -49,6 +38,9 @@ function formatRelative(value: Date | string): string {
 }
 
 export default async function DashboardPage() {
+  const t = await getTranslations('Dashboard')
+  const tCommon = await getTranslations('Common')
+  const tStatus = await getTranslations('Status')
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
@@ -75,19 +67,19 @@ export default async function DashboardPage() {
               </button>
             </form>
             <Link href="/projects/new" className={buttonClassName({ variant: 'primary', size: 'sm' })}>
-              <Plus size={16} aria-hidden="true" /> New project
+              <Plus size={16} aria-hidden="true" /> {tCommon('newProject')}
             </Link>
           </div>
         </header>
 
         <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="border-b-2 border-[var(--ink)] bg-[var(--lavender)] p-4 sm:p-6 lg:border-b-0 lg:border-r-2">
-            <Caption>Control desk</Caption>
+            <Caption>{t('controlDesk')}</Caption>
             <h1 className="mt-5 text-4xl font-black leading-[0.92] tracking-[-0.055em]">
-              Your project files.
+              {t('title')}
             </h1>
             <p className="mt-4 text-sm leading-6 text-[var(--ink-soft)]">
-              Configure a provider, open a project, and move its context toward an exportable pack.
+              {t('subtitle')}
             </p>
 
             <nav className="mt-8 grid gap-3" aria-label="Dashboard actions">
@@ -95,21 +87,21 @@ export default async function DashboardPage() {
                 href="/projects/new"
                 className={buttonClassName({ variant: 'secondary', className: 'w-full justify-between' })}
               >
-                Capture an idea <ArrowRight size={17} aria-hidden="true" />
+                {t('captureIdea')} <ArrowRight size={17} aria-hidden="true" />
               </Link>
               <Link
                 href="/dashboard/provider"
                 className={buttonClassName({ variant: 'neutral', className: 'w-full justify-between' })}
               >
-                Provider settings <KeyRound size={17} aria-hidden="true" />
+                {t('providerSettings')} <KeyRound size={17} aria-hidden="true" />
               </Link>
             </nav>
 
             <div className="mt-8 border-t-2 border-[var(--ink)] pt-5">
-              <p className="font-mono text-xs font-black">Current chapter</p>
-              <p className="mt-2 text-sm font-bold">01 · Idea</p>
+              <p className="font-mono text-xs font-black">{t('currentChapter')}</p>
+              <p className="mt-2 text-sm font-bold">{t('chapter01')}</p>
               <p className="mt-1 text-xs leading-5 text-[var(--paper-muted)]">
-                Start or reopen a project. Each workspace advances independently.
+                {t('chapter01Desc')}
               </p>
             </div>
           </aside>
@@ -121,27 +113,26 @@ export default async function DashboardPage() {
 
             <div className="mt-8 flex flex-wrap items-end justify-between gap-3 border-b-[3px] border-[var(--ink)] pb-3">
               <div>
-                <p className="font-mono text-xs font-black text-[var(--paper-muted)]">Project ledger</p>
+                <p className="font-mono text-xs font-black text-[var(--paper-muted)]">{t('projectLedger')}</p>
                 <div className="mt-1 flex items-center gap-3">
-                  <h2 className="text-3xl font-black tracking-[-0.045em]">Projects</h2>
-                  <StatusBadge tone="accent">{projects.length} total</StatusBadge>
+                  <h2 className="text-3xl font-black tracking-[-0.045em]">{t('projects')}</h2>
+                  <StatusBadge tone="accent">{projects.length} {t('total')}</StatusBadge>
                 </div>
               </div>
               <Link
                 href="/dashboard/provider"
                 className="text-sm font-black underline decoration-2 underline-offset-4"
               >
-                Open provider desk →
+                {t('openProviderDesk')}
               </Link>
             </div>
 
             {projects.length === 0 ? (
               <Panel tone="yellow" className="mt-5 p-6 sm:p-8">
                 <FolderKanban size={34} strokeWidth={2.5} aria-hidden="true" />
-                <h2 className="mt-5 text-3xl font-black tracking-[-0.045em]">The ledger is empty.</h2>
+                <h2 className="mt-5 text-3xl font-black tracking-[-0.045em]">{t('emptyTitle')}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6">
-                  Add a raw project idea. BantuinCoding will identify missing decisions, build a canonical
-                  context, and prepare the documents your coding agent needs.
+                  {t('emptyDesc')}
                 </p>
                 <Link
                   href="/projects/new"
@@ -153,12 +144,12 @@ export default async function DashboardPage() {
             ) : (
               <div className="mt-5 overflow-hidden border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hard)]">
                 <div className="hidden grid-cols-12 border-b-2 border-[var(--ink)] bg-[var(--ink)] px-4 py-2 font-mono text-[11px] font-bold text-[var(--paper-raised)] md:grid">
-                  <span className="col-span-2">State</span>
-                  <span className="col-span-4">Project</span>
-                  <span className="col-span-2">Type</span>
-                  <span className="col-span-2">Agent</span>
-                  <span className="col-span-1 text-right">Docs</span>
-                  <span className="col-span-1 text-right">Updated</span>
+                  <span className="col-span-2">{t("state")}</span>
+                  <span className="col-span-4">{t("project")}</span>
+                  <span className="col-span-2">{t("type")}</span>
+                  <span className="col-span-2">{t("agent")}</span>
+                  <span className="col-span-1 text-right">{t("docs")}</span>
+                  <span className="col-span-1 text-right">{t("updated")}</span>
                 </div>
 
                 <div className="divide-y-2 divide-[var(--ink)]">
@@ -170,7 +161,7 @@ export default async function DashboardPage() {
                     >
                       <div className="md:col-span-2">
                         <StatusBadge tone={STATUS_TONE[project.status] ?? 'neutral'}>
-                          {STATUS_LABEL[project.status] ?? project.status}
+                          {tStatus(project.status as Parameters<typeof tStatus>[0]) ?? project.status}
                         </StatusBadge>
                       </div>
 

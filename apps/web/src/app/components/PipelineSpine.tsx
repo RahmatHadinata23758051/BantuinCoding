@@ -1,14 +1,15 @@
 import { Check, Circle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 import { cn } from '@/lib/ui'
 
 const STAGES = [
-  { key: 'idea', label: 'Idea', detail: 'Capture intent' },
-  { key: 'clarify', label: 'Clarify', detail: 'Resolve gaps' },
-  { key: 'context', label: 'Context', detail: 'Normalize decisions' },
-  { key: 'generate', label: 'Generate', detail: 'Build documents' },
-  { key: 'review', label: 'Review', detail: 'Inspect and edit' },
-  { key: 'export', label: 'Export', detail: 'Package for agent' },
+  { key: 'idea', defaultLabel: 'Idea', defaultDetail: 'Capture intent' },
+  { key: 'clarify', defaultLabel: 'Clarify', defaultDetail: 'Resolve gaps' },
+  { key: 'context', defaultLabel: 'Context', defaultDetail: 'Normalize decisions' },
+  { key: 'generate', defaultLabel: 'Generate', defaultDetail: 'Build documents' },
+  { key: 'review', defaultLabel: 'Review', defaultDetail: 'Inspect and edit' },
+  { key: 'export', defaultLabel: 'Export', defaultDetail: 'Package for agent' },
 ] as const
 
 export type PipelineStage = (typeof STAGES)[number]['key']
@@ -20,6 +21,7 @@ interface PipelineSpineProps {
 }
 
 export function PipelineSpine({ current, className, compact = false }: PipelineSpineProps) {
+  const t = useTranslations('Pipeline')
   const currentIndex = STAGES.findIndex((stage) => stage.key === current)
 
   return (
@@ -87,16 +89,16 @@ export function PipelineSpine({ current, className, compact = false }: PipelineS
 
                 <span className="min-w-0">
                   <span className="block font-mono text-[11px] font-black tracking-[0.03em] text-[var(--ink)]">
-                    {String(index + 1).padStart(2, '0')} · {stage.label}
+                    {String(index + 1).padStart(2, '0')} · {t(stage.key as Parameters<typeof t>[0])}
                   </span>
                   {!compact && (
                     <span className="mt-0.5 block text-[11px] leading-snug text-[var(--paper-muted)]">
-                      {stage.detail}
+                      {t(`${stage.key}Detail` as Parameters<typeof t>[0])}
                     </span>
                   )}
                   {compact && active && (
                     <span className="mt-0.5 block text-[10px] font-bold text-[var(--ink)]">
-                      Current chapter
+                      {t('currentChapter')}
                     </span>
                   )}
                 </span>
