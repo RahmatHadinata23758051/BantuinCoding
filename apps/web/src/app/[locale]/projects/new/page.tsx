@@ -52,15 +52,18 @@ const AGENTS = [
 ]
 
 const NEXT_STEPS = [
-  'Analyze the raw idea and expose requirement gaps.',
-  'Ask only the clarification questions that affect implementation.',
-  'Normalize confirmed decisions into canonical project context.',
-  'Plan and generate the right documentation depth.',
-  'Resolve relevant skills and build a dependency-aware backlog.',
-  'Review the Markdown and export a secret-safe ZIP.',
+  'nextStep1',
+  'nextStep2',
+  'nextStep3',
+  'nextStep4',
+  'nextStep5',
+  'nextStep6',
 ]
 
+import { getTranslations } from 'next-intl/server'
+
 export default async function NewProjectPage() {
+  const t = await getTranslations('NewProject')
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
@@ -70,13 +73,13 @@ export default async function NewProjectPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
             <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
-              ← Dashboard
+              {t('backDashboard')}
             </Link>
-            <span>/ new project</span>
+            <span>{t('breadcrumb')}</span>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <StatusBadge tone="neutral">initial state · DRAFT</StatusBadge>
+            <StatusBadge tone="neutral">{t('initialStateDraft')}</StatusBadge>
           </div>
         </header>
 
@@ -86,19 +89,18 @@ export default async function NewProjectPage() {
 
         <section className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           <div className="border-b-2 border-[var(--ink)] bg-[var(--paper-raised)] p-5 sm:p-8 lg:border-b-0 lg:border-r-2">
-            <Caption>Chapter 01 · capture intent</Caption>
+            <Caption>{t('caption')}</Caption>
             <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
-              Give the system a useful raw idea—not a perfect spec.
+              {t('title')}
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-6 text-[var(--paper-muted)]">
-              Describe the users, the core job, important features, and known constraints. Missing
-              high-impact decisions become focused clarification questions later.
+              {t('subtitle')}
             </p>
 
             <form action={handleCreateProject} className="mt-8 grid gap-6">
               <div className="flex flex-col gap-2">
                 <label htmlFor="name" className="text-sm font-black">
-                  Project name
+                  {t('projectName')}
                 </label>
                 <Input
                   id="name"
@@ -107,13 +109,13 @@ export default async function NewProjectPage() {
                   required
                   minLength={2}
                   maxLength={100}
-                  placeholder="Example: Kost Management"
+                  placeholder={t('projectNamePlaceholder')}
                 />
               </div>
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="rawIdea" className="text-sm font-black">
-                  Project idea
+                  {t('projectIdea')}
                 </label>
                 <Textarea
                   id="rawIdea"
@@ -122,18 +124,18 @@ export default async function NewProjectPage() {
                   required
                   minLength={10}
                   maxLength={5000}
-                  placeholder="Who is this for? What must they be able to do? What business or technical constraints are already known?"
+                  placeholder={t('projectIdeaPlaceholder')}
                   className="min-h-64 leading-6"
                 />
                 <p className="text-xs leading-5 text-[var(--paper-muted)]">
-                  Do not paste API keys or other secrets. This text becomes long-lived project context.
+                  {t('projectIdeaNote')}
                 </p>
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
                   <label htmlFor="classification" className="text-sm font-black">
-                    Starting classification
+                    {t('classification')}
                   </label>
                   <Select id="classification" name="classification" defaultValue="SAAS">
                     {CLASSIFICATIONS.map((classification) => (
@@ -146,7 +148,7 @@ export default async function NewProjectPage() {
 
                 <div className="flex flex-col gap-2">
                   <label htmlFor="targetAgent" className="text-sm font-black">
-                    Target coding agent
+                    {t('targetAgent')}
                   </label>
                   <Select id="targetAgent" name="targetAgent" defaultValue="CLAUDE_CODE">
                     {AGENTS.map((agent) => (
@@ -161,13 +163,13 @@ export default async function NewProjectPage() {
               <div className="flex flex-col gap-4 border-t-[3px] border-[var(--ink)] pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--paper-muted)]">
                   <Lightbulb size={17} className="text-[var(--proof-amber)]" aria-hidden="true" />
-                  You can refine context before final generation.
+                  {t('refineNote')}
                 </div>
                 <button
                   type="submit"
                   className={buttonClassName({ variant: 'primary', size: 'lg', className: 'w-full sm:w-auto' })}
                 >
-                  Create project <ArrowRight size={18} aria-hidden="true" />
+                  {t('createBtn')} <ArrowRight size={18} aria-hidden="true" />
                 </button>
               </div>
             </form>
@@ -176,14 +178,14 @@ export default async function NewProjectPage() {
           <aside className="bg-[var(--lavender)] p-5 sm:p-8">
             <Panel tone="yellow" className="p-5">
               <ListChecks size={28} strokeWidth={2.5} aria-hidden="true" />
-              <h2 className="mt-4 text-2xl font-black tracking-[-0.04em]">What happens next</h2>
+              <h2 className="mt-4 text-2xl font-black tracking-[-0.04em]">{t('whatHappensNext')}</h2>
               <ol className="mt-5 grid gap-4">
                 {NEXT_STEPS.map((step, index) => (
                   <li key={step} className="grid grid-cols-[34px_1fr] gap-3">
                     <span className="flex size-8 items-center justify-center border-2 border-[var(--ink)] bg-[var(--paper-raised)] font-mono text-xs font-black shadow-[var(--shadow-xs)]">
                       {String(index + 1).padStart(2, '0')}
                     </span>
-                    <span className="pt-1 text-sm font-bold leading-5">{step}</span>
+                    <span className="pt-1 text-sm font-bold leading-5">{t(step as Parameters<typeof t>[0])}</span>
                   </li>
                 ))}
               </ol>
@@ -193,16 +195,15 @@ export default async function NewProjectPage() {
               <div className="flex items-start gap-3">
                 <KeyRound className="mt-0.5 shrink-0" size={21} aria-hidden="true" />
                 <div>
-                  <p className="font-mono text-xs font-black">Generation prerequisite</p>
+                  <p className="font-mono text-xs font-black">{t('prerequisite')}</p>
                   <p className="mt-2 text-sm leading-6 text-[var(--paper-muted)]">
-                    A valid provider session is required before AI analysis. You can create this draft
-                    now and configure the key separately.
+                    {t('prerequisiteDesc')}
                   </p>
                   <Link
                     href="/dashboard/provider"
                     className="mt-3 inline-block text-sm font-black underline decoration-2 underline-offset-4"
                   >
-                    Open provider desk →
+                    {t('openProviderDesk')}
                   </Link>
                 </div>
               </div>

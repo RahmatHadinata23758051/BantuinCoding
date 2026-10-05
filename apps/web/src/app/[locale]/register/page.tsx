@@ -7,10 +7,13 @@ import { useState } from 'react'
 
 import { registerAction } from '@/lib/auth/actions'
 
+import { useTranslations } from 'next-intl'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
 
 export default function RegisterPage() {
+  const t = useTranslations('Auth')
+  const tCommon = useTranslations('Common')
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -59,20 +62,20 @@ export default function RegisterPage() {
               <form onSubmit={handleSubmit} className="flex flex-col gap-5" aria-busy={loading}>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="name" className="text-sm font-black">
-                    Name <span className="font-normal text-[var(--paper-muted)]">(optional)</span>
+                    {t('nameOptional')}
                   </label>
                   <Input
                     id="name"
                     name="name"
                     type="text"
                     autoComplete="name"
-                    placeholder="How should we address you?"
+                    placeholder={t('namePlaceholder')}
                   />
                 </div>
 
                 <div className="flex flex-col gap-2">
                   <label htmlFor="email" className="text-sm font-black">
-                    Email address
+                    {t('emailLabel')}
                   </label>
                   <Input
                     id="email"
@@ -86,7 +89,7 @@ export default function RegisterPage() {
 
                 <div className="flex flex-col gap-2">
                   <label htmlFor="password" className="text-sm font-black">
-                    Password
+                    {t('passwordLabel')}
                   </label>
                   <Input
                     id="password"
@@ -100,15 +103,14 @@ export default function RegisterPage() {
                 </div>
 
                 <Button type="submit" size="lg" disabled={loading} className="mt-1 w-full">
-                  {loading ? 'Creating account…' : 'Create account'}
+                  {loading ? tCommon('loading') : t('submitRegisterBtn')}
                   {!loading && <ArrowRight size={18} aria-hidden="true" />}
                 </Button>
               </form>
 
               <p className="mt-6 text-center text-sm text-[var(--paper-muted)]">
-                Already registered?{' '}
                 <Link href="/login" className="font-black text-[var(--ink)] underline decoration-2 underline-offset-4">
-                  Sign in
+                  {t('haveAccount')}
                 </Link>
               </p>
             </div>
@@ -124,13 +126,12 @@ export default function RegisterPage() {
           </div>
           <div>
             <div className="mt-10">
-              <Caption>Open a new project file</Caption>
+              <Caption>{t('openNewProject')}</Caption>
               <h2 className="mt-6 max-w-lg text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl">
-                One account. Your models. Better project context.
+                {t('oneAccount')}
               </h2>
               <p className="mt-5 max-w-md text-sm leading-6 text-[var(--ink-soft)]">
-                Sign up to build documentation packs. Provider access is configured separately,
-                so the application never bundles a hidden model subscription.
+                {t('oneAccountDesc')}
               </p>
             </div>
           </div>
@@ -138,13 +139,13 @@ export default function RegisterPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <div className="border-2 border-[var(--ink)] bg-[var(--electric-yellow)] p-4 shadow-[var(--shadow-sm)]">
               <KeyRound className="mb-3" size={22} aria-hidden="true" />
-              <p className="text-sm font-black">Bring your own API key</p>
-              <p className="mt-1 text-xs leading-5">Anthropic, OpenAI, Gemini, or OpenRouter.</p>
+              <p className="text-sm font-black">{t('bringOwnKey')}</p>
+              <p className="mt-1 text-xs leading-5">{t('bringOwnKeyDesc')}</p>
             </div>
             <div className="border-2 border-[var(--ink)] bg-[var(--mint)] p-4 shadow-[var(--shadow-sm)]">
               <FileArchive className="mb-3" size={22} aria-hidden="true" />
-              <p className="text-sm font-black">Leave with a usable pack</p>
-              <p className="mt-1 text-xs leading-5">Readable Markdown, explicit decisions, safe ZIP export.</p>
+              <p className="text-sm font-black">{t('leavePack')}</p>
+              <p className="mt-1 text-xs leading-5">{t('leavePackDesc')}</p>
             </div>
           </div>
         </aside>

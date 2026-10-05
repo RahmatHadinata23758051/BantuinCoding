@@ -7,6 +7,7 @@ import { Suspense, useState } from 'react'
 
 import { loginAction } from '@/lib/auth/actions'
 
+import { useTranslations } from 'next-intl'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
 
@@ -25,6 +26,8 @@ function RegisteredLoginPage() {
 }
 
 function LoginPageContent({ registered }: { registered: boolean }) {
+  const t = useTranslations('Auth')
+  const tCommon = useTranslations('Common')
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -59,14 +62,13 @@ function LoginPageContent({ registered }: { registered: boolean }) {
           <div>
             <div className="mt-10">
               <Caption className="bg-[var(--electric-yellow)] text-[var(--ink)]">
-                Workspace entrance
+                {t('loginCaption')}
               </Caption>
               <h1 className="mt-6 max-w-lg text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl">
-                Back to the documentation control room.
+                {t('loginHeading')}
               </h1>
               <p className="mt-5 max-w-md text-sm leading-6 text-white/85">
-                Continue from idea capture to an exportable bootstrap pack while every
-                decision, document, and blocker stays visible.
+                {t('loginDesc')}
               </p>
             </div>
           </div>
@@ -75,18 +77,18 @@ function LoginPageContent({ registered }: { registered: boolean }) {
             <div className="flex items-start gap-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-4 text-[var(--ink)] shadow-[var(--shadow-sm)]">
               <KeyRound className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
               <div>
-                <p className="text-sm font-black">Your model, your key</p>
+                <p className="text-sm font-black">{t('yourModelKey')}</p>
                 <p className="mt-1 text-xs leading-5 text-[var(--paper-muted)]">
-                  Configure a supported provider after sign-in. Secret values are not echoed.
+                  {t('yourModelKeyDesc')}
                 </p>
               </div>
             </div>
             <div className="flex items-start gap-3 border-2 border-[var(--ink)] bg-[var(--mint)] p-4 text-[var(--ink)] shadow-[var(--shadow-sm)]">
               <ShieldCheck className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
               <div>
-                <p className="text-sm font-black">Safe export contract</p>
+                <p className="text-sm font-black">{t('safeExport')}</p>
                 <p className="mt-1 text-xs leading-5">
-                  Generated ZIPs contain controlled Markdown paths—not provider secrets.
+                  {t('safeExportDesc')}
                 </p>
               </div>
             </div>
@@ -98,8 +100,8 @@ function LoginPageContent({ registered }: { registered: boolean }) {
             <div className="border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-5 py-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <StatusBadge tone="neutral">member access</StatusBadge>
-                  <h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">Sign in</h2>
+                  <StatusBadge tone="neutral">{t('memberAccess')}</StatusBadge>
+                  <h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">{t('signInTitle')}</h2>
                 </div>
                 <span className="font-mono text-xs font-black">01 / 01</span>
               </div>
@@ -113,7 +115,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
                 >
                   <CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
                   <p className="text-sm font-bold">
-                    Account created. Sign in with your new credentials.
+                    {t('accountCreated')}
                   </p>
                 </div>
               )}
@@ -130,7 +132,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
               <form onSubmit={handleSubmit} className="flex flex-col gap-5" aria-busy={loading}>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="email" className="text-sm font-black">
-                    Email address
+                    {t('emailLabel')}
                   </label>
                   <Input
                     id="email"
@@ -144,7 +146,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
 
                 <div className="flex flex-col gap-2">
                   <label htmlFor="password" className="text-sm font-black">
-                    Password
+                    {t('passwordLabel')}
                   </label>
                   <Input
                     id="password"
@@ -157,15 +159,14 @@ function LoginPageContent({ registered }: { registered: boolean }) {
                 </div>
 
                 <Button type="submit" size="lg" disabled={loading} className="mt-1 w-full">
-                  {loading ? 'Signing in…' : 'Enter workspace'}
+                  {loading ? tCommon('loading') : t('submitLoginBtn')}
                   {!loading && <ArrowRight size={18} aria-hidden="true" />}
                 </Button>
               </form>
 
               <p className="mt-6 text-center text-sm text-[var(--paper-muted)]">
-                Need an account?{' '}
                 <Link href="/register" className="font-black text-[var(--ink)] underline decoration-2 underline-offset-4">
-                  Register here
+                  {t('needAccount')}
                 </Link>
               </p>
             </div>

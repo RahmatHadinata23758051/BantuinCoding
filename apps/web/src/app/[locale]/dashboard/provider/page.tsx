@@ -6,8 +6,11 @@ import { ProviderSetupPanel } from '@/app/components/ProviderSetupPanel'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Caption, Panel, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
+import { getTranslations } from 'next-intl/server'
 
 export default async function ProviderSettingsPage() {
+  const t = await getTranslations('ProviderDesk')
+  const tNew = await getTranslations('NewProject')
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
@@ -17,9 +20,9 @@ export default async function ProviderSettingsPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
             <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
-              ← Dashboard
+              {tNew('backDashboard')}
             </Link>
-            <span>/ provider desk</span>
+            <span>{t('breadcrumb')}</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="max-w-56 truncate font-mono text-xs font-bold">{session.user.email}</span>
@@ -29,13 +32,12 @@ export default async function ProviderSettingsPage() {
 
         <section className="grid lg:grid-cols-[0.85fr_1.15fr]">
           <aside className="border-b-2 border-[var(--ink)] bg-[var(--cobalt)] p-6 text-white sm:p-8 lg:border-b-0 lg:border-r-2">
-            <Caption className="bg-[var(--electric-yellow)] text-[var(--ink)]">BYOK checkpoint</Caption>
+            <Caption className="bg-[var(--electric-yellow)] text-[var(--ink)]">{t('caption')}</Caption>
             <h1 className="mt-6 text-5xl font-black leading-[0.92] tracking-[-0.06em]">
-              Wire the model without leaking the key.
+              {t('title')}
             </h1>
             <p className="mt-5 text-sm leading-6 text-white/85">
-              This screen only configures the current server session. Provider secrets do not belong in
-              generated Markdown, browser-visible errors, fixtures, telemetry, or ZIP exports.
+              {t('subtitle')}
             </p>
             <Link
               href="/projects/new"
@@ -51,10 +53,9 @@ export default async function ProviderSettingsPage() {
                 <KeyRound size={24} strokeWidth={2.5} aria-hidden="true" />
               </span>
               <div>
-                <h2 className="text-3xl font-black tracking-[-0.04em]">AI provider</h2>
+                <h2 className="text-3xl font-black tracking-[-0.04em]">{t('aiProvider')}</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--paper-muted)]">
-                  Choose a provider, confirm the model ID, and test the connection before running
-                  analysis or document generation.
+                  {t('aiProviderDesc')}
                 </p>
               </div>
             </div>
@@ -65,10 +66,9 @@ export default async function ProviderSettingsPage() {
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-0.5 shrink-0 text-[var(--pass-teal)]" size={20} aria-hidden="true" />
                 <div>
-                  <p className="font-mono text-xs font-black">Security note</p>
+                  <p className="font-mono text-xs font-black">{t('securityNote')}</p>
                   <p className="mt-2 text-sm leading-6 text-[var(--paper-muted)]">
-                    Responses expose safe provider/model metadata only. If a provider rejects the key,
-                    the UI shows an actionable typed failure without printing the raw SDK payload.
+                    {t('securityNoteDesc')}
                   </p>
                 </div>
               </div>
