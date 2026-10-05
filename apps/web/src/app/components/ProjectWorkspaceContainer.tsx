@@ -577,10 +577,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   }
 
   const generateOneShotKickoffPrompt = (agent: string) => {
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-    const dashboardUrl = `${currentOrigin}/projects/${initialData.id}`
-    const apiUrl = `${currentOrigin}/api/projects/${initialData.id}`
-
     return `# 🚀 AUTONOMOUS ONE-SHOT EXECUTION DIRECTIVE — ${initialData.name}
 
 ## 1. AGENT IDENTITY & RESPONSIBILITY
@@ -591,12 +587,12 @@ This is an **AUTONOMOUS ONE-SHOT EXECUTION**. You have full authority to inspect
 Before authoring or modifying any code in the workspace, you MUST read the specification files in this exact priority order:
 1. \`PRD.md\` — Product Requirements Document (Vision, Goals, Non-Goals, User Flows, Feature Scope)
 2. \`SRS.md\` — Software Requirements Specification (Functional Specs FR-xxx, Data Requirements, Error Behavior)
-3. \`DESIGN.md\` — Locked Visual Contract (Palette, Typography, 2-3px Ink Borders, Hard Offset Shadows, Anti-Slop Rules)
-4. \`Agent.md\` — Agent Operational Contract (Hierarchy, Workflow, Definition of Done, Quality Gates)
-5. \`BACKLOG.md\` — Phased Backlog (Atomic Tasks with Acceptance Criteria & Verification Steps)
-6. \`ARCHITECTURE.md\` — System Architecture (Component Hierarchy, Boundaries, Data Flow, DB Design)
-7. \`RULES.md\` — Non-Negotiable Hard Constraints (Tech Stack Immutability, Secret Protection, Zero-Warning Rule)
-8. \`SKILLS.md\` — Recommended Agent Skills & Triggers
+3. \`DESIGN.md\` — Locked Visual Contract (Palette, Typography, Borders, Radii, Shadows, Components, Motion, Responsive, Accessibility)
+3. \`Agent.md\` — Agent Operational Contract (Hierarchy, Workflow, Definition of Done, Quality Gates)
+4. \`BACKLOG.md\` — Phased Backlog (Atomic Tasks with Acceptance Criteria & Verification Steps)
+5. \`ARCHITECTURE.md\` — System Architecture (Component Hierarchy, Boundaries, Data Flow, DB Design)
+6. \`RULES.md\` — Non-Negotiable Hard Constraints (Tech Stack Immutability, Secret Protection, Zero-Warning Rule)
+7. \`SKILLS.md\` — Recommended Agent Skills & Triggers
 
 ## 3. VISUAL SOURCE OF TRUTH (LOCKED)
 - \`DESIGN.md\` is the sole authority for visual design. Follow its chosen archetype, references, palette, typography, spacing, borders, radii, shadows, components, motion, responsive behavior, and accessibility rules exactly.
@@ -604,19 +600,16 @@ Before authoring or modifying any code in the workspace, you MUST read the speci
 - If another file conflicts with \`DESIGN.md\`, stop and resolve the conflict in favor of \`DESIGN.md\`; never silently substitute a different visual system.
 - ZERO AI-SLOP: Prohibit generic templates, glassmorphism, decorative gradients, fake metrics, unadapted library widgets, and childish cartoon styling unless \`DESIGN.md\` explicitly requires an equivalent direction.
 
-## 4. CONTINUOUS AUTONOMOUS BACKLOG EXECUTION LOOP
-- **Live Project Dashboard:** ${dashboardUrl}
-- **API Task Synchronization (REST / MCP):**
-  - Fetch latest backlog & tasks: \`GET ${apiUrl}/tasks\`
-  - Update task status in real time: \`PATCH ${apiUrl}/tasks/{taskKey}\` with \`{"status": "IN_PROGRESS"}\` when starting, and \`{"status": "DONE"}\` when finished.
+## 4. AUTONOMOUS BACKLOG EXECUTION LOOP
 - **AUTONOMOUS EXECUTION PROTOCOL (DO NOT STOP MIDWAY):**
-  1. Start with Phase 1, task \`BK-001\`. Mark task status as \`IN_PROGRESS\` on the live board.
+  1. Read \`BACKLOG.md\` and start with Phase 1, task \`BK-001\`.
   2. Implement the task completely according to its acceptance criteria and \`Agent.md\` guidelines.
   3. Run quality gates: run typecheck, linter, and unit/integration tests. Verify there are ZERO errors, zero warnings, and zero regressions.
-  4. Once and ONLY once the task is 100% verified clear without any bugs or errors, mark the task as \`DONE\` on the live board.
-  5. Immediately advance to the next unblocked task in dependency order without pausing, asking for permission, or waiting for human intervention.
-  6. Repeat this continuous execution cycle task-by-task across all phases (Foundation → Domain Engine → APIs → Design System → Feature Views → Quality Gates).
-  7. The mission is complete ONLY when ALL tasks across all phases in \`BACKLOG.md\` are marked \`DONE\` and the final test suite and build pass with zero errors.
+  4. **QUALITY CHECKPOINT:** Before marking any task as \`DONE\`, you MUST verify there are no bugs or errors by running the full test suite, linter, and typecheck. If any issues are found, fix them completely before proceeding.
+  5. Once and ONLY once the task is 100% verified clear without any bugs or errors, mark the task as \`DONE\`.
+  6. Immediately advance to the next unblocked task in dependency order without pausing, asking for permission, or waiting for human intervention.
+  7. Repeat this continuous execution cycle task-by-task across all phases.
+  8. The mission is complete ONLY when ALL tasks across all phases in \`BACKLOG.md\` are marked \`DONE\` and the final test suite and build pass with zero errors.
 
 ## 5. KICKOFF INSTRUCTION
 Begin execution immediately:
