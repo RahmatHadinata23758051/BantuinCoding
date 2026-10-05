@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { PipelineSpine } from '@/app/components/PipelineSpine'
-import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Caption, Input, Panel, Select, StatusBadge, Textarea, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { createProject } from '@/lib/projects/project-service'
@@ -17,12 +16,14 @@ async function handleCreateProject(formData: FormData) {
   const rawIdea = formData.get('rawIdea') as string
   const classification = (formData.get('classification') as never) ?? 'OTHER'
   const targetAgent = (formData.get('targetAgent') as never) ?? 'CLAUDE_CODE'
+  const language = (formData.get('language') as never) ?? 'id'
 
   const project = await createProject(session.user.id, {
     name,
     rawIdea,
     classification,
     targetAgent,
+    language,
   })
 
   redirect(`/projects/${project.id}`)
@@ -78,7 +79,7 @@ export default async function NewProjectPage() {
             <span>{t('breadcrumb')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+            
             <StatusBadge tone="neutral">{t('initialStateDraft')}</StatusBadge>
           </div>
         </header>
@@ -156,6 +157,17 @@ export default async function NewProjectPage() {
                         {agent.label}
                       </option>
                     ))}
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="language" className="text-sm font-black">
+                    {t('language')}
+                  </label>
+                  <Select id="language" name="language" defaultValue="id">
+                    <option value="id">Bahasa Indonesia</option>
+                    <option value="en">English</option>
                   </Select>
                 </div>
               </div>

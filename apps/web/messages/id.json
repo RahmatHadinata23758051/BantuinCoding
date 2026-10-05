@@ -173,7 +173,8 @@
     "nextStep6": "Tinjau Markdown dan unduh file ZIP yang aman dari rahasia.",
     "prerequisite": "Prasyarat pembuatan dokumen",
     "prerequisiteDesc": "Sesi provider AI yang valid diperlukan sebelum analisis AI. Anda bisa membuat draf ini sekarang dan mengatur kunci API nanti.",
-    "openProviderDesk": "Buka pengaturan provider →"
+    "openProviderDesk": "Buka pengaturan provider →",
+    "language": "Bahasa Dokumen & Wawancara"
   },
   "ProviderDesk": {
     "breadcrumb": "/ meja model AI",
@@ -287,6 +288,10 @@
     "zipExport": "Ekspor ZIP",
     "unavailable": "Tidak tersedia",
     "docsEligible": "{count} dokumen memenuhi syarat",
-    "atLeastOneReq": "Minimal satu dokumen siap diperlukan"
+    "atLeastOneReq": "Minimal satu dokumen siap diperlukan",
+    "settings": "Pengaturan Proyek",
+    "saveChanges": "Simpan perubahan",
+    "projectName": "Nama proyek",
+    "language": "Bahasa proyek"
   }
 }

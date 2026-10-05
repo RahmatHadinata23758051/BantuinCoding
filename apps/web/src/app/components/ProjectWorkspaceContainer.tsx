@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { LanguageSwitcher } from './LanguageSwitcher'
 import { useTranslations } from 'next-intl'
 import {
   useRef,
@@ -40,6 +39,7 @@ import {
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
+import { Modal, Input, Select, Button } from '@/app/components/ui'
 
 export interface ProjectWorkspaceProps {
   initialData: {
@@ -48,6 +48,7 @@ export interface ProjectWorkspaceProps {
     description: string | null
     classification: string
     targetAgent: string
+    language: string
     status: string
     createdAt: string
     updatedAt: string
@@ -507,6 +508,10 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const tCommon = useTranslations('Common')
   const tStatus = useTranslations('Status')
   const [activeTab, setActiveTab] = useState<WorkspaceSection>('overview')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
+  const [projectName, setProjectName] = useState(initialData.name)
+  const [projectLang, setProjectLang] = useState(initialData.language || 'id')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -540,6 +545,23 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
   const [selectedAgentTarget, setSelectedAgentTarget] = useState(initialData.targetAgent || 'CLAUDE_CODE')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSavingSettings(true)
+    try {
+      const res = await fetch(`/api/projects/${initialData.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: projectName, language: projectLang })
+      })
+      if (res.ok) {
+        window.location.reload()
+      }
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
 
   const activePipelineIndex = getPipelineStageIndex(projectStatus, hasExportedZip)
   const includesReadme = readyArtifacts.some((artifact) => artifact.path === 'README.md')
@@ -1081,7 +1103,7 @@ Begin execution immediately:
               <ArrowLeft aria-hidden="true" className="size-4" />
               Projects
             </Link>
-            <LanguageSwitcher />
+            
           </div>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-end">
@@ -1095,6 +1117,9 @@ Begin execution immediately:
                 <span className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
                   {t('updated', { date: formatDate(initialData.updatedAt) })}
                 </span>
+                <Button size="sm" variant="neutral" onClick={() => setIsSettingsOpen(true)} className="h-7 px-2 text-[10px] ml-2 font-black uppercase tracking-wider">
+                  <Wrench className="size-3" /> {t('settings')}
+                </Button>
               </div>
               <h1 className="mt-4 max-w-5xl text-4xl font-black leading-[0.95] tracking-[-0.06em] sm:text-6xl lg:text-7xl">
                 {initialData.name}
@@ -1941,6 +1966,37 @@ Begin execution immediately:
           </main>
         </div>
       </div>
+      
+      <Modal open={isSettingsOpen} onClose={() => !isSavingSettings && setIsSettingsOpen(false)} title={t('settings')}>
+        <form onSubmit={handleSaveSettings} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="projectName" className="text-sm font-black text-[var(--ink)]">
+              {t('projectName')}
+            </label>
+            <Input
+              id="projectName"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              required
+              minLength={2}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="projectLang" className="text-sm font-black text-[var(--ink)]">
+              {t('language')}
+            </label>
+            <Select id="projectLang" value={projectLang} onChange={(e) => setProjectLang(e.target.value)}>
+              <option value="id">Bahasa Indonesia</option>
+              <option value="en">English</option>
+            </Select>
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button type="submit" variant="primary" disabled={isSavingSettings}>
+              {isSavingSettings ? tCommon('loading') : t('saveChanges')}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
