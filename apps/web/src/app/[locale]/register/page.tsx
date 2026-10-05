@@ -7,6 +7,7 @@ import { useState } from 'react'
 
 import { registerAction } from '@/lib/auth/actions'
 
+import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
 
 export default function RegisterPage() {
@@ -115,10 +116,13 @@ export default function RegisterPage() {
         </section>
 
         <aside className="order-1 flex flex-col justify-between gap-8 border-b-2 border-[var(--ink)] bg-[var(--lavender)] p-6 sm:p-9 lg:order-2 lg:border-b-0 lg:border-l-2">
-          <div>
+          <div className="flex items-center justify-between">
             <Link href="/" className="font-mono text-xs font-bold underline underline-offset-4">
               ← bantuin.dev
             </Link>
+            <LanguageSwitcher />
+          </div>
+          <div>
             <div className="mt-10">
               <Caption>Open a new project file</Caption>
               <h2 className="mt-6 max-w-lg text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl">

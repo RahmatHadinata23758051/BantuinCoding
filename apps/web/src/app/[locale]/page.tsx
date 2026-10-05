@@ -1,6 +1,7 @@
 import { ArrowRight, FileText, KeyRound, PackageCheck } from 'lucide-react'
 import Link from 'next/link'
 
+import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { PipelineSpine } from '@/app/components/PipelineSpine'
 import { Caption, Panel, StatusBadge, buttonClassName } from '@/app/components/ui'
 
@@ -45,6 +46,7 @@ export default function Home() {
             <span>bantuin.dev / project-bootstrapper</span>
           </Link>
           <nav className="flex items-center gap-2" aria-label="Authentication">
+            <LanguageSwitcher />
             <Link
               href="/login"
               className={buttonClassName({ variant: 'neutral', size: 'sm' })}

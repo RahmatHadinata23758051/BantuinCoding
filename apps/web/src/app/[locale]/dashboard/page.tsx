@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { PipelineSpine } from '@/app/components/PipelineSpine'
+import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { ProviderSetupPanel } from '@/app/components/ProviderSetupPanel'
 import { Caption, Panel, StatusBadge, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
@@ -67,6 +68,7 @@ export default async function DashboardPage() {
             <span className="hidden max-w-56 truncate font-mono text-xs font-bold sm:inline">
               {session.user.email}
             </span>
+            <LanguageSwitcher />
             <form action={logoutAction}>
               <button type="submit" className={buttonClassName({ variant: 'neutral', size: 'sm' })}>
                 Sign out

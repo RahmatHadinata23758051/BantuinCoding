@@ -7,6 +7,7 @@ import { Suspense, useState } from 'react'
 
 import { loginAction } from '@/lib/auth/actions'
 
+import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
 
 export default function LoginPage() {
@@ -49,10 +50,13 @@ function LoginPageContent({ registered }: { registered: boolean }) {
     <main className="min-h-screen px-4 py-5 text-[var(--ink)] sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hero)] lg:grid-cols-[0.9fr_1.1fr]">
         <aside className="flex flex-col justify-between gap-8 border-b-2 border-[var(--ink)] bg-[var(--cobalt)] p-6 text-white sm:p-9 lg:border-b-0 lg:border-r-2">
-          <div>
+          <div className="flex items-center justify-between">
             <Link href="/" className="font-mono text-xs font-bold underline underline-offset-4">
               ← bantuin.dev
             </Link>
+            <LanguageSwitcher />
+          </div>
+          <div>
             <div className="mt-10">
               <Caption className="bg-[var(--electric-yellow)] text-[var(--ink)]">
                 Workspace entrance
