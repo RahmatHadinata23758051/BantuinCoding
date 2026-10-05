@@ -56,6 +56,7 @@ model Project {
   rawIdea        String   @map("raw_idea") // The original user-supplied idea text
   classification String   @default("OTHER") @map("classification")
   targetAgent    String   @default("CLAUDE_CODE") @map("target_agent")
+  language       String   @default("id") @map("language")
   status         String   @default("DRAFT") @map("status")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
