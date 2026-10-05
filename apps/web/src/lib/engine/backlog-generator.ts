@@ -113,15 +113,29 @@ export async function generateProjectBacklog({
     archArtifact,
     designArtifact,
   )
-  const backlogOutput = await provider.generateStructured(
-    userPrompt,
-    BacklogGeneratorOutputSchema,
-    {
-      system: BACKLOG_GENERATOR_SYSTEM_PROMPT,
-      maxTokens: 32000,
-      temperature: 0.2,
-    },
-  )
+  let backlogOutput: BacklogGeneratorOutput
+  try {
+    backlogOutput = await Promise.race([
+      provider.generateStructured(
+        userPrompt,
+        BacklogGeneratorOutputSchema,
+        {
+          system: BACKLOG_GENERATOR_SYSTEM_PROMPT,
+          maxTokens: 32000,
+          temperature: 0.2,
+        },
+      ),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Backlog generation timed out after 120 seconds. Please regenerate.')), 120_000)
+      }),
+    ])
+  } catch (error) {
+    await db.artifact.update({
+      where: { projectId_type: { projectId, type: 'BACKLOG' } },
+      data: { status: 'FAILED' },
+    })
+    throw error
+  }
 
   // Validate dependency references and circular dependencies
   const validation = validateBacklogDependencies(backlogOutput.phases)
