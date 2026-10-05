@@ -108,12 +108,6 @@ export function getDefaultArtifactPlan(
   contextJson?: string,
 ): ArtifactPlanOutput {
   const needsDesign = requiresDesignArtifact(classification, contextJson)
-  const isSimple = classification === 'STATIC_SITE' || classification === 'LANDING_PAGE'
-  const isComplex =
-    classification === 'SAAS' ||
-    classification === 'FULLSTACK_COMPLEX' ||
-    classification === 'AI_APP' ||
-    classification === 'IOT_DASHBOARD'
 
   // Tier 1: Simple (STATIC_SITE, LANDING_PAGE)
   if (classification === 'STATIC_SITE' || classification === 'LANDING_PAGE') {
@@ -133,6 +127,11 @@ export function getDefaultArtifactPlan(
   }
 
   // Tier 3: Complex (SAAS, FULLSTACK_COMPLEX, AI_APP, IOT_DASHBOARD)
+  const isComplex =
+    classification === 'SAAS' ||
+    classification === 'FULLSTACK_COMPLEX' ||
+    classification === 'AI_APP' ||
+    classification === 'IOT_DASHBOARD'
   if (isComplex) {
     const artifacts = [
       { type: 'PRD' as const, path: 'PRD.md', reason: 'Product requirements', isRequired: true },
