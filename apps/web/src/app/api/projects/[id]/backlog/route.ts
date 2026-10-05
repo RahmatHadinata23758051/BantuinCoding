@@ -30,6 +30,7 @@ export async function POST(
 
     return NextResponse.json({ backlog, readiness })
   } catch (err) {
+    console.error('Backlog generation error:', err)
     const message = getSafeApiErrorMessage(err, 'Backlog generation failed. Please retry.')
     const status = message === 'Project not found' ? 404 : 400
     return NextResponse.json({ error: message }, { status })

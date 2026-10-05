@@ -533,7 +533,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     (artifact) => artifact.status === 'READY' || artifact.status === 'MODIFIED',
   )
   const attentionArtifacts = artifacts.filter(
-    (artifact) => artifact.status === 'FAILED' || artifact.status === 'OUTDATED',
+    (artifact) => artifact.status !== 'READY' && artifact.status !== 'MODIFIED',
   )
   const allTasks = initialData.phases.flatMap((phase) => phase.tasks)
   const readyTasks = allTasks.filter((task) => task.status === 'READY')
