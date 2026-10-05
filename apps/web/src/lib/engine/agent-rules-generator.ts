@@ -117,6 +117,8 @@ export async function generateAgentAndRulesArtifacts({
     { type: 'AGENT' as const, path: 'Agent.md' },
   ]
 
+  // RULES.md and SKILLS.md are consolidated into Agent.md; no standalone legacy artifacts are created.
+
   // Set both artifacts to GENERATING before provider call
   for (const item of items) {
     await db.artifact.upsert({
@@ -134,7 +136,6 @@ export async function generateAgentAndRulesArtifacts({
   }
 
   let agentContent = ''
-  let rulesContent = ''
 
   try {
     const generated = await provider.generateStructured(
@@ -147,7 +148,7 @@ export async function generateAgentAndRulesArtifacts({
       },
     )
     agentContent = generated.agent_content
-    rulesContent = generated.rules_content
+    // Legacy schema field is intentionally ignored; Agent.md absorbs all rules/skills.
   } catch (err) {
     for (const item of items) {
       await db.artifact.update({
@@ -161,7 +162,7 @@ export async function generateAgentAndRulesArtifacts({
   const results: GeneratedArtifactResult[] = []
 
   for (const item of items) {
-    const content = item.type === 'AGENT' ? agentContent : rulesContent
+    const content = agentContent
     await db.artifact.update({
       where: { projectId_type: { projectId, type: item.type } },
       data: {

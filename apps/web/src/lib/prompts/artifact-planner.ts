@@ -9,12 +9,9 @@ import type { ProjectClassification } from '@repo/types'
 export const PlannedArtifactSchema = z.object({
   type: z.enum([
     'PRD',
-    'SRS',
     'ARCHITECTURE',
     'DESIGN',
     'AGENT',
-    'RULES',
-    'SKILLS',
     'BACKLOG',
     'DATABASE',
     'API',
@@ -61,8 +58,7 @@ CORE LEAN DOCUMENTATION PACK:
 - BACKLOG (BACKLOG.md): MANDATORY. Phased, atomic, dependency-aware task ledger.
 
 CONDITIONAL / ADVANCED DOCUMENTS:
-- SRS (SRS.md): Only include for massive enterprise systems with external regulatory compliance where functional specs exceed standard PRD scope. For typical projects, functional specs are absorbed into PRD.md.
-- RULES & SKILLS: These are consolidated directly into Agent.md. Do NOT generate separate RULES.md or SKILLS.md files unless explicitly requested.
+- Functional requirements and agent rules/skills are consolidated into PRD.md and Agent.md. Do NOT generate separate SRS.md, RULES.md, or SKILLS.md files.
 - DATABASE (docs/DATABASE.md): Include if the project has intricate custom database schema beyond ARCHITECTURE.md.
 - API (docs/API.md): Include for multi-service or public API documentation.
 - SECURITY (docs/SECURITY.md): Include for high-risk fintech or healthcare compliance.

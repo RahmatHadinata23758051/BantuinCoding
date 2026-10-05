@@ -1,47 +1,73 @@
 # CURRENT_CONTEXT.md — Active Work State & Context Bridge
 
-> **Tujuan Dokumen:** Dokumen ini merangkum status terakhir pekerjaan secara presisi agar sesi Claude Code baru langsung mengetahui seluruh konteks, keputusan yang telah dibuat, dan tugas yang sedang berjalan tanpa user perlu mengulang dari awal.
+> **Tujuan Dokumen:** Ringkasan status terakhir pekerjaan agar sesi berikutnya bisa lanjut tanpa menanyakan ulang.
 
 ---
 
-## 1. Konteks Percakapan & Keputusan yang Sudah Selesai (Done)
+## 1. Pekerjaan yang Sudah Selesai (Done)
 
-### A. Generator `DESIGN.md` (Anti-Default Neo-Brutalism & Anti-Slop) — **SUDAH SELESAI**
-- **File:** `apps/web/src/lib/prompts/design-generator.ts`
-- **Aturan yang sudah terkunci:**
-  1. **Anti-Default Rule:** Project yang di-generate untuk user **DILARANG KERAS** menggunakan tema internal BantuinCoding (kertas warm paper `#F7F0DF`, border tebal komik 2–3px, offset shadow hitam, atau speech bubble) kecuali jika user secara eksplisit meminta tema *neo-brutalist*.
-  2. **7 Arketipe Industri:** AI wajib memilih 1 dari 7 arketipe desain (Enterprise SaaS, Precision DevTools/Dark Monolith, High-Density Fintech, Warm Editorial, Modern Bento, Vibrant Studio, Calm HealthTech).
-  3. **Anti-Slop Iconography (Kasus Gambar #34):** Melarang icon acak mengambang di kotak pastel tanpa label, emoji sebagai icon UI, stiker 3D kartun. Wajib menggunakan 1 library konsisten (Lucide/Tabler/Heroicons) dengan stroke seragam dan fungsi semantik jelas.
-  4. **Auth / Login Non-Generik:** Menolak layout centered card mini ala Laravel Breeze. Wajib domain-specific split-screen showcase dengan visual preview dan form lengkap (focus ring, password toggle, error states).
-  5. **Pengujian:** Sudah dites dengan ide project `Kost Managemeng` dan menghasilkan tema Emerald & Slate yang 100% bersih dari tema komik internal.
+### A. Multi-bahasa (en/id) — SELESAI
+- `next-intl` terpasang, routing `[locale]`, middleware komposisi dengan NextAuth (`src/proxy.ts`).
+- Kamus `messages/en.json` & `messages/id.json`.
+- LanguageSwitcher hanya di Landing/Auth/Dashboard. Tidak di halaman project/workspace.
 
-### B. Migrasi Visual `ProviderSetupPanel.tsx` — **SUDAH SELESAI**
-- **File:** `apps/web/src/app/components/ProviderSetupPanel.tsx`
-- **Latar Belakang:**
-  - Desain `ProviderSetupPanel` sebelumnya sempat berubah menjadi gaya SaaS modern (warna `slate`, `emerald-50`, rounded soft dari Gambar #37).
-  - **Tujuan:** Mengembalikan dan menyelaraskan styling `ProviderSetupPanel.tsx` ke tema internal BantuinCoding (**Premium Neo-Brutalist Comic Editorial**: border `2px border-[var(--ink)]`, hard shadows `shadow-[var(--shadow-xs)]`, warna `var(--paper-raised)`, `var(--mint)`, `var(--electric-yellow)`) **sambil tetap mempertahankan fitur multi-key provider yang sudah ada**.
-- **Hasil:**
-  - Header panel dan status bar sudah disesuaikan ke Neo-Brutalist.
-  - Typo syntax kurung tutup pada baris 304 sudah diperbaiki.
-  - Elemen di dalam `open` dropdown, khususnya `Saved Keys List` (card item, radio button aktivasi key, tombol delete/edit/tambah key) telah selesai memakai border 2px dan token tema neo-brutalist (ink, mint, paper) secara konsisten.
+### B. Pengaturan Bahasa Proyek — SELESAI
+- Field `language` di `Project` (Prisma), default `id`.
+- Dropdown bahasa di halaman "Buat Proyek Baru".
+- Modal "Pengaturan Proyek" Neo-Brutalist di workspace (ubah nama & bahasa).
+- Injeksi bahasa ke prompt: requirement-analyzer, clarification-generator, context-normalizer.
+
+### C. Dokumen Terpotong — SELESAI
+- `maxTokens` dinaikkan (artifact 32000, context 16384).
+- Deteksi `finish_reason === 'length'` → error eksplisit, artifact FAILED (bukan READY).
+- Skema PRD/SRS/DESIGN diringkas ke `{ title, markdown_content }`.
+- SRS generator dipertahankan tapi SRS hanya untuk Tier 3.
+
+### D. Neo-Brutalism Leak — SELESAI
+- Prompt one-shot tidak lagi mendefinisikan token visual.
+- `DESIGN.md` = otoritas visual tunggal.
+- Agent.md/BACKLOG.md hanya merujuk DESIGN.md.
+- MCP & live dashboard dihapus dari prompt one-shot.
+
+### E. Paket Dokumen Lean — SELESAI
+- Tier 1 (STATIC_SITE/LANDING_PAGE): PRD, DESIGN, Agent, BACKLOG.
+- Tier 2 (CRUD/DASHBOARD/MOBILE): + ARCHITECTURE.
+- Tier 3 (SAAS/FULLSTACK/AI/IOT): + SRS + dokumen opsional.
+- `RULES.md` & `SKILLS.md` tidak dibuat lagi; dilebur ke `Agent.md`.
+
+### F. Bug Data Dummy "Kost" — SELESAI
+- `defaultFallbackPhases` (hardcoded 14 task kos-kosan) dihapus total.
+- Generator tidak lagi menelan error lalu mengisi backlog dengan template project lain.
+
+### G. Fitur User Pemula — SELESAI
+- `ClarificationQuestion.options` di DB.
+- UI pilihan ganda + tombol "✨ Saya kurang paham, pilihkan standar terbaik".
+- Nilai `[AUTO]` diproses context-normalizer sebagai keputusan otomatis.
+
+### H. Backlog Generation — SELESAI (terbaru)
+- Schema backlog = `{ phases }` saja (tanpa `backlog_md_content`).
+- Input PRD/SRS/Architecture/DESIGN dipotong 2500 char.
+- Markdown `BACKLOG.md` dibuat server via `generateBacklogMdContent`.
+- Timeout 120s + status FAILED.
+- `normalizeBacklogOutput` untuk toleransi output JSON longgar dari model.
+- `isAssumptionConfirmationAccepted` menerima `[AUTO]`.
 
 ---
 
-## 2. Tugas yang Sedang Berjalan (In-Progress)
-*Belum ada tugas aktif selanjutnya. Silakan cek `BACKLOG.md` atau instruksi dari user.*
+## 2. Status Project FreshBite (id: 51b3a1d2-8d69-4356-8107-2cfb0efca0fd)
+- Context: 1 (sudah jadi).
+- Artifacts READY: PRD, SRS, ARCHITECTURE, DESIGN, AGENT, SKILLS.
+- BACKLOG: sudah di-reset ke `NOT_GENERATED`; project di-reset ke `READY` agar bisa regenerate dengan kode terbaru.
 
 ---
 
-## 3. Daftar File yang Terlibat / Berubah
-1. `apps/web/src/lib/prompts/design-generator.ts` (Guardrails generator - modified)
-2. `apps/web/src/app/components/ProviderSetupPanel.tsx` (In-progress visual sync)
-3. `apps/web/src/app/components/MarkdownWorkspace.tsx` (Workspace adjustments)
-4. `apps/web/src/app/globals.css` (CSS variables & tokens)
+## 3. Catatan
+- `check_db.js` dan `packages/db/check_srs.js` adalah file debug lokal, tidak dipush.
+- Semua commit di `main`, tanpa atribusi AI.
 
 ---
 
-## 4. Instruksi untuk Claude Code di Sesi Baru
-Jika user mengatakan **"lanjut"**, **"lanjutkan"**, atau **"gas"**:
-1. Langsung baca `apps/web/src/app/components/ProviderSetupPanel.tsx`.
-2. Selesaikan penyesuaian style `Saved Keys List` dan form `Add New Key` ke tema Neo-Brutalist Comic Editorial (border 2px ink, hard shadow, palet ink/paper).
-3. Jalankan `npm run lint` atau typecheck untuk memastikan tidak ada error regresi.
+## 4. Jika User Bilang "lanjut"
+1. Baca `CURRENT_CONTEXT.md` (file ini).
+2. Cek apakah backlog FreshBite sudah berhasil di-generate; jika belum, telusuri error provider-nya.
+3. Lanjutkan task berikutnya dari BACKLOG.md atau instruksi user.

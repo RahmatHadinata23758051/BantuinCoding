@@ -124,9 +124,7 @@ export function MarkdownWorkspace({
       let endpoint = `/api/projects/${projectId}/generate`
       const body: Record<string, unknown> = { type: activeArtifact.type }
 
-      if (activeArtifact.type === 'SKILLS') {
-        endpoint = `/api/projects/${projectId}/skills`
-      } else if (activeArtifact.type === 'BACKLOG') {
+      if (activeArtifact.type === 'BACKLOG') {
         endpoint = `/api/projects/${projectId}/backlog`
       }
 
@@ -152,9 +150,7 @@ export function MarkdownWorkspace({
       let isFailed = false
       let errorMsg = ''
 
-      if (activeArtifact.type === 'SKILLS' && data.result) {
-        newContent = data.result.skills_md_content
-      } else if (activeArtifact.type === 'BACKLOG' && data.backlog) {
+      if (activeArtifact.type === 'BACKLOG' && data.backlog) {
         newContent = data.backlog.backlog_md_content
       } else if (data.artifacts) {
         const updated = data.artifacts.find((a) => a.type === activeArtifact.type)

@@ -11,7 +11,7 @@ export const AgentDocumentSchema = z.object({
 
 export const AgentRulesDocumentSchema = z.object({
   agent_content: z.string().describe('Full formatted Agent.md content in Markdown, including rules and recommended skills'),
-  rules_content: z.string().describe('Legacy compatibility field; leave empty when the consolidated Agent.md is used'),
+  rules_content: z.string().default('').describe('Legacy compatibility field; leave empty when the consolidated Agent.md is used'),
 })
 
 export type AgentRulesDocumentOutput = z.infer<typeof AgentRulesDocumentSchema>
@@ -53,5 +53,5 @@ Canonical Project Context:
 ${contextJson}
 """
 
-Generate the complete AGENT.md and RULES.md documents.`
+Generate the complete Agent.md document. Put all rules, security constraints, and recommended skills inside Agent.md. Leave the legacy rules_content field empty.`
 }

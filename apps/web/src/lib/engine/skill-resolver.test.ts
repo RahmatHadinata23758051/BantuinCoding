@@ -6,7 +6,6 @@ import {
 } from '@/lib/prompts/skill-resolver'
 import {
   resolveProjectSkills,
-  generateSkillsMdContent,
   SkillsLLMCatalogAdapter,
   internalCatalogFallback,
 } from '@/lib/engine/skill-resolver'
@@ -79,11 +78,9 @@ describe('SkillsLLM Catalog Adapter & Fallback', () => {
     expect(catalog[0]?.name).toBe('typescript-backend')
   })
 
-  it('generates formatted SKILLS.md markdown content', () => {
-    const md = generateSkillsMdContent('Test Project', internalCatalogFallback)
-    expect(md).toContain('# SKILLS.md — Recommended Agent Skills')
-    expect(md).toContain('Test Project')
-    expect(md).toContain('typescript-backend')
+  it('keeps skills as structured recommendations for Agent.md', () => {
+    expect(internalCatalogFallback[0]?.name).toBe('typescript-backend')
+    expect(internalCatalogFallback[0]?.purpose).toBeTruthy()
   })
 })
 

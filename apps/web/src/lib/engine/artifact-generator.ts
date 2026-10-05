@@ -8,11 +8,6 @@ import {
   buildPrdGeneratorUserPrompt,
 } from '@/lib/prompts/prd-generator'
 import {
-  SRS_GENERATOR_SYSTEM_PROMPT,
-  SrsDocumentSchema,
-  buildSrsGeneratorUserPrompt,
-} from '@/lib/prompts/srs-generator'
-import {
   ARCHITECTURE_GENERATOR_SYSTEM_PROMPT,
   ArchitectureDocumentSchema,
   buildArchitectureGeneratorUserPrompt,
@@ -307,7 +302,6 @@ export async function generateCoreArtifacts({
   const provider = createProvider(providerConfig)
   const generatedTypes = types ?? [
     'PRD',
-    'SRS',
     ...(currentContextRecord.artifactPlans.some(
       (item) => item.type === 'DESIGN' && item.isRequired,
     )
@@ -345,14 +339,6 @@ export async function generateCoreArtifacts({
         const userPrompt = buildPrdGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
         const res = await provider.generateStructured(userPrompt, PrdDocumentSchema, {
           system: PRD_GENERATOR_SYSTEM_PROMPT,
-          maxTokens: 32000,
-          temperature: 0.2,
-        })
-        markdownContent = res.markdown_content
-      } else if (artifactType === 'SRS') {
-        const userPrompt = buildSrsGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
-        const res = await provider.generateStructured(userPrompt, SrsDocumentSchema, {
-          system: SRS_GENERATOR_SYSTEM_PROMPT,
           maxTokens: 32000,
           temperature: 0.2,
         })
@@ -451,7 +437,7 @@ export async function regenerateFailedArtifacts({
   )
 
   const requiredPlanTypes = new Set(currentContext.artifactPlans.map((p) => p.type))
-  const coreCandidateTypes = ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'] as const
+  const coreCandidateTypes = ['PRD', 'ARCHITECTURE', 'DESIGN'] as const
 
   const typesToGenerate = coreCandidateTypes.filter((type) => {
     // Include if required by plan (or default core) and not already READY/MODIFIED
@@ -466,6 +452,6 @@ export async function regenerateFailedArtifacts({
   return generateCoreArtifacts({
     userId,
     projectId,
-    types: typesToGenerate as ('PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN')[],
+    types: typesToGenerate as ('PRD' | 'ARCHITECTURE' | 'DESIGN')[],
   })
 }

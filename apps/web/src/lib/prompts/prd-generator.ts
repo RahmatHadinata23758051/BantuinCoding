@@ -13,6 +13,7 @@ export const PrdDocumentSchema = z.object({
 export type PrdDocumentOutput = z.infer<typeof PrdDocumentSchema>
 
 export const PRD_GENERATOR_SYSTEM_PROMPT = `You are a Principal Product Manager drafting a comprehensive PRD (Product Requirements Document) for a software project.
+This PRD absorbs all traditional SRS content - it is the SINGLE source of truth for product and technical requirements.
 
 Your output must strictly follow the provided JSON schema.
 The markdown_content field must contain a complete, professional, beautifully formatted PRD.md file in GitHub-flavored Markdown.
@@ -31,7 +32,7 @@ PRD STRUCTURE REQUIREMENTS:
 11. Error Behavior & Edge Cases
 
 CRITICAL CONSTRAINTS:
-- PRD must NOT contain code-level implementation instructions that belong in AGENT.md, RULES.md, or ARCHITECTURE.md.
+- PRD must NOT contain code-level implementation instructions that belong in AGENT.md or ARCHITECTURE.md.
 - Focus on WHAT needs to be built and WHY, not low-level code implementation.`
 
 export function buildPrdGeneratorUserPrompt(

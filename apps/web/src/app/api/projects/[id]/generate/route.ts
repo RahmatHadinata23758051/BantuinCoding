@@ -26,7 +26,7 @@ export async function POST(
   try {
     await requireProjectAction(session.user.id, id, 'GENERATE')
     let requestedType: string | undefined
-    let types: ('PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN')[] | undefined = undefined
+    let types: ('PRD' | 'ARCHITECTURE' | 'DESIGN')[] | undefined = undefined
     let regenerateFailed: boolean = false
 
     // Parse body optionally for single-artifact regeneration e.g. { type: "PRD" }
@@ -34,8 +34,8 @@ export async function POST(
       const body = await req.json()
       requestedType = typeof body?.type === 'string' ? body.type.toUpperCase() : undefined
       regenerateFailed = body?.regenerateFailed === true
-      if (requestedType && ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'].includes(requestedType)) {
-        types = [requestedType as 'PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN']
+      if (requestedType && ['PRD', 'ARCHITECTURE', 'DESIGN'].includes(requestedType)) {
+        types = [requestedType as 'PRD' | 'ARCHITECTURE' | 'DESIGN']
       }
     } catch {
       // Body empty or invalid — default to all core documents handled by this route.

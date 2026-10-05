@@ -6,7 +6,7 @@ import { requireProjectAction } from '@/lib/projects/project-service'
 import { recomputeProjectReadiness } from '@/lib/projects/readiness-service'
 
 // ============================================================
-// POST /api/projects/[id]/skills — Resolve project skills & SKILLS.md
+// POST /api/projects/[id]/skills — Resolve project skills into recommendations for Agent.md
 // ============================================================
 
 export async function POST(

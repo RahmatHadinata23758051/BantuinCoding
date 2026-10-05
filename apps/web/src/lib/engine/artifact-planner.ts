@@ -135,7 +135,6 @@ export function getDefaultArtifactPlan(
   if (isComplex) {
     const artifacts = [
       { type: 'PRD' as const, path: 'PRD.md', reason: 'Product requirements', isRequired: true },
-      { type: 'SRS' as const, path: 'SRS.md', reason: 'Software specification', isRequired: true },
       { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'System architecture', isRequired: true },
       ...(needsDesign
         ? [{ type: 'DESIGN' as const, path: 'DESIGN.md', reason: 'Locked visual contract and UI system', isRequired: true }]
