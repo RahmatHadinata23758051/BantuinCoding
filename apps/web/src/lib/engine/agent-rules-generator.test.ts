@@ -35,10 +35,10 @@ vi.mock('@/lib/projects/project-service', () => ({
 }))
 
 describe('Agent Rules Prompt & Schema', () => {
-  it('validates a valid Agent & Rules output object', () => {
+  it('validates a valid Agent output object (consolidated)', () => {
     const data = {
       agent_content: '# Agent.md\n\nRole & Workflow',
-      rules_content: '# RULES.md\n\nHard Constraints',
+      rules_content: '',
     }
     const result = AgentRulesDocumentSchema.safeParse(data)
     expect(result.success).toBe(true)
@@ -48,7 +48,7 @@ describe('Agent Rules Prompt & Schema', () => {
     const prompt = buildAgentRulesGeneratorUserPrompt('Acme', 'CLAUDE_CODE', '{"name":"Acme"}')
     expect(prompt).toContain('Project Name: Acme')
     expect(prompt).toContain('Target Coding Agent: CLAUDE_CODE')
-    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('operational contracts')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('unified operational contract')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain(
       'DESIGN for visual/interaction scope',
     )
@@ -126,7 +126,6 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
 
     const mockAiResponse = {
       agent_content: '# AI Agent.md',
-      rules_content: '# AI RULES.md',
     }
 
     vi.mocked(createProvider).mockReturnValueOnce({
@@ -138,7 +137,7 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
     const results = await generateAgentAndRulesArtifacts({ userId: 'u-1', projectId: 'p-1' })
 
     expect(results[0]?.content).toBe('# AI Agent.md')
-    expect(results[1]?.content).toBe('# AI RULES.md')
+    expect(results[1]).toBeUndefined()
   })
 
   it('marks Agent & Rules artifacts FAILED when AI provider throws', async () => {
@@ -170,10 +169,6 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
 
     expect(db.artifact.update).toHaveBeenCalledWith({
       where: { projectId_type: { projectId: 'p-1', type: 'AGENT' } },
-      data: { status: 'FAILED' },
-    })
-    expect(db.artifact.update).toHaveBeenCalledWith({
-      where: { projectId_type: { projectId: 'p-1', type: 'RULES' } },
       data: { status: 'FAILED' },
     })
   })

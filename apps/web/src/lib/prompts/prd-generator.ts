@@ -24,6 +24,11 @@ PRD STRUCTURE REQUIREMENTS:
 4. Core User Flows
 5. Feature Roadmap & Acceptance Criteria
 6. Dependencies & Constraints
+7. Functional Requirements (FR-xxx) — inputs, outputs, acceptance criteria
+8. Non-Functional Requirements (NFR-xxx) — measurable metrics for performance, security, scalability
+9. Data Requirements & Core Data Models
+10. Interface & API Specifications
+11. Error Behavior & Edge Cases
 
 CRITICAL CONSTRAINTS:
 - PRD must NOT contain code-level implementation instructions that belong in AGENT.md, RULES.md, or ARCHITECTURE.md.

@@ -58,18 +58,18 @@ describe('Artifact Plan Schema', () => {
 })
 
 describe('getDefaultArtifactPlan', () => {
-  it('LANDING_PAGE gets minimal pack (8 core mandatory docs including DESIGN)', () => {
+  it('LANDING_PAGE gets minimal pack (4 docs: PRD, DESIGN, Agent, BACKLOG)', () => {
     const plan = getDefaultArtifactPlan('LANDING_PAGE')
-    expect(plan.artifacts).toHaveLength(8)
+    expect(plan.artifacts).toHaveLength(4)
     const types = plan.artifacts.map((a) => a.type)
     expect(types).toContain('PRD')
-    expect(types).toContain('SRS')
     expect(types).toContain('DESIGN')
-    expect(types).toContain('ARCHITECTURE')
     expect(types).toContain('AGENT')
-    expect(types).toContain('RULES')
-    expect(types).toContain('SKILLS')
     expect(types).toContain('BACKLOG')
+    expect(types).not.toContain('SRS')
+    expect(types).not.toContain('ARCHITECTURE')
+    expect(types).not.toContain('RULES')
+    expect(types).not.toContain('SKILLS')
     expect(types).not.toContain('DATABASE')
   })
 

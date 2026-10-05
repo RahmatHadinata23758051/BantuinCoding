@@ -101,49 +101,77 @@ export function ensureDesignArtifact(
 
 /**
  * Deterministic baseline artifact plan used when AI planning is unavailable.
+ * Uses tier-based document selection based on project classification.
  */
 export function getDefaultArtifactPlan(
   classification: ProjectClassification,
   contextJson?: string,
 ): ArtifactPlanOutput {
-  const isMinimal =
-    classification === 'STATIC_SITE' || classification === 'LANDING_PAGE'
-
   const needsDesign = requiresDesignArtifact(classification, contextJson)
+  const isSimple = classification === 'STATIC_SITE' || classification === 'LANDING_PAGE'
+  const isComplex =
+    classification === 'SAAS' ||
+    classification === 'FULLSTACK_COMPLEX' ||
+    classification === 'AI_APP' ||
+    classification === 'IOT_DASHBOARD'
 
-  const mandatory = [
-    { type: 'PRD' as const, path: 'PRD.md', reason: 'Product requirements', isRequired: true },
-    { type: 'SRS' as const, path: 'SRS.md', reason: 'Software specification', isRequired: true },
-    ...(needsDesign
-      ? [{ type: 'DESIGN' as const, path: 'DESIGN.md', reason: 'Locked visual contract and UI system', isRequired: true }]
-      : []),
-    { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'System architecture', isRequired: true },
-    { type: 'AGENT' as const, path: 'Agent.md', reason: 'Coding agent contract', isRequired: true },
-    { type: 'RULES' as const, path: 'RULES.md', reason: 'Coding standards', isRequired: true },
-    { type: 'SKILLS' as const, path: 'SKILLS.md', reason: 'Recommended agent skills', isRequired: true },
-    { type: 'BACKLOG' as const, path: 'BACKLOG.md', reason: 'Phased backlog tasks', isRequired: true },
-  ]
-
-  if (isMinimal) {
+  // Tier 1: Simple (STATIC_SITE, LANDING_PAGE)
+  if (classification === 'STATIC_SITE' || classification === 'LANDING_PAGE') {
+    const artifacts = [
+      { type: 'PRD' as const, path: 'PRD.md', reason: 'Product requirements & functional specs', isRequired: true },
+      ...(needsDesign
+        ? [{ type: 'DESIGN' as const, path: 'DESIGN.md', reason: 'Locked visual contract and UI system', isRequired: true }]
+        : []),
+      { type: 'BACKLOG' as const, path: 'BACKLOG.md', reason: 'Phased backlog tasks', isRequired: true },
+      { type: 'AGENT' as const, path: 'Agent.md', reason: 'Coding agent contract (incl. rules & skills)', isRequired: true },
+    ]
     return {
       classification,
-      artifacts: mandatory,
+      artifacts,
       rationale: `Minimal documentation pack for ${classification}`,
     }
   }
 
-  // Extended pack for apps/SaaS/complex
-  return {
-    classification,
-    artifacts: [
-      ...mandatory,
+  // Tier 3: Complex (SAAS, FULLSTACK_COMPLEX, AI_APP, IOT_DASHBOARD)
+  if (isComplex) {
+    const artifacts = [
+      { type: 'PRD' as const, path: 'PRD.md', reason: 'Product requirements', isRequired: true },
+      { type: 'SRS' as const, path: 'SRS.md', reason: 'Software specification', isRequired: true },
+      { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'System architecture', isRequired: true },
+      ...(needsDesign
+        ? [{ type: 'DESIGN' as const, path: 'DESIGN.md', reason: 'Locked visual contract and UI system', isRequired: true }]
+        : []),
+      { type: 'AGENT' as const, path: 'Agent.md', reason: 'Coding agent contract (incl. rules & skills)', isRequired: true },
+      { type: 'BACKLOG' as const, path: 'BACKLOG.md', reason: 'Phased backlog tasks', isRequired: true },
+      // Optional extended docs
       { type: 'DATABASE' as const, path: 'docs/DATABASE.md', reason: 'Database schema & migrations', isRequired: false },
       { type: 'API' as const, path: 'docs/API.md', reason: 'API surface specification', isRequired: false },
       { type: 'SECURITY' as const, path: 'docs/SECURITY.md', reason: 'Security rules & secrets handling', isRequired: false },
       { type: 'TESTING' as const, path: 'docs/TESTING.md', reason: 'Testing strategy & quality gates', isRequired: false },
+      { type: 'DEPLOYMENT' as const, path: 'docs/DEPLOYMENT.md', reason: 'Deployment configuration', isRequired: false },
       { type: 'README' as const, path: 'README.md', reason: 'Project overview', isRequired: false },
-    ],
-    rationale: `Standard full-stack documentation pack for ${classification}`,
+    ]
+    return {
+      classification,
+      artifacts,
+      rationale: `Full-stack documentation pack for ${classification}`,
+    }
+  }
+
+  // Tier 2: Standard (CRUD_APP, DASHBOARD, MOBILE_APP, etc.)
+  const artifacts = [
+    { type: 'PRD' as const, path: 'PRD.md', reason: 'Product requirements & functional specs', isRequired: true },
+    { type: 'ARCHITECTURE' as const, path: 'ARCHITECTURE.md', reason: 'System architecture', isRequired: true },
+    ...(needsDesign
+      ? [{ type: 'DESIGN' as const, path: 'DESIGN.md', reason: 'Locked visual contract and UI system', isRequired: true }]
+      : []),
+    { type: 'AGENT' as const, path: 'Agent.md', reason: 'Coding agent contract (incl. rules & skills)', isRequired: true },
+    { type: 'BACKLOG' as const, path: 'BACKLOG.md', reason: 'Phased backlog tasks', isRequired: true },
+  ]
+  return {
+    classification,
+    artifacts,
+    rationale: `Standard documentation pack for ${classification}`,
   }
 }
 

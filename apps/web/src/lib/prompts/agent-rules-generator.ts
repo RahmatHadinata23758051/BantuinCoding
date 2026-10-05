@@ -5,35 +5,40 @@ import { z } from 'zod'
 // Defines schemas for generating AGENT.md and RULES.md
 // ============================================================
 
+export const AgentDocumentSchema = z.object({
+  agent_content: z.string().describe('Full formatted Agent.md content in Markdown, including rules and recommended skills'),
+})
+
 export const AgentRulesDocumentSchema = z.object({
-  agent_content: z.string().describe('Full formatted Agent.md content in Markdown'),
-  rules_content: z.string().describe('Full formatted RULES.md content in Markdown'),
+  agent_content: z.string().describe('Full formatted Agent.md content in Markdown, including rules and recommended skills'),
+  rules_content: z.string().describe('Legacy compatibility field; leave empty when the consolidated Agent.md is used'),
 })
 
 export type AgentRulesDocumentOutput = z.infer<typeof AgentRulesDocumentSchema>
 
-export const AGENT_RULES_GENERATOR_SYSTEM_PROMPT = `You are a Principal AI Agent Engineer & Technical Architect drafting operational contracts (Agent.md) and strict constraints (RULES.md) for a coding agent.
+export const AGENT_RULES_GENERATOR_SYSTEM_PROMPT = `You are a Principal AI Agent Engineer & Technical Architect drafting a unified operational contract (Agent.md) for a coding agent.
 
-Your output must strictly follow the provided JSON schema containing both agent_content and rules_content.
+Your output must strictly follow the provided JSON schema. The agent_content field must contain a single, complete Agent.md document that includes all operational rules, hard constraints, and recommended skills.
 
 AGENT.MD STRUCTURE REQUIREMENTS:
 1. Agent Role & Primary Responsibilities
-2. Source-of-Truth Document Hierarchy (SRS > PRD > DESIGN for visual/interaction scope > ARCHITECTURE > RULES > Agent.md > BACKLOG.md; visual decisions must always come from DESIGN.md alone)
+2. Source-of-Truth Document Hierarchy (SRS > PRD > DESIGN for visual/interaction scope > ARCHITECTURE > Agent.md > BACKLOG.md; visual decisions must always come from DESIGN.md alone)
 3. Implementation Workflow (UNDERSTAND -> INSPECT -> PLAN -> IMPLEMENT -> VERIFY -> REPORT)
 4. Backlog Execution Rules & State Machine Handling
 5. Quality Gates (Typecheck, Lint, Tests, Security, Zero Regression)
-6. Prohibited Behaviors & Reporting Format
-7. Definition of Done
-
-RULES.MD STRUCTURE REQUIREMENTS:
-1. Hard Technology Constraints (No stack change without approval)
-2. Dependency Execution Rules (No skipping backlog tasks or dependencies)
-3. BYOK & Secret Isolation Rules (Zero API key persistence or leakage)
-4. Scope Boundaries & Anti-Feature Creep Rules
+6. Hard Technology Constraints (No stack change without approval)
+7. Dependency Execution Rules (No skipping backlog tasks or dependencies)
+8. BYOK & Secret Isolation Rules (Zero API key persistence or leakage)
+9. Scope Boundaries & Anti-Feature Creep Rules
+10. Security Rules & Compliance
+10. Recommended Agent Skills & Triggers
+11. Definition of Done
 
 CRITICAL CONSTRAINTS:
-- Keep AGENT.md focused on operational agent workflow.
-- Keep RULES.md focused on non-negotiable hard constraints.`
+- Produce a SINGLE Agent.md document that includes ALL operational rules, hard constraints, security rules, and recommended skills.
+- Do NOT produce a separate RULES.md document; the rules_content field must be left empty.
+- Visual decisions must ALWAYS come from DESIGN.md alone.
+- Agent.md is the sole operational contract for the coding agent.`
 
 export function buildAgentRulesGeneratorUserPrompt(
   projectName: string,

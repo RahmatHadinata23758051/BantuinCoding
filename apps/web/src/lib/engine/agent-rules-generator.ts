@@ -115,7 +115,6 @@ export async function generateAgentAndRulesArtifacts({
 
   const items = [
     { type: 'AGENT' as const, path: 'Agent.md' },
-    { type: 'RULES' as const, path: 'RULES.md' },
   ]
 
   // Set both artifacts to GENERATING before provider call
