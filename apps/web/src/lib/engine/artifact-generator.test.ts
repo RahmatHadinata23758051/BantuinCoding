@@ -491,12 +491,11 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
 
     expect(results.map((result) => result.type)).toEqual([
       'PRD',
-      'SRS',
       'DESIGN',
       'ARCHITECTURE',
     ])
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(4)
-    expect(generateStructured).toHaveBeenCalledTimes(4)
+    expect(db.artifact.upsert).toHaveBeenCalledTimes(3)
+    expect(generateStructured).toHaveBeenCalledTimes(3)
   })
 
   it('marks only the DESIGN artifact failed when design generation fails', async () => {

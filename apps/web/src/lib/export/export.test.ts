@@ -115,7 +115,7 @@ describe('ZIP Export Engine — exportProjectZip', () => {
       targetAgent: 'CLAUDE_CODE',
       artifacts: [
         { path: 'PRD.md', status: 'READY', content: '# PRD' },
-        { path: 'SRS.md', status: 'MODIFIED', content: '# SRS' },
+        { path: 'ARCHITECTURE.md', status: 'MODIFIED', content: '# ARCH' },
       ],
     } as never)
 

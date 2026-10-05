@@ -72,14 +72,16 @@ describe('getDefaultArtifactPlan', () => {
     expect(types).not.toContain('DATABASE')
   })
 
-  it('SAAS gets extended pack (includes DESIGN, DATABASE, API, SECURITY, TESTING, README)', () => {
+  it('SAAS gets the five-file lean pack', () => {
     const plan = getDefaultArtifactPlan('SAAS')
-    expect(plan.artifacts.length).toBeGreaterThan(8)
-    const types = plan.artifacts.map((a) => a.type)
-    expect(types).toContain('DESIGN')
-    expect(types).toContain('DATABASE')
-    expect(types).toContain('API')
-    expect(types).toContain('SECURITY')
+    expect(plan.artifacts).toHaveLength(5)
+    expect(plan.artifacts.map((a) => a.type)).toEqual([
+      'PRD',
+      'ARCHITECTURE',
+      'DESIGN',
+      'AGENT',
+      'BACKLOG',
+    ])
   })
 })
 

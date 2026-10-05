@@ -141,13 +141,6 @@ export function getDefaultArtifactPlan(
         : []),
       { type: 'AGENT' as const, path: 'Agent.md', reason: 'Coding agent contract (incl. rules & skills)', isRequired: true },
       { type: 'BACKLOG' as const, path: 'BACKLOG.md', reason: 'Phased backlog tasks', isRequired: true },
-      // Optional extended docs
-      { type: 'DATABASE' as const, path: 'docs/DATABASE.md', reason: 'Database schema & migrations', isRequired: false },
-      { type: 'API' as const, path: 'docs/API.md', reason: 'API surface specification', isRequired: false },
-      { type: 'SECURITY' as const, path: 'docs/SECURITY.md', reason: 'Security rules & secrets handling', isRequired: false },
-      { type: 'TESTING' as const, path: 'docs/TESTING.md', reason: 'Testing strategy & quality gates', isRequired: false },
-      { type: 'DEPLOYMENT' as const, path: 'docs/DEPLOYMENT.md', reason: 'Deployment configuration', isRequired: false },
-      { type: 'README' as const, path: 'README.md', reason: 'Project overview', isRequired: false },
     ]
     return {
       classification,
