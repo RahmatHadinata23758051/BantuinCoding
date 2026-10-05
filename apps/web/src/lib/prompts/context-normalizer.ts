@@ -146,5 +146,7 @@ ${qaJson}
 """
 
 Synthesize all information above into the normalized Canonical Project Context JSON.
+If any answered clarification question contains the value "[AUTO]", you must autonomously determine and apply the best-in-class industry standard for that architectural/technical decision based on the project type and context. Do NOT output "[AUTO]" in the final JSON.
+
 Output ONLY the raw JSON object. No markdown fences, no prose, no explanation.`
 }

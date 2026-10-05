@@ -292,6 +292,10 @@
     "settings": "Project Settings",
     "saveChanges": "Save changes",
     "projectName": "Project name",
-    "language": "Project language"
+    "language": "Project language",
+    "autoPick": "✨ I'm not sure, pick the best standard for me",
+    "otherCustom": "Other (custom input)",
+    "writeDecision": "Write the confirmed decision, constraint, or acceptable assumption…",
+    "impact": "Impact"
   }
 }

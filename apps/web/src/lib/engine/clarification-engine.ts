@@ -206,6 +206,7 @@ export async function generateClarificationRound({
               round: transactionRound,
               question: q.question,
               impact: q.impact,
+              options: q.suggested_options && q.suggested_options.length > 0 ? JSON.stringify(q.suggested_options) : null,
               status: 'PENDING',
             })),
           })

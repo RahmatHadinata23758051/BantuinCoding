@@ -45,14 +45,24 @@ export async function getProjectWorkspaceData(userId: string, projectId: string)
     updatedAt: project.updatedAt.toISOString(),
     context: contextData,
     contextVersion: currentContextRecord?.version ?? 0,
-    clarifications: project.clarificationQuestions.map((question) => ({
-      id: question.id,
-      round: question.round,
-      question: question.question,
-      impact: question.impact,
-      answer: question.answer,
-      status: question.status,
-    })),
+    clarifications: project.clarificationQuestions.map((question) => {
+      let optionsList: string[] = []
+      try {
+        if (question.options) {
+          optionsList = JSON.parse(question.options)
+        }
+      } catch {}
+
+      return {
+        id: question.id,
+        round: question.round,
+        question: question.question,
+        impact: question.impact,
+        options: optionsList,
+        answer: question.answer,
+        status: question.status,
+      }
+    }),
     artifacts: project.artifacts.map((a) => ({
       id: a.id,
       type: a.type,

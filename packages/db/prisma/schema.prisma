@@ -121,6 +121,7 @@ model ClarificationQuestion {
   projectId String   @map("project_id")
   round     Int      @default(1)
   question  String
+  options   String?  @map("options") @db.Text // JSON stringified array of suggested options
   answer    String?
   impact    String? // why this question matters
   status    String   @default("PENDING") // PENDING | ANSWERED | SKIPPED

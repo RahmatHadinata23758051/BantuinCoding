@@ -292,6 +292,10 @@
     "settings": "Pengaturan Proyek",
     "saveChanges": "Simpan perubahan",
     "projectName": "Nama proyek",
-    "language": "Bahasa proyek"
+    "language": "Bahasa proyek",
+    "autoPick": "✨ Saya kurang paham, pilihkan standar terbaik untuk saya",
+    "otherCustom": "Lainnya (masukkan manual)",
+    "writeDecision": "Tulis keputusan yang disetujui, batasan, atau asumsi yang dapat diterima…",
+    "impact": "Dampak"
   }
 }
