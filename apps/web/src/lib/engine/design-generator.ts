@@ -14,7 +14,7 @@ export async function generateDesignArtifactContent(
   const userPrompt = buildDesignGeneratorUserPrompt(projectName, contextJson, contextVersion)
   const result = await provider.generateStructured(userPrompt, DesignDocumentSchema, {
     system: DESIGN_GENERATOR_SYSTEM_PROMPT,
-    maxTokens: 4096,
+    maxTokens: 32000,
     temperature: 0.2,
   })
 

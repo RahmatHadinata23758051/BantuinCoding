@@ -7,36 +7,6 @@ import { z } from 'zod'
 
 export const PrdDocumentSchema = z.object({
   title: z.string().default('PRD.md'),
-  product_summary: z.string().optional(),
-  problem_statement: z.string().optional(),
-  target_users: z.array(
-    z.object({
-      role: z.string(),
-      description: z.string(),
-    }),
-  ).optional(),
-  goals: z.array(z.string()).optional(),
-  non_goals: z.array(z.string()).optional(),
-  core_user_flows: z.array(
-    z.object({
-      flow_name: z.string(),
-      steps: z.array(z.string()),
-    }),
-  ).optional(),
-  feature_roadmap: z.array(
-    z.object({
-      phase: z.string(),
-      features: z.array(
-        z.object({
-          id: z.string(),
-          title: z.string(),
-          description: z.string(),
-          priority: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional(),
-          acceptance_criteria: z.array(z.string()).optional(),
-        }),
-      ),
-    }),
-  ).optional(),
   markdown_content: z.string().describe('Full formatted PRD.md content in Markdown'),
 })
 

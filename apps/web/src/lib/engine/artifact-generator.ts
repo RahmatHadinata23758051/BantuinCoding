@@ -345,7 +345,7 @@ export async function generateCoreArtifacts({
         const userPrompt = buildPrdGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
         const res = await provider.generateStructured(userPrompt, PrdDocumentSchema, {
           system: PRD_GENERATOR_SYSTEM_PROMPT,
-          maxTokens: 4096,
+          maxTokens: 32000,
           temperature: 0.2,
         })
         markdownContent = res.markdown_content
@@ -353,7 +353,7 @@ export async function generateCoreArtifacts({
         const userPrompt = buildSrsGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
         const res = await provider.generateStructured(userPrompt, SrsDocumentSchema, {
           system: SRS_GENERATOR_SYSTEM_PROMPT,
-          maxTokens: 4096,
+          maxTokens: 32000,
           temperature: 0.2,
         })
         markdownContent = res.markdown_content
@@ -361,7 +361,7 @@ export async function generateCoreArtifacts({
         const userPrompt = buildArchitectureGeneratorUserPrompt(project.name, currentContextRecord.contentJson)
         const res = await provider.generateStructured(userPrompt, ArchitectureDocumentSchema, {
           system: ARCHITECTURE_GENERATOR_SYSTEM_PROMPT,
-          maxTokens: 4096,
+          maxTokens: 32000,
           temperature: 0.2,
         })
         markdownContent = res.markdown_content

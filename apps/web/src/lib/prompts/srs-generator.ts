@@ -7,44 +7,6 @@ import { z } from 'zod'
 
 export const SrsDocumentSchema = z.object({
   title: z.string().default('SRS.md'),
-  system_overview: z.string().optional(),
-  actors: z.array(
-    z.object({
-      name: z.string(),
-      description: z.string(),
-    }),
-  ).optional(),
-  functional_requirements: z.array(
-    z.object({
-      id: z.string().describe('e.g., FR-001'),
-      title: z.string(),
-      description: z.string(),
-      inputs: z.array(z.string()).optional(),
-      outputs: z.array(z.string()).optional(),
-      acceptance_criteria: z.array(z.string()).optional(),
-    }),
-  ).optional(),
-  non_functional_requirements: z.array(
-    z.object({
-      id: z.string().describe('e.g., NFR-001'),
-      category: z.string().describe('Security, Performance, Reliability, etc.').optional(),
-      requirement: z.string().optional(),
-      measurement: z.string().optional(),
-    }),
-  ).optional(),
-  data_requirements: z.array(
-    z.object({
-      entity: z.string(),
-      fields: z.array(z.string()).optional(),
-      description: z.string().optional(),
-    }),
-  ).optional(),
-  error_behavior: z.array(
-    z.object({
-      scenario: z.string(),
-      expected_handling: z.string().optional(),
-    }),
-  ).optional(),
   markdown_content: z.string().describe('Full formatted SRS.md content in Markdown'),
 })
 

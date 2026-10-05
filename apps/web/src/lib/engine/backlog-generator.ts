@@ -466,7 +466,7 @@ export async function generateProjectBacklog({
       BacklogGeneratorOutputSchema,
       {
         system: BACKLOG_GENERATOR_SYSTEM_PROMPT,
-        maxTokens: 4096,
+        maxTokens: 32000,
         temperature: 0.2,
       },
     )

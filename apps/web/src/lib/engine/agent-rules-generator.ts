@@ -143,7 +143,7 @@ export async function generateAgentAndRulesArtifacts({
       AgentRulesDocumentSchema,
       {
         system: AGENT_RULES_GENERATOR_SYSTEM_PROMPT,
-        maxTokens: 4096,
+        maxTokens: 32000,
         temperature: 0.2,
       },
     )

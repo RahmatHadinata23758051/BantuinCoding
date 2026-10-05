@@ -398,6 +398,10 @@ class AnthropicProvider extends BaseProvider {
       messages: [{ role: 'user', content: prompt }],
     })
 
+    if (msg.stop_reason === 'max_tokens') {
+      throw new Error('Generation truncated due to max tokens limit')
+    }
+
     const raw = msg.content
       .filter((b) => b.type === 'text')
       .map((b) => (b as { type: 'text'; text: string }).text)
@@ -497,6 +501,10 @@ class OpenAIProvider extends BaseProvider {
       ],
     })
 
+    if (completion.choices[0]?.finish_reason === 'length') {
+      throw new Error('Generation truncated due to max tokens limit')
+    }
+
     const raw = completion.choices[0]?.message?.content ?? ''
     return this.parseAndValidate(raw, schema)
   }
@@ -563,6 +571,11 @@ class GeminiProvider extends BaseProvider {
     })
 
     const result = await model.generateContent(prompt)
+    const finishReason = result.response.candidates?.[0]?.finishReason
+    if (finishReason === 'MAX_TOKENS') {
+      throw new Error('Generation truncated due to max tokens limit')
+    }
+
     const raw = result.response.text()
 
     return this.parseAndValidate(raw, schema)
@@ -651,6 +664,10 @@ class OpenRouterProvider extends BaseProvider {
         { role: 'user', content: prompt },
       ],
     })
+
+    if (completion.choices[0]?.finish_reason === 'length') {
+      throw new Error('Generation truncated due to max tokens limit')
+    }
 
     const raw = completion.choices[0]?.message?.content ?? ''
     return this.parseAndValidate(raw, schema)
