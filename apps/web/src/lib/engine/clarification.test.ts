@@ -142,6 +142,7 @@ describe('Clarification Engine — generateClarificationRound', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'CLARIFYING',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
       clarificationQuestions: [
@@ -208,6 +209,7 @@ describe('Clarification Engine — generateClarificationRound', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'ANALYZING',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
       clarificationQuestions: [],
@@ -257,6 +259,7 @@ describe('Clarification Engine — generateClarificationRound', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'CLARIFYING',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
       clarificationQuestions: [],
@@ -329,6 +332,7 @@ describe('Clarification Engine — submitClarificationAnswers', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'CLARIFYING',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
     })

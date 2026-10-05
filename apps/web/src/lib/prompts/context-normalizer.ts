@@ -118,10 +118,17 @@ export function buildContextNormalizerUserPrompt(
   targetAgent: string,
   analysisJson: string,
   qaJson: string,
+  language: string = 'id',
 ): string {
+  const languageDirective =
+    language === 'id'
+      ? 'CRITICAL LANGUAGE DIRECTIVE: You MUST write the canonical context output (including product_summary, target_users, core_jobs, requirements, etc.) in professional Indonesian (Bahasa Indonesia).'
+      : 'CRITICAL LANGUAGE DIRECTIVE: You MUST write the canonical context output in professional English.'
+
   return `Project Name: ${projectName}
 Project Type: ${classification}
 Target Agent: ${targetAgent}
+${languageDirective}
 
 Raw Idea Input:
 """

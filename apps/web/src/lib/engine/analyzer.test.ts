@@ -109,6 +109,7 @@ describe('Requirement Analyzer Engine', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'CONFIGURED',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -134,6 +135,7 @@ describe('Requirement Analyzer Engine', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'CONFIGURED',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -181,6 +183,7 @@ describe('Requirement Analyzer Engine', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'CONFIGURED',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
     })

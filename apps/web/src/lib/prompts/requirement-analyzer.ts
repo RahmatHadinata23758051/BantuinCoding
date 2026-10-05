@@ -47,15 +47,22 @@ export function buildRequirementAnalysisUserPrompt(
   rawIdea: string,
   classification: string,
   targetAgent: string,
+  language: string = 'id',
 ): string {
+  const languageDirective =
+    language === 'id'
+      ? 'CRITICAL LANGUAGE DIRECTIVE: You MUST analyze and write all known_facts, missing_information, ambiguities, important_decisions, optional_decisions, and risk_flags in natural, professional Indonesian (Bahasa Indonesia).'
+      : 'CRITICAL LANGUAGE DIRECTIVE: You MUST analyze and write all fields in professional English.'
+
   return `Project Name: ${projectName}
 Project Type: ${classification}
 Target Agent: ${targetAgent}
+${languageDirective}
 
 Raw Idea Input:
 """
 ${rawIdea}
 """
 
-Analyze the above input and generate the structured JSON report.`
+Analyze the above input and generate the structured JSON report according to the language directive.`
 }

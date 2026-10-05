@@ -57,6 +57,7 @@ export async function analyzeProjectRequirements({
     project.rawIdea,
     project.classification,
     project.targetAgent,
+    project.language,
   )
 
   let lastError: unknown = null

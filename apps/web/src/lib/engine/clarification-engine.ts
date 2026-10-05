@@ -161,6 +161,7 @@ export async function generateClarificationRound({
         JSON.stringify(currentAnalysis.analysis),
         JSON.stringify(answeredPrevious),
         currentRound,
+        project.language,
       )
 
       // Transition status to CLARIFYING

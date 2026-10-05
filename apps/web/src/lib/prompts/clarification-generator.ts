@@ -66,9 +66,16 @@ export function buildClarificationUserPrompt(
   analysisJson: string,
   previousQAJson: string,
   currentRound: number,
+  language: string = 'id',
 ): string {
+  const languageDirective =
+    language === 'id'
+      ? 'CRITICAL LANGUAGE DIRECTIVE: You MUST output all questions, impacts, and suggested_options in natural, professional Indonesian (Bahasa Indonesia).'
+      : 'CRITICAL LANGUAGE DIRECTIVE: You MUST output all questions, impacts, and suggested_options in professional English.'
+
   return `Project: ${projectName}
 Round: ${currentRound}
+${languageDirective}
 
 Raw Idea:
 """
@@ -85,5 +92,5 @@ Previously Answered Questions (DO NOT REPEAT):
 ${previousQAJson}
 """
 
-Generate Round ${currentRound} clarification questions.`
+Generate Round ${currentRound} clarification questions according to the language directive.`
 }

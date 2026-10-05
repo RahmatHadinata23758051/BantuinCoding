@@ -289,6 +289,7 @@ export async function generateCanonicalContext({
     project.targetAgent,
     JSON.stringify(currentAnalysis.analysis),
     qaFormatted,
+    project.language,
   )
 
   // Use z.unknown() to accept ANY valid JSON from the model (including extra fields
