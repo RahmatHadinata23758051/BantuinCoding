@@ -105,6 +105,7 @@ export const CreateProjectSchema = z.object({
   targetAgent: z
     .enum(['CLAUDE_CODE', 'CODEX', 'OPENCODE', 'ANTIGRAVITY', 'CURSOR', 'OTHER'])
     .default('CLAUDE_CODE'),
+  language: z.enum(['en', 'id']).default('id'),
 })
 
 export const UpdateProjectSchema = CreateProjectSchema.partial()
@@ -143,6 +144,7 @@ export async function createProject(userId: string, input: CreateProjectInput) {
       rawIdea: parsed.rawIdea,
       classification: parsed.classification,
       targetAgent: parsed.targetAgent,
+      language: parsed.language,
       status: 'DRAFT',
     },
   })
@@ -222,6 +224,7 @@ export async function updateProject(
       ...(input.rawIdea && { rawIdea: input.rawIdea }),
       ...(input.classification && { classification: input.classification }),
       ...(input.targetAgent && { targetAgent: input.targetAgent }),
+      ...(input.language && { language: input.language }),
       ...(input.status && { status: input.status }),
     },
   })

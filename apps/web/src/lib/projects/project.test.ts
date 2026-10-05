@@ -165,6 +165,7 @@ describe('Project CRUD logic — db interactions', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'DRAFT',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -175,6 +176,7 @@ describe('Project CRUD logic — db interactions', () => {
       rawIdea: 'Valid description text long enough',
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
+      language: 'id',
     })
 
     expect(result.status).toBe('DRAFT')
@@ -185,6 +187,7 @@ describe('Project CRUD logic — db interactions', () => {
         rawIdea: 'Valid description text long enough',
         classification: 'SAAS',
         targetAgent: 'CLAUDE_CODE',
+        language: 'id',
         status: 'DRAFT',
       },
     })
@@ -243,6 +246,7 @@ describe('Project CRUD logic — db interactions', () => {
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       status: 'DRAFT',
+      language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
