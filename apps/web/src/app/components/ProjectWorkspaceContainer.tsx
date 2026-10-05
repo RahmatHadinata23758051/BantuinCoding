@@ -1501,50 +1501,39 @@ Begin execution immediately:
                                   {t('impact')}: {question.impact}
                                 </p>
                               )}
-                              {(Array.isArray(question.options) ? question.options : []).length > 0 ? (
-                                <div className="mt-4 space-y-3">
-                                  {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
-                                    <label key={i} className={`flex cursor-pointer items-start gap-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-3 shadow-[2px_2px_0_var(--workspace-ink)] hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
-                                      <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
-                                      <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
-                                    </label>
-                                  ))}
-                                  <label className={`flex cursor-pointer items-start gap-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-blue-soft)] p-3 shadow-[2px_2px_0_var(--workspace-ink)] hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
-                                    <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
-                                    <span className="text-sm font-black text-[var(--workspace-ink)]">{t('autoPick')}</span>
+                              <div className="mt-4 space-y-3">
+                                {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
+                                  <label key={i} className={`flex cursor-pointer items-start gap-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-3 shadow-[2px_2px_0_var(--workspace-ink)] hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
+                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
+                                    <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
                                   </label>
-                                  <div className="pt-2">
-                                    <label className="text-sm font-black flex items-center gap-2 mb-2">
-                                      <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
-                                      {t('otherCustom')}
-                                    </label>
-                                    <textarea
-                                      name={`custom-answer-${question.id}`}
-                                      rows={2}
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          const radio = document.getElementById(`custom-radio-${question.id}`) as HTMLInputElement
-                                          if (radio) {
-                                            radio.value = e.target.value
-                                            radio.checked = true
-                                          }
+                                ))}
+                                <label className={`flex cursor-pointer items-start gap-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-blue-soft)] p-3 shadow-[2px_2px_0_var(--workspace-ink)] hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
+                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
+                                  <span className="text-sm font-black text-[var(--workspace-ink)]">{t('autoPick')}</span>
+                                </label>
+                                <div className="pt-2">
+                                  <label className="text-sm font-black flex items-center gap-2 mb-2">
+                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
+                                    {t('otherCustom')}
+                                  </label>
+                                  <textarea
+                                    name={`custom-answer-${question.id}`}
+                                    rows={(Array.isArray(question.options) ? question.options : []).length === 0 ? 4 : 2}
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        const radio = document.getElementById(`custom-radio-${question.id}`) as HTMLInputElement
+                                        if (radio) {
+                                          radio.value = e.target.value
+                                          radio.checked = true
                                         }
-                                      }}
-                                      placeholder={t('writeDecision')}
-                                      className={`w-full resize-y border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-semibold leading-6 text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
-                                    />
-                                  </div>
+                                      }
+                                    }}
+                                    placeholder={t('writeDecision')}
+                                    className={`w-full resize-y border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-semibold leading-6 text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
+                                  />
                                 </div>
-                              ) : (
-                                <textarea
-                                  id={`answer-${question.id}`}
-                                  name={`answer-${question.id}`}
-                                  rows={4}
-                                  required
-                                  placeholder={t('writeDecision')}
-                                  className={`mt-4 w-full resize-y border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--workspace-ink)] shadow-[3px_3px_0_var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
-                                />
-                              )}
+                              </div>
                             </div>
                           ))}
 

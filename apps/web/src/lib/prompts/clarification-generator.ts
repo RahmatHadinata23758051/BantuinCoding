@@ -12,8 +12,8 @@ export const ClarificationQuestionSchema = z.object({
     .describe('Why this question matters — the architectural or functional decision it affects'),
   suggested_options: z
     .array(z.string())
-    .optional()
-    .describe('Structured multiple choice options (if applicable)'),
+    .min(2)
+    .describe('MANDATORY: Provide 2 to 4 concrete, distinct multiple choice options. Do not omit.'),
 })
 
 export const ClarificationRoundSchema = z
@@ -55,7 +55,7 @@ Rules:
 1. Generate between 3 and 7 questions per round while critical uncertainty remains.
 2. Focus ONLY on high-impact uncertainties (auth strategy, scale, core data entities, third-party integrations, compliance).
 3. Do NOT ask questions that have already been answered in previous rounds.
-4. For each question, provide 2-4 structured suggested options when standard patterns exist, but allow the user to know free text is also acceptable.
+4. MANDATORY MULTIPLE-CHOICE OPTIONS: For EVERY single question, you MUST provide 2 to 4 concrete, distinct suggested_options. Do NOT omit suggested_options under any circumstances.
 5. Provide a clear "impact" explaining WHY answering this question matters for the architecture.
 6. Set is_context_sufficient to true ONLY if all critical architectural decisions are clear enough to write a complete PRD/SRS pack.
 7. When is_context_sufficient is true, return an empty questions array. When it is false, return at least one question.`
