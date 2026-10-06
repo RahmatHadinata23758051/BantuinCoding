@@ -1085,6 +1085,17 @@ Begin execution immediately:
   const generationStatusLabel = (status: GenerationStageStatus) =>
     t(getGenerationStageStatusKey(status) as Parameters<typeof t>[0])
   const generationPercentage = getGenerationProgressPercentage(generationState)
+  const activeGenerationStageIndex = generationState.activeStage
+    ? GENERATION_STAGES.findIndex(({ id }) => id === generationState.activeStage)
+    : -1
+  const completedGenerationStageCount = GENERATION_STAGES.filter(
+    ({ id }) => generationState.stages[id].status === 'complete',
+  ).length
+  const generationStep = generationState.activeStage
+    ? activeGenerationStageIndex + 1
+    : completedGenerationStageCount === GENERATION_STAGES.length
+      ? GENERATION_STAGES.length
+      : Math.max(1, completedGenerationStageCount + 1)
 
   const generationProgress = (
     <section
@@ -1107,7 +1118,7 @@ Begin execution immediately:
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 font-mono text-xs font-black">
         <span>{generationPercentage}%</span>
-        <span>{t('generationProgressStep', { current: Math.min(generationState.stages[generationState.activeStage ?? 'planner'].status === 'complete' ? GENERATION_STAGES.length : Math.max(1, GENERATION_STAGES.findIndex(({ id }) => id === generationState.activeStage) + 1), GENERATION_STAGES.length), total: GENERATION_STAGES.length })}</span>
+        <span>{t('generationProgressStep', { current: generationStep, total: GENERATION_STAGES.length })}</span>
       </div>
       <div
         className="mt-2 h-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]"
@@ -1644,13 +1655,15 @@ Begin execution immediately:
                       <dl className="mt-5 divide-y-2 divide-[var(--workspace-ink)] border-y-4 border-[var(--workspace-ink)]">
                         <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
                           <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                            Pending
+                            {t('pending')}
+
                           </dt>
                           <dd className="font-mono text-sm font-black">{pendingClarifications.length}</dd>
                         </div>
                         <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
                           <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                            Answered
+                            {t('answered')}
+
                           </dt>
                           <dd className="font-mono text-sm font-black">{answeredClarifications.length}</dd>
                         </div>
@@ -1717,7 +1730,7 @@ Begin execution immediately:
                             {SENSITIVE_CONTEXT_KEY.test(key) ? (
                               <span className="inline-flex items-center gap-2 text-[var(--workspace-muted)]">
                                 <ShieldCheck aria-hidden="true" className="size-4" />
-                                {sensitiveLabel}
+                                {contextLabels.sensitiveLabel}
                               </span>
                             ) : (
                               <ContextValue value={value} {...contextLabels} />
@@ -1817,7 +1830,7 @@ Begin execution immediately:
                           </div>
                           <div>
                             <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                              Trigger
+                              {t('trigger')}
                             </h4>
                             <p className="mt-1 text-sm font-medium leading-6 text-[var(--workspace-muted)]">
                               {skill.trigger}
