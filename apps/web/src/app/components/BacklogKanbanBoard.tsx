@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
+  Ban,
   Bot,
   Check,
   CheckCircle2,
@@ -19,7 +20,7 @@ import {
 import { cn } from '@/lib/ui'
 import { Button, StatusBadge } from './ui'
 
-export type TaskStatus = 'PENDING' | 'READY' | 'IN_PROGRESS' | 'REVIEW' | 'DONE'
+export type TaskStatus = 'PENDING' | 'READY' | 'IN_PROGRESS' | 'BLOCKED' | 'REVIEW' | 'DONE'
 
 export interface KanbanTask {
   id: string
@@ -94,6 +95,14 @@ const COLUMNS: Array<{
     icon: Code,
   },
   {
+    id: 'BLOCKED',
+    label: 'Blocked',
+    sublabel: 'Waiting on a dependency',
+    color: 'var(--action-red)',
+    badgeTone: 'current',
+    icon: Ban,
+  },
+  {
     id: 'REVIEW',
     label: 'Review',
     sublabel: 'Verification & tests',
@@ -118,9 +127,15 @@ export function BacklogKanbanBoard({
   onTaskUpdated,
 }: BacklogKanbanBoardProps) {
   const t = useTranslations('Workspace')
+  const getColumnLabel = (status: TaskStatus) => {
+    const key =
+      status === 'IN_PROGRESS'
+        ? 'backlogColumnInProgress'
+        : `backlogColumn${status.charAt(0) + status.slice(1).toLowerCase()}`
+    return t(key as Parameters<typeof t>[0])
+  }
 
   // Flatten tasks with phase info
-  const t = useTranslations('Workspace')
   const initialTasks: KanbanTask[] = phases.flatMap((phase) =>
     phase.tasks.map((task) => ({
       ...task,
@@ -139,7 +154,9 @@ export function BacklogKanbanBoard({
   const [dragOverColumn, setDragOverColumn] = useState<TaskStatus | null>(null)
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [copiedTaskKey, setCopiedTaskKey] = useState<string | null>(null)
-  const [boardMessage, setBoardMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [boardMessage, setBoardMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(
+    null,
+  )
   const [copyMessage, setCopyMessage] = useState<string | null>(null)
 
   // Map task IDs to taskKeys for dependency labels
@@ -179,7 +196,7 @@ export function BacklogKanbanBoard({
       if (!response.ok || !data?.task) {
         setBoardMessage({
           type: 'err',
-          text: data?.error ?? 'Task status update failed. Please refresh the page and retry.',
+          text: data?.error ?? t('backlogTaskUpdateFailed'),
         })
         return
       }
@@ -196,9 +213,7 @@ export function BacklogKanbanBoard({
             return { ...t, status: newStatus }
           }
           // Also update any auto-promoted/demoted dependent tasks
-          const affected = data.affectedTasks?.find(
-            (a) => a.id === t.id || a.taskKey === t.taskKey,
-          )
+          const affected = data.affectedTasks?.find((a) => a.id === t.id || a.taskKey === t.taskKey)
           if (affected) {
             return { ...t, status: affected.status as TaskStatus }
           }
@@ -210,7 +225,11 @@ export function BacklogKanbanBoard({
         const promotedKeys = data.affectedTasks.map((a) => a.taskKey).join(', ')
         setBoardMessage({
           type: 'ok',
-          text: `Task ${taskKey} moved to ${newStatus}. Dependent tasks unblocked: ${promotedKeys}!`,
+          text: t('backlogTaskMoved', {
+            task: taskKey,
+            status: getColumnLabel(newStatus),
+            dependencies: promotedKeys,
+          }),
         })
       }
 
@@ -220,7 +239,7 @@ export function BacklogKanbanBoard({
     } catch (err) {
       setBoardMessage({
         type: 'err',
-        text: err instanceof Error ? err.message : 'Network error updating task status.',
+        text: err instanceof Error ? err.message : t('backlogTaskUpdateNetworkError'),
       })
     } finally {
       setMovingTaskId(null)
@@ -314,13 +333,13 @@ export function BacklogKanbanBoard({
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 border-2 border-[var(--ink)] bg-[var(--paper)] px-2.5 py-1 font-mono text-xs font-black shadow-[var(--shadow-xs)]">
             <Bot size={14} className="text-[var(--cobalt)]" aria-hidden="true" />
-            <span>Agent: {targetAgent}</span>
+            <span>{t('agentLabel', { agent: targetAgent })}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <Layers size={16} className="text-[var(--paper-muted)]" aria-hidden="true" />
             <label htmlFor="phase-filter" className="text-xs font-black">
-              Phase:
+              {t('phaseLabel')}
             </label>
             <select
               id="phase-filter"
@@ -328,7 +347,7 @@ export function BacklogKanbanBoard({
               onChange={(e) => setSelectedPhase(e.target.value)}
               className="border-2 border-[var(--ink)] bg-[var(--paper)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--ink)] shadow-[var(--shadow-xs)]"
             >
-              <option value="ALL">All Phases ({phases.length})</option>
+              <option value="ALL">{t('allPhases', { count: phases.length })}</option>
               {phases.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -366,7 +385,7 @@ export function BacklogKanbanBoard({
               size="sm"
               onClick={() => handleCopyQuickPrompt(nextReadyTask.taskKey)}
               className="h-6 gap-1 px-2 text-[0.7rem]"
-              title="Copy prompt for coding agent"
+              title={t('backlogCopyPrompt')}
             >
               {copiedTaskKey === nextReadyTask.taskKey ? (
                 <>
@@ -403,7 +422,7 @@ export function BacklogKanbanBoard({
           <button
             type="button"
             onClick={() => setBoardMessage(null)}
-            className="text-xs font-black underline hover:no-underline ml-4"
+            className="ml-4 text-xs font-black underline hover:no-underline"
           >
             {t('backlogDismiss')}
           </button>
@@ -411,7 +430,7 @@ export function BacklogKanbanBoard({
       )}
 
       {/* Kanban Columns Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
         {COLUMNS.map((col) => {
           const colTasks = filteredTasks.filter((t) => t.status === col.id)
           const Icon = col.icon
@@ -434,7 +453,12 @@ export function BacklogKanbanBoard({
               <div className="mb-3 flex items-center justify-between border-b-2 border-[var(--ink)] pb-2.5">
                 <div className="flex items-center gap-2">
                   <Icon size={16} className="text-[var(--ink)]" aria-hidden="true" />
-                  <h3 id={`backlog-column-${col.id}`} className="font-mono text-sm font-black tracking-tight">{t(`backlogColumn${col.id}` as never)}</h3>
+                  <h3
+                    id={`backlog-column-${col.id}`}
+                    className="font-mono text-sm font-black tracking-tight"
+                  >
+                    {getColumnLabel(col.id)}
+                  </h3>
                 </div>
                 <StatusBadge tone={col.badgeTone}>{colTasks.length}</StatusBadge>
               </div>
@@ -444,10 +468,10 @@ export function BacklogKanbanBoard({
                 {colTasks.length === 0 ? (
                   <div className="flex h-28 flex-col items-center justify-center border-2 border-dashed border-[var(--paper-muted)] p-3 text-center">
                     <p className="font-mono text-xs font-bold text-[var(--paper-muted)]">
-                      No tasks in {col.label}
+                      {t('backlogNoTasks', { column: getColumnLabel(col.id) })}
                     </p>
                     <p className="mt-1 text-[0.68rem] text-[var(--paper-muted)]">
-                      Drag tasks here or use card actions
+                      {t('backlogDragHint')}
                     </p>
                   </div>
                 ) : (
@@ -474,7 +498,7 @@ export function BacklogKanbanBoard({
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={cn(
                           'group relative flex flex-col border-2 border-[var(--ink)] bg-[var(--paper)] p-3 shadow-[var(--shadow-xs)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-sm)]',
-                          isMoving && 'opacity-50 pointer-events-none',
+                          isMoving && 'pointer-events-none opacity-50',
                           col.id === 'DONE' && 'bg-[var(--mint-dim)]/40',
                           col.id === 'IN_PROGRESS' && 'border-[var(--cobalt)]',
                         )}
@@ -493,12 +517,12 @@ export function BacklogKanbanBoard({
                                 handleUpdateTaskStatus(task.id, e.target.value as TaskStatus)
                               }
                               className="border border-[var(--ink)] bg-[var(--paper-raised)] px-1 py-0.5 font-mono text-[0.65rem] font-bold text-[var(--ink)]"
-                              aria-label={`Move ${task.taskKey} to column`}
-                              title="Move task to column"
+                              aria-label={t('backlogMoveTask', { task: task.taskKey })}
+                              title={t('backlogMoveTaskTitle')}
                             >
                               {COLUMNS.map((c) => (
                                 <option key={c.id} value={c.id}>
-                                  → {c.label}
+                                  → {getColumnLabel(c.id)}
                                 </option>
                               ))}
                             </select>
@@ -524,18 +548,20 @@ export function BacklogKanbanBoard({
                           {dependencyLabels.length > 0 && (
                             <span
                               className="border border-[var(--ink)] bg-[var(--electric-yellow-dim)] px-1.5 py-0.5 font-mono text-[0.62rem] font-bold text-[var(--ink)]"
-                              title={`Depends on: ${dependencyLabels.join(', ')}`}
+                              title={t('backlogDependsOn', { tasks: dependencyLabels.join(', ') })}
                             >
-                              Dep: {dependencyLabels.join(',')}
+                              {t('backlogDependsShort', { tasks: dependencyLabels.join(',') })}
                             </span>
                           )}
 
                           {task.recommendedSkills.length > 0 && (
                             <span
                               className="border border-[var(--ink)] bg-[var(--mint-dim)] px-1.5 py-0.5 font-mono text-[0.62rem] font-bold text-[var(--ink)]"
-                              title={`Skill: ${task.recommendedSkills.join(', ')}`}
+                              title={t('backlogSkill', {
+                                skills: task.recommendedSkills.join(', '),
+                              })}
                             >
-                              {task.recommendedSkills[0]}
+                              {t('backlogSkillShort', { skills: task.recommendedSkills[0] })}
                             </span>
                           )}
                         </div>
@@ -544,14 +570,14 @@ export function BacklogKanbanBoard({
                         {isExpanded && (
                           <div
                             id={`task-details-${task.id}`}
-                            className="mt-3 border-t-2 border-[var(--ink)] pt-2.5 text-[0.7rem] space-y-2"
+                            className="mt-3 space-y-2 border-t-2 border-[var(--ink)] pt-2.5 text-[0.7rem]"
                           >
                             {task.acceptanceCriteria.length > 0 && (
                               <div>
                                 <span className="block font-mono text-[0.65rem] font-black uppercase text-[var(--paper-muted)]">
-                                  Acceptance Criteria:
+                                  {t('backlogAcceptanceCriteria')}
                                 </span>
-                                <ul className="mt-1 list-disc pl-3.5 space-y-0.5">
+                                <ul className="mt-1 list-disc space-y-0.5 pl-3.5">
                                   {task.acceptanceCriteria.map((ac, idx) => (
                                     <li key={idx} className="font-medium text-[var(--ink)]">
                                       {ac}
@@ -564,7 +590,7 @@ export function BacklogKanbanBoard({
                             {task.definitionOfDone && (
                               <div>
                                 <span className="block font-mono text-[0.65rem] font-black uppercase text-[var(--paper-muted)]">
-                                  Definition of Done:
+                                  {t('backlogDefinitionOfDone')}
                                 </span>
                                 <p className="mt-0.5 font-medium text-[var(--ink)]">
                                   {task.definitionOfDone}
@@ -575,7 +601,7 @@ export function BacklogKanbanBoard({
                             {task.relevantDocs.length > 0 && (
                               <div>
                                 <span className="block font-mono text-[0.65rem] font-black uppercase text-[var(--paper-muted)]">
-                                  Relevant Docs:
+                                  {t('backlogRelevantDocs')}
                                 </span>
                                 <p className="mt-0.5 font-mono text-[0.65rem] font-bold text-[var(--cobalt)]">
                                   {task.relevantDocs.join(', ')}
@@ -593,11 +619,13 @@ export function BacklogKanbanBoard({
                               >
                                 {copiedTaskKey === task.taskKey ? (
                                   <>
-                                    <Check size={11} aria-hidden="true" /> Prompt Copied to Clipboard!
+                                    <Check size={11} aria-hidden="true" />{' '}
+                                    {t('backlogPromptCopiedButton')}
                                   </>
                                 ) : (
                                   <>
-                                    <Copy size={11} aria-hidden="true" /> Copy Task Prompt
+                                    <Copy size={11} aria-hidden="true" />{' '}
+                                    {t('backlogCopyTaskPrompt')}
                                   </>
                                 )}
                               </Button>
@@ -611,9 +639,9 @@ export function BacklogKanbanBoard({
                           aria-expanded={isExpanded}
                           aria-controls={`task-details-${task.id}`}
                           onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                          className="mt-2.5 flex items-center justify-between border-t border-[var(--ink)]/20 pt-1.5 font-mono text-[0.65rem] font-bold text-[var(--paper-muted)] hover:text-[var(--ink)]"
+                          className="border-[var(--ink)]/20 mt-2.5 flex items-center justify-between border-t pt-1.5 font-mono text-[0.65rem] font-bold text-[var(--paper-muted)] hover:text-[var(--ink)]"
                         >
-                          <span>{isExpanded ? 'Hide specs' : 'View specs & criteria'}</span>
+                          <span>{isExpanded ? t('backlogHideSpecs') : t('backlogViewSpecs')}</span>
                           <ChevronDown
                             size={12}
                             className={cn('transition-transform', isExpanded && 'rotate-180')}
