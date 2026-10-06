@@ -335,7 +335,7 @@
     "backlogColumnREVIEW": "Ulasan",
     "backlogColumnDONE": "Selesai",
     "closeDialog": "Tutup dialog",
-    "markdownViewEdit": "Edit",
+    "markdownViewEditor": "Edit",
     "markdownViewSplit": "Terbagi",
     "markdownViewPreview": "Pratinjau",
     "markdownRegenerateFailed": "Pembuatan ulang gagal",
