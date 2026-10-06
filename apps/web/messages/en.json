@@ -382,6 +382,7 @@
     "backlogDragHint": "Drag tasks here or use card actions",
     "generationProgressTitle": "Generation progress",
     "generationProgressDesc": "Each stage reports only after its server request succeeds. No estimated percentages are shown.",
+    "generationProgressStep": "Step {current} of {total}",
     "generationRunning": "Running",
     "generationRetrying": "Retrying",
     "generationIdle": "Ready",
@@ -533,6 +534,8 @@
     "backlogColumnReadyDesc": "Ready for execution",
     "backlogColumnInProgress": "In Process",
     "backlogColumnInProgressDesc": "Agent / dev working",
+    "backlogColumnBlocked": "Blocked",
+    "backlogColumnBlockedDesc": "Waiting on a dependency",
     "backlogColumnReview": "Review",
     "backlogColumnReviewDesc": "Verification & tests",
     "backlogColumnDone": "Done",
@@ -542,6 +545,9 @@
     "backlogAllPhases": "All phases ({count})",
     "backlogMoveTaskTitle": "Move task to column",
     "backlogDependsShort": "Dep: {tasks}",
-    "backlogSkillShort": "Skill: {skills}"
+    "backlogSkillShort": "Skill: {skills}",
+    "backlogTaskUpdateFailed": "Task status update failed. Please refresh the page and retry.",
+    "backlogTaskMoved": "Task {task} moved to {status}. Dependent tasks unblocked: {dependencies}.",
+    "backlogTaskUpdateNetworkError": "Network error updating task status."
   }
 }
