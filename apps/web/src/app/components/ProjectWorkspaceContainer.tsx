@@ -522,8 +522,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     }),
   )
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generationStage, setGenerationStage] = useState(0)
-  const [completedGenerationStages, setCompletedGenerationStages] = useState(0)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false)
   const [genMessage, setGenMessage] = useState<{

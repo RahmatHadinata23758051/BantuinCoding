@@ -27,12 +27,54 @@ describe('generation stages', () => {
     ])
   })
 
-  it('starts with every stage queued', () => {
+  it('starts with every stage queued and zero progress', () => {
     const state = createQueuedGenerationState()
 
     expect(Object.values(state.stages).every((stage) => stage.status === 'queued')).toBe(true)
     expect(state.activeStage).toBeNull()
     expect(state.isRunning).toBe(false)
+    expect(getGenerationProgressPercentage(state)).toBe(0)
+    expect(getGenerationStagePercentage(state, 'planner')).toBe(0)
+    expect(getGenerationStagePercentages(state).validation).toBe(0)
+  })
+
+  it('advances progress only after stages complete', () => {
+    let state = createQueuedGenerationState()
+
+    for (const [index, stage] of GENERATION_STAGES.entries()) {
+      state = markGenerationStageComplete(state, stage.id)
+      expect(getGenerationProgressPercentage(state)).toBe(Math.round(((index + 1) / GENERATION_STAGES.length) * 100))
+      expect(getGenerationStagePercentage(state, stage.id)).toBe(100)
+    }
+
+    expect(getGenerationProgressPercentage(state)).toBe(100)
+  })
+
+  it('does not count failed or running stages as complete', () => {
+    let state = createQueuedGenerationState()
+    state = markGenerationStageComplete(state, 'planner')
+    state = markGenerationStageRunning(state, 'documents')
+    state = markGenerationStageFailed(state, 'documents', 'failed')
+
+    expect(getGenerationProgressPercentage(state)).toBe(Math.round(100 / GENERATION_STAGES.length))
+    expect(getGenerationStagePercentage(state, 'documents')).toBe(0)
+  })
+
+  it('preserves completed progress when retrying', () => {
+    let state = createQueuedGenerationState()
+    state = markGenerationStageComplete(state, 'planner')
+    state = markGenerationStageFailed(state, 'documents', 'failed')
+
+    expect(getGenerationProgressPercentage(resetGenerationForRetry(state))).toBe(Math.round(100 / GENERATION_STAGES.length))
+  })
+
+  it('does not count a planned artifact as generated progress', () => {
+    const state = createPersistedGenerationState({
+      projectStatus: 'GENERATING',
+      artifacts: [{ type: 'PRD', status: 'READY' }],
+    })
+
+    expect(getGenerationProgressPercentage(state)).toBe(Math.round(100 / GENERATION_STAGES.length))
   })
 
   it('moves a stage through running to complete without inferring later success', () => {
