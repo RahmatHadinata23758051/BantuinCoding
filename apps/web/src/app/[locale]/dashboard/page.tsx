@@ -26,15 +26,27 @@ const STATUS_TONE: Record<
   GENERATION_FAILED: 'danger',
 }
 
-function formatRelative(value: Date | string): string {
+function formatRelative(value: Date | string, t: Awaited<ReturnType<typeof getTranslations>>): string {
   const date = typeof value === 'string' ? new Date(value) : value
   const diff = Date.now() - date.getTime()
   const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 1) return t('justNow')
+  if (minutes < 60) return t('mAgo', { minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
+  if (hours < 24) return t('hAgo', { hours })
+  return t('dAgo', { days: Math.floor(hours / 24) })
+}
+
+const NEXT_ACTION_KEY: Record<string, 'nextActionDraft' | 'nextActionConfigured' | 'nextActionAnalyzing' | 'nextActionClarifying' | 'nextActionContextReady' | 'nextActionGenerating' | 'nextActionReady' | 'nextActionExportable' | 'nextActionGenerationFailed'> = {
+  DRAFT: 'nextActionDraft',
+  CONFIGURED: 'nextActionConfigured',
+  ANALYZING: 'nextActionAnalyzing',
+  CLARIFYING: 'nextActionClarifying',
+  CONTEXT_READY: 'nextActionContextReady',
+  GENERATING: 'nextActionGenerating',
+  READY: 'nextActionReady',
+  EXPORTABLE: 'nextActionExportable',
+  GENERATION_FAILED: 'nextActionGenerationFailed',
 }
 
 export default async function DashboardPage() {
@@ -138,7 +150,7 @@ export default async function DashboardPage() {
                   href="/projects/new"
                   className={buttonClassName({ variant: 'primary', size: 'lg', className: 'mt-6' })}
                 >
-                  Bootstrap first project <ArrowRight size={18} aria-hidden="true" />
+                  {t('emptyCta')} <ArrowRight size={18} aria-hidden="true" />
                 </Link>
               </Panel>
             ) : (
@@ -172,6 +184,9 @@ export default async function DashboardPage() {
                         <p className="mt-1 truncate text-xs text-[var(--paper-muted)]">
                           {project.rawIdea.slice(0, 90)}
                         </p>
+                        <p className="mt-2 text-xs font-bold text-[var(--ink-soft)]">
+                          {t(NEXT_ACTION_KEY[project.status] ?? 'nextActionDraft')}
+                        </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 text-xs md:contents">
@@ -182,10 +197,10 @@ export default async function DashboardPage() {
                           {project.targetAgent.toLowerCase().replace(/_/g, '-')}
                         </span>
                         <span className="font-mono font-bold md:col-span-1 md:text-right">
-                          {project._count.artifacts} docs
+                          {project._count.artifacts} {t('docs')}
                         </span>
                         <span className="font-mono text-[var(--paper-muted)] md:col-span-1 md:text-right">
-                          {formatRelative(project.updatedAt)}
+                          {formatRelative(project.updatedAt, t)}
                         </span>
                       </div>
                     </Link>
