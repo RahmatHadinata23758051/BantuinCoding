@@ -1133,7 +1133,7 @@ Begin execution immediately:
           style={{ width: `${generationPercentage}%` }}
         />
       </div>
-      <ol className="mt-3 space-y-2">
+      <ol className="mt-3 max-h-[18rem] space-y-2 overflow-y-auto pr-1">
         {GENERATION_STAGES.map(({ id }) => {
           const stage = generationState.stages[id]
           const isActive = generationState.activeStage === id && stage.status === 'running'
@@ -1256,7 +1256,7 @@ Begin execution immediately:
             
           </div>
 
-          <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-end">
+          <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] xl:gap-6">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span
