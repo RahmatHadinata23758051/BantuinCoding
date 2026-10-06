@@ -24,8 +24,10 @@ export async function POST(
     await requireProjectAction(session.user.id, id, 'VALIDATE')
     const readiness = await getProjectReadiness(session.user.id, id)
     if (!readiness.isReady) {
+      const missing = [...new Set([...readiness.missingTypes, ...readiness.blockingTypes])]
+      const detail = missing.length > 0 ? ` Missing or incomplete: ${missing.join(', ')}.` : ''
       return NextResponse.json(
-        { error: 'Project documents are not ready for validation.' },
+        { error: `Project documents are not ready for validation.${detail}`, readiness },
         { status: 400 },
       )
     }

@@ -247,6 +247,9 @@ export async function planProjectArtifacts({
           projectId_type: { projectId, type: item.type },
         },
         update: {
+          // A project has one artifact row per type, so re-planning must move
+          // the row to the current context and make it explicitly pending.
+          contextId: currentContextRecord.id,
           path: item.path,
           isRequired: item.isRequired,
           planReason: item.reason,

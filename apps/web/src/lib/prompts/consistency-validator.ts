@@ -22,12 +22,20 @@ export const ConsistencyIssueSchema = z.object({
 
 export type ConsistencyIssue = z.infer<typeof ConsistencyIssueSchema>
 
-export const ConsistencyReportSchema = z.object({
+export const ConsistencyReportSchema = z.preprocess((val) => {
+  if (val && typeof val === 'object') {
+    const obj = val as Record<string, unknown>
+    if (obj.isConsistent === undefined && typeof obj.is_consistent === 'boolean') {
+      return { ...obj, isConsistent: obj.is_consistent }
+    }
+  }
+  return val
+}, z.object({
   isConsistent: z.boolean(),
-  score: z.number().describe('Consistency score between 0 and 100'),
+  score: z.number().min(0).max(100).describe('Consistency score between 0 and 100'),
   issues: z.array(ConsistencyIssueSchema),
   summary: z.string(),
-})
+}))
 
 export type ConsistencyReportOutput = z.infer<typeof ConsistencyReportSchema>
 
