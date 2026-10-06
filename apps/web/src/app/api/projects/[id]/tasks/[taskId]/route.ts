@@ -8,7 +8,7 @@ import { z } from 'zod'
 // ============================================================
 
 const UpdateTaskStatusSchema = z.object({
-  status: z.enum(['PENDING', 'READY', 'IN_PROGRESS', 'REVIEW', 'DONE']),
+  status: z.enum(['PENDING', 'READY', 'IN_PROGRESS', 'BLOCKED', 'REVIEW', 'DONE']),
   taskKey: z.string().optional(),
 })
 
