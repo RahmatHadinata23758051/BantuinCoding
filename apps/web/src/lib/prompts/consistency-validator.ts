@@ -22,22 +22,33 @@ export const ConsistencyIssueSchema = z.object({
 
 export type ConsistencyIssue = z.infer<typeof ConsistencyIssueSchema>
 
-export const ConsistencyReportSchema = z.preprocess((val) => {
-  if (val && typeof val === 'object') {
-    const obj = val as Record<string, unknown>
-    if (obj.isConsistent === undefined && typeof obj.is_consistent === 'boolean') {
-      return { ...obj, isConsistent: obj.is_consistent }
-    }
-  }
-  return val
-}, z.object({
-  isConsistent: z.boolean(),
-  score: z.number().min(0).max(100).describe('Consistency score between 0 and 100'),
-  issues: z.array(ConsistencyIssueSchema),
-  summary: z.string(),
-}))
+export interface ConsistencyReportOutput {
+  isConsistent: boolean
+  score: number
+  issues: ConsistencyIssue[]
+  summary: string
+}
 
-export type ConsistencyReportOutput = z.infer<typeof ConsistencyReportSchema>
+const BaseConsistencyReportSchema = z
+  .object({
+    isConsistent: z.boolean().optional(),
+    is_consistent: z.boolean().optional(),
+    score: z.number().min(0).max(100).describe('Consistency score between 0 and 100'),
+    issues: z.array(ConsistencyIssueSchema),
+    summary: z.string(),
+  })
+  .refine((data) => data.isConsistent !== undefined || data.is_consistent !== undefined, {
+    message: 'isConsistent or is_consistent is required',
+    path: ['isConsistent'],
+  })
+
+export const ConsistencyReportSchema: z.ZodType<ConsistencyReportOutput> =
+  BaseConsistencyReportSchema.transform((val) => ({
+    isConsistent: (val.isConsistent ?? val.is_consistent)!,
+    score: val.score,
+    issues: val.issues,
+    summary: val.summary,
+  }))
 
 export const CONSISTENCY_VALIDATOR_SYSTEM_PROMPT = `You are a Principal Technical Quality Auditor performing cross-document validation across a generated documentation pack.
 
