@@ -382,6 +382,7 @@
     "backlogDragHint": "Seret tugas ke sini atau gunakan aksi kartu",
     "generationProgressTitle": "Progres pembuatan dokumen",
     "generationProgressDesc": "Setiap tahap hanya diperbarui setelah permintaan server berhasil. Tidak ada persentase perkiraan.",
+    "generationProgressStep": "Langkah {current} dari {total}",
     "generationRunning": "Berjalan",
     "generationRetrying": "Mencoba lagi",
     "generationIdle": "Siap",
@@ -533,6 +534,8 @@
     "backlogColumnReadyDesc": "Siap dieksekusi",
     "backlogColumnInProgress": "Sedang dikerjakan",
     "backlogColumnInProgressDesc": "Agen / developer bekerja",
+    "backlogColumnBlocked": "Terblokir",
+    "backlogColumnBlockedDesc": "Menunggu tugas bergantung selesai",
     "backlogColumnReview": "Ulasan",
     "backlogColumnReviewDesc": "Verifikasi & tes",
     "backlogColumnDone": "Selesai",
@@ -542,6 +545,9 @@
     "backlogAllPhases": "Semua fase ({count})",
     "backlogMoveTaskTitle": "Pindahkan tugas ke kolom",
     "backlogDependsShort": "Dep: {tasks}",
-    "backlogSkillShort": "Skill: {skills}"
+    "backlogSkillShort": "Skill: {skills}",
+    "backlogTaskUpdateFailed": "Pembaruan status tugas gagal. Muat ulang halaman lalu coba lagi.",
+    "backlogTaskMoved": "Tugas {task} dipindahkan ke {status}. Tugas bergantung yang terbuka: {dependencies}.",
+    "backlogTaskUpdateNetworkError": "Kesalahan jaringan saat memperbarui status tugas."
   }
 }
