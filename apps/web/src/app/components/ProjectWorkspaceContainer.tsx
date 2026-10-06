@@ -50,6 +50,7 @@ import {
   getGenerationStageDescriptionKey,
   getGenerationStageLabelKey,
   getGenerationStageStatusKey,
+  getGenerationProgressPercentage,
   getRetryableGenerationStages,
   markGenerationStageComplete,
   markGenerationStageFailed,
@@ -1085,6 +1086,7 @@ Begin execution immediately:
 
   const generationStatusLabel = (status: GenerationStageStatus) =>
     t(getGenerationStageStatusKey(status) as Parameters<typeof t>[0])
+  const generationPercentage = getGenerationProgressPercentage(generationState)
 
   const generationProgress = (
     <section
@@ -1104,6 +1106,23 @@ Begin execution immediately:
         <span className="font-mono text-xs font-black text-[var(--workspace-muted)]">
           {generationOperation ? t(generationOperation === 'retry' ? 'generationRetrying' : 'generationRunning') : t('generationIdle')}
         </span>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 font-mono text-xs font-black">
+        <span>{generationPercentage}%</span>
+        <span>{t('generationProgressStep', { current: Math.min(generationState.stages[generationState.activeStage ?? 'planner'].status === 'complete' ? GENERATION_STAGES.length : Math.max(1, GENERATION_STAGES.findIndex(({ id }) => id === generationState.activeStage) + 1), GENERATION_STAGES.length), total: GENERATION_STAGES.length })}</span>
+      </div>
+      <div
+        className="mt-2 h-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={generationPercentage}
+        aria-label={t('generationProgressLabel')}
+      >
+        <div
+          className="h-full bg-[var(--workspace-primary)] motion-safe:transition-[width] motion-safe:duration-300"
+          style={{ width: `${generationPercentage}%` }}
+        />
       </div>
       <ol className="mt-3 space-y-2">
         {GENERATION_STAGES.map(({ id }) => {
