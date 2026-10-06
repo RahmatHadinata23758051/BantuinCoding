@@ -42,7 +42,7 @@ const BaseConsistencyReportSchema = z
     path: ['isConsistent'],
   })
 
-export const ConsistencyReportSchema: z.ZodType<ConsistencyReportOutput> =
+export const ConsistencyReportSchema: z.ZodSchema<ConsistencyReportOutput> =
   BaseConsistencyReportSchema.transform((val) => ({
     isConsistent: (val.isConsistent ?? val.is_consistent)!,
     score: val.score,
