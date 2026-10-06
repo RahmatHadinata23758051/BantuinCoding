@@ -335,7 +335,7 @@
     "backlogColumnREVIEW": "Review",
     "backlogColumnDONE": "Done",
     "closeDialog": "Close dialog",
-    "markdownViewEdit": "Edit",
+    "markdownViewEditor": "Edit",
     "markdownViewSplit": "Split",
     "markdownViewPreview": "Preview",
     "markdownRegenerateFailed": "Regeneration failed",
