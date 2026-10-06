@@ -137,7 +137,20 @@
     "testConnection": "Tes Koneksi",
     "testing": "Menguji...",
     "saveEncrypt": "Simpan & Enkripsi",
-    "saving": "Menyimpan..."
+    "saving": "Menyimpan...",
+    "deleteConfirm": "Hapus \"{name}\" dari vault?",
+    "switchedActive": "Provider aktif dialihkan ke {name} ({provider} / {model})",
+    "switchFailed": "Gagal mengganti kunci provider.",
+    "testFailed": "Tes koneksi gagal.",
+    "connectionSuccess": "Koneksi berhasil: {provider}",
+    "connectionFailed": "Koneksi gagal.",
+    "networkError": "Kesalahan jaringan. Periksa koneksi.",
+    "saveFailed": "Gagal menyimpan kunci.",
+    "keySavedSuccess": "Kunci \"{name}\" berhasil disimpan dan diaktifkan!",
+    "networkErrorSaving": "Kesalahan jaringan saat menyimpan kunci.",
+    "profilePlaceholder": "mis. 9Router Lokal, OpenRouter Gratis",
+    "pasteKeyPlaceholder": "Tempel kunci provider",
+    "customBaseUrlPlaceholder": "mis. http://127.0.0.1:20128/v1"
   },
   "Project": {
     "newCaption": "Bab 01 · tangkap niat",
@@ -309,6 +322,11 @@
     "autoPick": "✨ Saya kurang paham, pilihkan standar terbaik untuk saya",
     "otherCustom": "Lainnya (masukkan manual)",
     "writeDecision": "Tulis keputusan yang disetujui, batasan, atau asumsi yang dapat diterima…",
-    "impact": "Dampak"
+    "impact": "Dampak",
+    "backlogColumnPENDING": "Backlog",
+    "backlogColumnREADY": "To Do",
+    "backlogColumnIN_PROGRESS": "Sedang dikerjakan",
+    "backlogColumnREVIEW": "Ulasan",
+    "backlogColumnDONE": "Selesai"
   }
 }

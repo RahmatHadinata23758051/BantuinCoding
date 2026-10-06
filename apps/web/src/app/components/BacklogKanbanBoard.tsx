@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   Bot,
   Check,
@@ -117,6 +118,7 @@ export function BacklogKanbanBoard({
   onTaskUpdated,
 }: BacklogKanbanBoardProps) {
   // Flatten tasks with phase info
+  const t = useTranslations('Workspace')
   const initialTasks: KanbanTask[] = phases.flatMap((phase) =>
     phase.tasks.map((task) => ({
       ...task,
@@ -412,7 +414,7 @@ export function BacklogKanbanBoard({
               <div className="mb-3 flex items-center justify-between border-b-2 border-[var(--ink)] pb-2.5">
                 <div className="flex items-center gap-2">
                   <Icon size={16} className="text-[var(--ink)]" aria-hidden="true" />
-                  <h3 className="font-mono text-sm font-black tracking-tight">{col.label}</h3>
+                  <h3 className="font-mono text-sm font-black tracking-tight">{t(`backlogColumn${col.id}` as never)}</h3>
                 </div>
                 <StatusBadge tone={col.badgeTone}>{colTasks.length}</StatusBadge>
               </div>

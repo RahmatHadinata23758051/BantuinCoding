@@ -203,16 +203,16 @@ export function ProviderSetupPanel() {
       })
       if (res.ok) {
         const data = (await res.json()) as { key: SavedKeyItem }
-        setMessage({ type: 'ok', text: `Switched active provider to ${data.key.name} (${data.key.provider} / ${data.key.model})` })
+        setMessage({ type: 'ok', text: t('switchedActive', { name: data.key.name, provider: data.key.provider, model: data.key.model }) })
         await loadSavedKeys()
       }
     } catch {
-      setMessage({ type: 'err', text: 'Failed to switch provider key.' })
+      setMessage({ type: 'err', text: t('switchFailed') })
     }
   }
 
   const handleDeleteKey = async (keyId: string, name: string) => {
-    if (!confirm(`{t('deleteKey')} "${name}" from vault?`)) return
+    if (!confirm(t('deleteConfirm', { name }))) return
     try {
       const res = await fetch(`/api/provider/keys/${keyId}`, { method: 'DELETE' })
       if (res.ok) {
@@ -235,19 +235,19 @@ export function ProviderSetupPanel() {
       const data = (await response.json()) as TestResult
 
       if (!response.ok) {
-        setMessage({ type: 'err', text: data.message ?? 'Connection test failed.' })
+        setMessage({ type: 'err', text: data.message ?? t('testFailed') })
         return
       }
 
       if (data.status === 'VALID') {
-        setMessage({ type: 'ok', text: `Connection successful: ${provider}` })
+        setMessage({ type: 'ok', text: t('connectionSuccess', { provider }) })
         setAvailableModels(data.models ?? [])
         setModelsLoaded(true)
       } else {
-        setMessage({ type: 'err', text: data.message ?? 'Connection failed.' })
+        setMessage({ type: 'err', text: data.message ?? t('connectionFailed') })
       }
     } catch {
-      setMessage({ type: 'err', text: 'Network error. Check connection.' })
+      setMessage({ type: 'err', text: t('networkError') })
     } finally {
       setTesting(false)
     }
@@ -275,17 +275,17 @@ export function ProviderSetupPanel() {
 
       const data = (await res.json()) as { key?: SavedKeyItem; error?: string; message?: string }
       if (!res.ok) {
-        setMessage({ type: 'err', text: data.error || data.message || 'Failed to save key.' })
+        setMessage({ type: 'err', text: data.error || data.message || t('saveFailed') })
         return
       }
 
-      setMessage({ type: 'ok', text: `Key "${nameToUse}" saved and activated successfully!` })
+      setMessage({ type: 'ok', text: t('keySavedSuccess', { name: nameToUse }) })
       setApiKey('')
       setKeyName('')
       setShowAddForm(false)
       await loadSavedKeys()
     } catch {
-      setMessage({ type: 'err', text: 'Network error saving key.' })
+      setMessage({ type: 'err', text: t('networkErrorSaving') })
     } finally {
       setLoading(false)
     }
@@ -430,7 +430,7 @@ export function ProviderSetupPanel() {
                       type="button"
                       onClick={() => handleDeleteKey(item.id, item.name)}
                       className="nb-button-press p-1.5 border-2 border-transparent text-[var(--ink-soft)] hover:border-[var(--ink)] hover:bg-[var(--action-red)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-xs)] rounded-[3px] transition-all"
-                      title="Delete key"
+                      title={t('deleteKey')}
                     >
                       <Trash2 size={16} strokeWidth={2.5} />
                     </button>
@@ -459,7 +459,7 @@ export function ProviderSetupPanel() {
                     id="keyName"
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
-                    placeholder="e.g. 9Router Local, OpenRouter Free"
+                    placeholder={t('profilePlaceholder')}
                     className="text-xs"
                   />
                 </div>
@@ -492,12 +492,12 @@ export function ProviderSetupPanel() {
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     required
-                    placeholder="Paste provider key"
+                    placeholder={t('pasteKeyPlaceholder')}
                     className="text-xs font-mono"
                   />
                   {autoTestStatus !== 'idle' && (
                     <span className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-white px-1">
-                      {autoTestStatus === 'testing' && <LoaderCircle size={16} strokeWidth={2.5} className="animate-spin text-[var(--ink-soft)]" />}
+                      {autoTestStatus === 'testing' && <LoaderCircle size={16} strokeWidth={2.5} className="motion-safe:animate-spin text-[var(--ink-soft)]" />}
                       {autoTestStatus === 'valid' && <CheckCircle2 size={16} strokeWidth={2.5} className="text-[var(--mint)]" />}
                       {autoTestStatus === 'invalid' && <AlertTriangle size={16} strokeWidth={2.5} className="text-[var(--action-red)]" />}
                     </span>
@@ -512,7 +512,7 @@ export function ProviderSetupPanel() {
                     id="baseUrl"
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
-                    placeholder="e.g. http://127.0.0.1:20128/v1"
+                    placeholder={t('customBaseUrlPlaceholder')}
                     className="text-xs font-mono"
                   />
                 </div>

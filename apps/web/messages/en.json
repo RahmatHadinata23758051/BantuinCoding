@@ -137,7 +137,20 @@
     "testConnection": "Test Connection",
     "testing": "Testing...",
     "saveEncrypt": "Save & Encrypt",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "deleteConfirm": "Delete \"{name}\" from vault?",
+    "switchedActive": "Switched active provider to {name} ({provider} / {model})",
+    "switchFailed": "Failed to switch provider key.",
+    "testFailed": "Connection test failed.",
+    "connectionSuccess": "Connection successful: {provider}",
+    "connectionFailed": "Connection failed.",
+    "networkError": "Network error. Check connection.",
+    "saveFailed": "Failed to save key.",
+    "keySavedSuccess": "Key \"{name}\" saved and activated successfully!",
+    "networkErrorSaving": "Network error saving key.",
+    "profilePlaceholder": "e.g. 9Router Local, OpenRouter Free",
+    "pasteKeyPlaceholder": "Paste provider key",
+    "customBaseUrlPlaceholder": "e.g. http://127.0.0.1:20128/v1"
   },
   "Project": {
     "newCaption": "Chapter 01 · capture intent",
@@ -309,6 +322,11 @@
     "autoPick": "✨ I'm not sure, pick the best standard for me",
     "otherCustom": "Other (custom input)",
     "writeDecision": "Write the confirmed decision, constraint, or acceptable assumption…",
-    "impact": "Impact"
+    "impact": "Impact",
+    "backlogColumnPENDING": "Backlog",
+    "backlogColumnREADY": "To Do",
+    "backlogColumnIN_PROGRESS": "In Process",
+    "backlogColumnREVIEW": "Review",
+    "backlogColumnDONE": "Done"
   }
 }
