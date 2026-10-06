@@ -2,11 +2,6 @@
 
 import { useEffect, useId, useRef, type HTMLAttributes } from 'react'
 import { X } from 'lucide-react'
-<<<<<<< HEAD
-=======
-import { useTranslations } from 'next-intl'
-import { useId, type HTMLAttributes } from 'react'
->>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
 
 import { cn } from '@/lib/ui'
 import { Panel, PanelBody, PanelHeader } from './Panel'
@@ -19,8 +14,16 @@ export interface ModalProps extends HTMLAttributes<HTMLDivElement> {
   closeLabel?: string
 }
 
-<<<<<<< HEAD
-export function Modal({ open, onClose, title, description, closeLabel = 'Close dialog', children, className, ...props }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  description,
+  closeLabel = 'Close dialog',
+  children,
+  className,
+  ...props
+}: ModalProps) {
   const titleId = useId()
   const descriptionId = useId()
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -70,24 +73,18 @@ export function Modal({ open, onClose, title, description, closeLabel = 'Close d
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, onClose, titleId])
-=======
-export function Modal({ open, onClose, title, children, className, ...props }: ModalProps) {
-  const t = useTranslations('Common')
-  const titleId = useId()
->>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
 
   if (!open) return null
 
   return (
-<<<<<<< HEAD
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/40 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/40 p-4 backdrop-blur-sm motion-reduce:backdrop-blur-none">
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
       <Panel
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={cn('relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto animate-in fade-in zoom-in-95 duration-200', className)}
+        className={cn('relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-200', className)}
         {...props}
       >
         <PanelHeader className="flex items-center justify-between">
@@ -97,40 +94,12 @@ export function Modal({ open, onClose, title, children, className, ...props }: M
             </h2>
             {description && <p id={descriptionId} className="mt-1 text-sm text-[var(--paper-muted)]">{description}</p>}
           </div>
-=======
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/40 p-4 backdrop-blur-sm motion-reduce:backdrop-blur-none"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-    >
-      {/* Click outside to close (simple overlay handler) */}
-      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
-
-      <Panel
-        raised
-        className={cn(
-          'relative z-10 w-full max-w-lg overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-200',
-          className,
-        )}
-        {...props}
-      >
-        <PanelHeader className="flex items-center justify-between">
-          <h2 id={titleId} className="text-xl font-black tracking-tight text-[var(--ink)]">
-            {title}
-          </h2>
->>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-<<<<<<< HEAD
             className="nb-button-press inline-flex size-11 items-center justify-center rounded-[3px] border-2 border-transparent text-[var(--ink)] hover:border-[var(--ink)] hover:bg-[var(--action-red)] hover:shadow-[var(--shadow-xs)] transition-all"
             aria-label={closeLabel}
-=======
-            className="nb-button-press inline-flex size-8 items-center justify-center rounded-[3px] border-2 border-transparent text-[var(--ink)] transition-all hover:border-[var(--ink)] hover:bg-[var(--action-red)] hover:shadow-[var(--shadow-xs)]"
-            aria-label={t('closeModal')}
->>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
           >
             <X size={18} strokeWidth={2.5} aria-hidden="true" />
           </button>
