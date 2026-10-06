@@ -1,9 +1,9 @@
 import { ArrowRight, KeyRound, Lightbulb, ListChecks } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/i18n/routing'
 import { redirect } from 'next/navigation'
 
 import { PipelineSpine } from '@/app/components/PipelineSpine'
-import { Caption, Input, Panel, Select, StatusBadge, Textarea, buttonClassName } from '@/app/components/ui'
+import { Caption, Input, PageFrame, Panel, Select, StatusBadge, Textarea, TopBar, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { createProject } from '@/lib/projects/project-service'
 
@@ -69,22 +69,20 @@ export default async function NewProjectPage() {
   if (!session?.user?.id) redirect('/login')
 
   return (
-    <main className="min-h-screen px-4 py-5 text-[var(--ink)] sm:px-6">
-      <div className="mx-auto max-w-7xl border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hero)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
-            <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
-              {t('backDashboard')}
-            </Link>
-            <span>{t('breadcrumb')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            
-            <StatusBadge tone="neutral">{t('initialStateDraft')}</StatusBadge>
-          </div>
-        </header>
+    <PageFrame width="7xl">
+      <TopBar>
+        <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
+          <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
+            {t('backDashboard')}
+          </Link>
+          <span>{t('breadcrumb')}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusBadge tone="neutral">{t('initialStateDraft')}</StatusBadge>
+        </div>
+      </TopBar>
 
-        <div className="border-b-2 border-[var(--ink)] bg-[var(--paper)] p-4 sm:p-6">
+      <div className="border-b-2 border-[var(--ink)] bg-[var(--paper)] p-4 sm:p-6">
           <PipelineSpine current="idea" compact />
         </div>
 
@@ -222,7 +220,6 @@ export default async function NewProjectPage() {
             </Panel>
           </aside>
         </section>
-      </div>
-    </main>
+    </PageFrame>
   )
 }

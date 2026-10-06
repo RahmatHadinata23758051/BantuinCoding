@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { auth } from '@/lib/auth'
 import { getProjectWorkspaceData } from '@/lib/projects/workspace-service'
 import { ProjectWorkspaceContainer } from '@/app/components/ProjectWorkspaceContainer'
@@ -20,5 +21,9 @@ export default async function ProjectPage({
     notFound()
   }
 
-  return <ProjectWorkspaceContainer initialData={workspaceData} />
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[var(--paper)] p-8 text-sm font-bold">Loading project workspace…</div>}>
+      <ProjectWorkspaceContainer initialData={workspaceData} />
+    </Suspense>
+  )
 }

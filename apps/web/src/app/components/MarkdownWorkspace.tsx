@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   CheckCircle2,
   Columns2,
@@ -98,11 +99,23 @@ export function MarkdownWorkspace({
   artifacts,
   onArtifactUpdated,
 }: MarkdownWorkspaceProps) {
+  const t = useTranslations('Workspace')
   const [selectedType, setSelectedType] = useState<string>(artifacts[0]?.type || 'PRD')
   const [activeTab, setActiveTab] = useState<WorkspaceMode>('split')
   const [isSaving, setIsSaving] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
+  const [saveMessageType, setSaveMessageType] = useState<'status' | 'error'>('status')
+
+  const localizedViewModes = viewModes.map((mode) => ({
+    ...mode,
+    label: t(`markdownView${mode.id.charAt(0).toUpperCase() + mode.id.slice(1)}` as Parameters<typeof t>[0]),
+  }))
+
+  const announce = (message: string, type: 'status' | 'error' = 'status') => {
+    setSaveMessageType(type)
+    setSaveMessage(message)
+  }
 
   const activeArtifact = artifacts.find((artifact) => artifact.type === selectedType) || artifacts[0]
   const [content, setContent] = useState<string>(activeArtifact?.content || '')
@@ -112,21 +125,19 @@ export function MarkdownWorkspace({
   const handleSelectArtifact = (artifact: WorkspaceArtifactItem) => {
     setSelectedType(artifact.type)
     setContent(artifact.content)
-    setSaveMessage(null)
+    announce('')
   }
 
   const handleRegenerate = async () => {
     if (!activeArtifact) return
     setIsRegenerating(true)
-    setSaveMessage(null)
+    announce('')
 
     try {
       let endpoint = `/api/projects/${projectId}/generate`
       const body: Record<string, unknown> = { type: activeArtifact.type }
 
-      if (activeArtifact.type === 'BACKLOG') {
-        endpoint = `/api/projects/${projectId}/backlog`
-      }
+      if (activeArtifact.type === 'BACKLOG') endpoint = `/api/projects/${projectId}/backlog`
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -136,54 +147,35 @@ export function MarkdownWorkspace({
 
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null
-        throw new Error(data?.error ?? 'Regeneration failed')
+        throw new Error(data?.error ?? t('markdownRegenerateFailed'))
       }
 
       const data = (await response.json()) as {
         artifacts?: Array<WorkspaceArtifactItem & { error?: string }>
         backlog?: { backlog_md_content: string }
-        result?: { skills_md_content: string }
       }
-
-      // Determine updated content based on endpoint type
       let newContent = ''
-      let isFailed = false
       let errorMsg = ''
 
       if (activeArtifact.type === 'BACKLOG' && data.backlog) {
         newContent = data.backlog.backlog_md_content
       } else if (data.artifacts) {
         const updated = data.artifacts.find((a) => a.type === activeArtifact.type)
-        if (updated) {
-          if (updated.status === 'FAILED') {
-            isFailed = true
-            errorMsg = updated.error || 'The model failed to produce document output. Please retry.'
-          } else {
-            newContent = updated.content
-          }
-        }
+        if (updated?.status === 'FAILED') errorMsg = updated.error || t('markdownOutputFailed')
+        else if (updated) newContent = updated.content
       }
 
-      if (isFailed) {
-        setSaveMessage(`Generation failed: ${errorMsg}`)
-      } else if (newContent) {
+      if (errorMsg) announce(`${t('markdownGenerationFailed')}: ${errorMsg}`, 'error')
+      else if (newContent) {
         setContent(newContent)
-        setSaveMessage('Saved. Document regenerated successfully!')
-        if (onArtifactUpdated) {
-          // Tell parent to update the artifact in the list
-          onArtifactUpdated({
-            ...activeArtifact,
-            content: newContent,
-            status: 'READY',
-            updatedAt: new Date().toISOString(),
-          })
-        }
+        announce(t('markdownRegenerated'))
+        onArtifactUpdated?.({ ...activeArtifact, content: newContent, status: 'READY', updatedAt: new Date().toISOString() })
       } else {
-        setSaveMessage('Regenerated. Refreshing…')
+        announce(t('markdownRefreshing'))
         window.location.reload()
       }
     } catch (error) {
-      setSaveMessage(error instanceof Error ? error.message : 'Regeneration error')
+      announce(error instanceof Error ? error.message : t('markdownRegenerationError'), 'error')
     } finally {
       setIsRegenerating(false)
     }
@@ -192,7 +184,7 @@ export function MarkdownWorkspace({
   const handleSave = async () => {
     if (!activeArtifact) return
     setIsSaving(true)
-    setSaveMessage(null)
+    announce('')
 
     try {
       const response = await fetch(`/api/projects/${projectId}/artifacts/${activeArtifact.type}`, {
@@ -203,14 +195,14 @@ export function MarkdownWorkspace({
 
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null
-        throw new Error(data?.error ?? 'Failed to save artifact')
+        throw new Error(data?.error ?? t('markdownSaveFailed'))
       }
 
       const data = (await response.json()) as { artifact?: WorkspaceArtifactItem }
-      setSaveMessage('Saved. Artifact status changed to modified.')
+      announce(t('markdownSaved'))
       if (onArtifactUpdated && data.artifact) onArtifactUpdated(data.artifact)
     } catch (error) {
-      setSaveMessage(error instanceof Error ? error.message : 'Save error')
+      announce(error instanceof Error ? error.message : t('markdownSaveError'), 'error')
     } finally {
       setIsSaving(false)
     }
@@ -218,11 +210,11 @@ export function MarkdownWorkspace({
 
   if (artifacts.length === 0) {
     return (
-      <Panel className="p-8 text-center" aria-label="Markdown workspace">
+      <Panel className="p-8 text-center" aria-label={t('markdownWorkspace')}>
         <div className="mx-auto flex max-w-md flex-col items-center gap-3">
           <FileText className="size-9 text-[var(--paper-muted)]" aria-hidden="true" />
           <p className="text-sm font-semibold leading-6 text-[var(--paper-muted)]">
-            No generated artifacts are available for this project yet.
+            {t('markdownEmpty')}
           </p>
         </div>
       </Panel>
@@ -230,27 +222,26 @@ export function MarkdownWorkspace({
   }
 
   const badge = activeArtifact ? getArtifactStatusBadgeStyle(activeArtifact.status) : null
-  const isSaveError = Boolean(saveMessage && !saveMessage.startsWith('Saved'))
 
   return (
     <section
       className="flex min-h-[760px] w-full flex-col overflow-hidden border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-[var(--shadow-hard)] lg:h-[760px] lg:flex-row"
-      aria-label="Markdown workspace"
+      aria-label={t('markdownWorkspace')}
     >
       <aside className="border-b-2 border-[var(--ink)] bg-[var(--lavender-dim)] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r-2">
         <div className="flex items-start gap-3 border-b-2 border-[var(--ink)] bg-[var(--lavender)] px-4 py-4">
           <PanelLeft className="mt-0.5 size-5 flex-shrink-0" aria-hidden="true" />
           <div className="min-w-0">
-            <h2 className="text-base font-black tracking-[-0.03em]">Project documents</h2>
+            <h2 className="text-base font-black tracking-[-0.03em]">{t('markdownDocuments')}</h2>
             <p className="mt-1 text-xs font-semibold leading-5 text-[var(--ink-soft)]">
-              Select an artifact to edit, compare, or preview.
+              {t('markdownDocumentsDesc')}
             </p>
           </div>
         </div>
 
         <nav
           className="flex gap-3 overflow-x-auto p-3 lg:max-h-[calc(760px-82px)] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
-          aria-label="Generated artifacts"
+          aria-label={t('markdownArtifacts')}
         >
           {artifacts.map((artifact) => {
             const isSelected = artifact.type === selectedType
@@ -305,8 +296,8 @@ export function MarkdownWorkspace({
               </div>
               <p className="mt-1 text-xs font-semibold leading-5 text-[var(--paper-muted)]">
                 {activeArtifact
-                  ? `Last updated ${formatUpdatedAt(activeArtifact.updatedAt)}`
-                  : 'No artifact selected'}
+                  ? t('updated', { date: formatUpdatedAt(activeArtifact.updatedAt) })
+                  : t('markdownNoArtifact')}
               </p>
             </div>
 
@@ -314,12 +305,14 @@ export function MarkdownWorkspace({
               <p
                 className={cn(
                   'min-h-5 text-xs font-bold leading-5',
-                  isSaveError ? 'text-[var(--action-red)]' : 'text-[var(--paper-muted)]',
+                  saveMessageType === 'error'
+                    ? 'text-[var(--action-red)]'
+                    : 'text-[var(--paper-muted)]',
                 )}
-                role={isSaveError ? 'alert' : undefined}
-                aria-live="polite"
+                role={saveMessageType === 'error' ? 'alert' : 'status'}
+                aria-live={saveMessageType === 'error' ? 'assertive' : 'polite'}
               >
-                {saveMessage || 'Edits stay local until saved.'}
+                {saveMessage || t('markdownEditsLocal')}
               </p>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -337,7 +330,7 @@ export function MarkdownWorkspace({
                     ) : (
                       <RefreshCw className="size-4" aria-hidden="true" />
                     )}
-                    {isRegenerating ? 'Regenerating…' : 'Regenerate'}
+                    {isRegenerating ? t('markdownRegenerating') : t('markdownRegenerate')}
                   </Button>
                 )}
 
@@ -346,7 +339,7 @@ export function MarkdownWorkspace({
                   role="group"
                   aria-label="Workspace view mode"
                 >
-                  {viewModes.map(({ id, label, icon: Icon }) => {
+                  {localizedViewModes.map(({ id, label, icon: Icon }) => {
                     const isActive = activeTab === id
 
                     return (
@@ -372,12 +365,12 @@ export function MarkdownWorkspace({
                 <Button type="button" onClick={handleSave} disabled={isSaving} variant="success">
                   {isSaving ? (
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                  ) : saveMessage?.startsWith('Saved') ? (
+                  ) : saveMessageType === 'status' && saveMessage ? (
                     <CheckCircle2 className="size-4" aria-hidden="true" />
                   ) : (
                     <Save className="size-4" aria-hidden="true" />
                   )}
-                  {isSaving ? 'Saving…' : 'Save changes'}
+                  {isSaving ? t('markdownSaving') : t('markdownSave')}
                 </Button>
               </div>
             </div>
@@ -400,7 +393,7 @@ export function MarkdownWorkspace({
             >
               <div className="flex items-center justify-between border-b-2 border-[var(--paper-raised)] bg-[var(--ink)] px-4 py-2.5">
                 <h2 id="markdown-editor-title" className="text-sm font-black">
-                  Markdown source
+                  {t('markdownSource')}
                 </h2>
                 <span className="font-mono text-xs text-[var(--paper-dim)]">
                   {content.length.toLocaleString()} chars
@@ -410,8 +403,8 @@ export function MarkdownWorkspace({
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 className="min-h-0 flex-1 resize-none bg-[var(--ink)] px-4 py-5 font-mono text-sm leading-7 text-[var(--paper-raised)] caret-[var(--electric-yellow)] placeholder:text-[var(--paper-dim)] focus:bg-[var(--ink-soft)] focus-visible:outline-[3px] focus-visible:outline-offset-[-6px] focus-visible:outline-[var(--electric-yellow)] sm:px-6"
-                placeholder="Write markdown content..."
-                aria-label="Markdown source content"
+                placeholder={t('markdownWritePlaceholder')}
+                aria-label={t('markdownSource')}
                 spellCheck={false}
               />
             </section>
@@ -424,10 +417,10 @@ export function MarkdownWorkspace({
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[var(--ink)] bg-[var(--mint-dim)] px-4 py-2.5">
                 <h2 id="markdown-preview-title" className="text-sm font-black">
-                  Sanitized preview
+                  {t('markdownPreview')}
                 </h2>
                 <span className="text-xs font-bold text-[var(--paper-muted)]">
-                  Scripts and unsafe HTML are stripped
+                  {t('markdownUnsafeStripped')}
                 </span>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">

@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/routing'
+import { useSearchParams } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   useRef,
   useState,
@@ -10,6 +11,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
+import { useRouter } from '@/i18n/routing'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -25,7 +27,6 @@ import {
   FileText,
   Files,
   FolderKanban,
-  Lightbulb,
   ListChecks,
   Loader2,
   MessageSquareText,
@@ -39,7 +40,25 @@ import {
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
+import { PipelineSpine } from '@/app/components/PipelineSpine'
 import { Modal, Input, Select, Button } from '@/app/components/ui'
+import { resolvePipeline } from '@/lib/workflow/pipeline'
+import {
+  GENERATION_STAGES,
+  createPersistedGenerationState,
+  createQueuedGenerationState,
+  getGenerationStageDescriptionKey,
+  getGenerationStageLabelKey,
+  getGenerationStageStatusKey,
+  getRetryableGenerationStages,
+  markGenerationStageComplete,
+  markGenerationStageFailed,
+  markGenerationStageRunning,
+  resetGenerationForRetry,
+  type GenerationStageId,
+  type GenerationState,
+  type GenerationStageStatus,
+} from '@/lib/workflow/generation-stages'
 
 export interface ProjectWorkspaceProps {
   initialData: {
@@ -54,6 +73,7 @@ export interface ProjectWorkspaceProps {
     updatedAt: string
     context: Record<string, unknown> | null
     contextVersion: number
+    requiredArtifactTypes: string[]
     clarifications: {
       id: string
       round: number
@@ -97,98 +117,22 @@ export interface ProjectWorkspaceProps {
   }
 }
 
-type WorkspaceSection = 'overview' | 'context' | 'documents' | 'skills' | 'backlog' | 'export'
+import { parseWorkspaceTab, type WorkspaceSection } from '@/lib/navigation/workspace'
 
 type ReadinessTone = 'ready' | 'attention' | 'idle'
 
 const SECTION_ITEMS: {
   id: WorkspaceSection
-  label: string
-  description: string
+  labelKey: string
+  descriptionKey: string
   icon: LucideIcon
 }[] = [
-  {
-    id: 'overview',
-    label: 'Overview',
-    description: 'Readiness and next action',
-    icon: ClipboardCheck,
-  },
-  {
-    id: 'context',
-    label: 'Context',
-    description: 'Canonical decisions',
-    icon: Braces,
-  },
-  {
-    id: 'documents',
-    label: 'Documents',
-    description: 'Edit generated guidance',
-    icon: Files,
-  },
-  {
-    id: 'skills',
-    label: 'Skills',
-    description: 'Agent capabilities',
-    icon: Wrench,
-  },
-  {
-    id: 'backlog',
-    label: 'Backlog',
-    description: 'Dependency-aware work',
-    icon: ListChecks,
-  },
-  {
-    id: 'export',
-    label: 'Export & Prompt',
-    description: 'Download pack & one-shot agent prompt',
-    icon: Package,
-  },
-]
-
-const GENERATION_STAGES = [
-  { id: 'plan', label: 'Plan the document pack' },
-  { id: 'documents', label: 'Generate core documents' },
-  { id: 'agent', label: 'Prepare agent guidance' },
-  { id: 'skills', label: 'Resolve useful skills' },
-  { id: 'backlog', label: 'Build the backlog' },
-] as const
-
-const PIPELINE_STAGES: {
-  id: string
-  label: string
-  description: string
-  icon: LucideIcon
-}[] = [
-  {
-    id: 'Idea', label: 'Idea',
-    description: 'Intent and scope captured',
-    icon: Lightbulb,
-  },
-  {
-    id: 'Clarify', label: 'Clarify',
-    description: 'Unknowns resolved',
-    icon: MessageSquareText,
-  },
-  {
-    id: 'Context', label: 'Context',
-    description: 'Decisions normalized',
-    icon: Braces,
-  },
-  {
-    id: 'Generate', label: 'Generate',
-    description: 'Pack assembled',
-    icon: Play,
-  },
-  {
-    id: 'Review', label: 'Review',
-    description: 'Documents checked',
-    icon: ScanText,
-  },
-  {
-    id: 'Export', label: 'Export',
-    description: 'Archive prepared',
-    icon: Download,
-  },
+  { id: 'overview', labelKey: 'sectionOverview', descriptionKey: 'sectionOverviewDesc', icon: ClipboardCheck },
+  { id: 'context', labelKey: 'sectionContext', descriptionKey: 'sectionContextDesc', icon: Braces },
+  { id: 'documents', labelKey: 'sectionDocuments', descriptionKey: 'sectionDocumentsDesc', icon: Files },
+  { id: 'skills', labelKey: 'sectionSkills', descriptionKey: 'sectionSkillsDesc', icon: Wrench },
+  { id: 'backlog', labelKey: 'sectionBacklog', descriptionKey: 'sectionBacklogDesc', icon: ListChecks },
+  { id: 'export', labelKey: 'sectionExport', descriptionKey: 'sectionExportDesc', icon: Package },
 ]
 
 const WORKSPACE_STYLE = {
@@ -240,35 +184,15 @@ function formatStatus(value: string) {
     .replace(/^\w/, (letter) => letter.toUpperCase())
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, locale: string) {
   const date = new Date(value)
 
-  if (Number.isNaN(date.getTime())) return 'Unknown'
+  if (Number.isNaN(date.getTime())) return null
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'medium',
     timeZone: 'UTC',
   }).format(date)
-}
-
-function getPipelineStageIndex(status: string, hasExported = false) {
-  if (hasExported || status === 'EXPORTABLE') return 6
-  switch (status) {
-    case 'ANALYZING':
-    case 'CLARIFYING':
-      return 1
-    case 'CONTEXT_READY':
-      return 2
-    case 'GENERATING':
-    case 'GENERATION_FAILED':
-      return 3
-    case 'READY':
-      return 5
-    case 'DRAFT':
-    case 'CONFIGURED':
-    default:
-      return 0
-  }
 }
 
 function statusTone(status: string) {
@@ -391,9 +315,27 @@ function ReadinessLine({
   )
 }
 
-function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
+function ContextValue({
+  value,
+  depth = 0,
+  emptyLabel,
+  yesLabel,
+  noLabel,
+  entryLabel,
+  noFieldsLabel,
+  sensitiveLabel,
+}: {
+  value: unknown
+  depth?: number
+  emptyLabel: string
+  yesLabel: string
+  noLabel: string
+  entryLabel: (index: number) => string
+  noFieldsLabel: string
+  sensitiveLabel: string
+}) {
   if (value === null || value === undefined) {
-    return <span className="text-[var(--workspace-faint)]">Not specified</span>
+    return <span className="text-[var(--workspace-faint)]">{emptyLabel}</span>
   }
 
   if (typeof value === 'boolean') {
@@ -404,7 +346,7 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
         ) : (
           <Circle aria-hidden="true" className="size-4 text-[var(--workspace-faint)]" />
         )}
-        {value ? 'Yes' : 'No'}
+        {value ? yesLabel : noLabel}
       </span>
     )
   }
@@ -437,7 +379,7 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
 
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return <span className="text-[var(--workspace-faint)]">None recorded</span>
+      return <span className="text-[var(--workspace-faint)]">{emptyLabel}</span>
     }
 
     const primitivesOnly = value.every((item) => item === null || typeof item !== 'object')
@@ -451,7 +393,16 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
                 aria-hidden="true"
                 className="mt-2.5 size-2 shrink-0 border border-[var(--workspace-ink)] bg-[var(--workspace-primary)]"
               />
-              <ContextValue value={item} depth={depth + 1} />
+              <ContextValue
+                value={item}
+                depth={depth + 1}
+                emptyLabel={emptyLabel}
+                yesLabel={yesLabel}
+                noLabel={noLabel}
+                entryLabel={entryLabel}
+                noFieldsLabel={noFieldsLabel}
+                sensitiveLabel={sensitiveLabel}
+              />
             </li>
           ))}
         </ul>
@@ -463,9 +414,18 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
         {value.map((item, index) => (
           <li key={index} className="border-l-4 border-[var(--workspace-ink)] pl-4">
             <span className="mb-2 block font-mono text-xs font-bold text-[var(--workspace-faint)]">
-              Entry {index + 1}
+              {entryLabel(index + 1)}
             </span>
-            <ContextValue value={item} depth={depth + 1} />
+            <ContextValue
+              value={item}
+              depth={depth + 1}
+              emptyLabel={emptyLabel}
+              yesLabel={yesLabel}
+              noLabel={noLabel}
+              entryLabel={entryLabel}
+              noFieldsLabel={noFieldsLabel}
+              sensitiveLabel={sensitiveLabel}
+            />
           </li>
         ))}
       </ol>
@@ -476,7 +436,7 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
     const entries = Object.entries(value as Record<string, unknown>)
 
     if (entries.length === 0) {
-      return <span className="text-[var(--workspace-faint)]">No fields recorded</span>
+      return <span className="text-[var(--workspace-faint)]">{noFieldsLabel}</span>
     }
 
     return (
@@ -497,10 +457,19 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
               {SENSITIVE_CONTEXT_KEY.test(key) ? (
                 <span className="inline-flex items-center gap-2 text-[var(--workspace-muted)]">
                   <ShieldCheck aria-hidden="true" className="size-4" />
-                  Sensitive value hidden
+                  {sensitiveLabel}
                 </span>
               ) : (
-                <ContextValue value={nestedValue} depth={depth + 1} />
+                <ContextValue
+                  value={nestedValue}
+                  depth={depth + 1}
+                  emptyLabel={emptyLabel}
+                  yesLabel={yesLabel}
+                  noLabel={noLabel}
+                  entryLabel={entryLabel}
+                  noFieldsLabel={noFieldsLabel}
+                  sensitiveLabel={sensitiveLabel}
+                />
               )}
             </dd>
           </div>
@@ -513,15 +482,44 @@ function ContextValue({ value, depth = 0 }: { value: unknown; depth?: number }) 
 }
 
 export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps) {
+  const locale = useLocale()
   const t = useTranslations('Workspace')
   const tCommon = useTranslations('Common')
   const tStatus = useTranslations('Status')
-  const [activeTab, setActiveTab] = useState<WorkspaceSection>('overview')
+  const contextLabels = {
+    emptyLabel: t('notSpecified'),
+    yesLabel: t('yes'),
+    noLabel: t('no'),
+    entryLabel: (index: number) => t('contextEntry', { index }),
+    noFieldsLabel: t('noFieldsRecorded'),
+    sensitiveLabel: t('sensitiveValueHidden'),
+  }
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const requestedTab = parseWorkspaceTab(searchParams.get('tab'))
+  const activeTab = requestedTab
+
+  const selectTab = (section: WorkspaceSection) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (section === 'overview') params.delete('tab')
+    else params.set('tab', section)
+    const query = params.toString()
+    router.replace(query ? `?${query}` : '?', { scroll: false })
+  }
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [projectName, setProjectName] = useState(initialData.name)
   const [projectLang, setProjectLang] = useState(initialData.language || 'id')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
+  const [generationState, setGenerationState] = useState<GenerationState>(() =>
+    createPersistedGenerationState({
+      projectStatus: initialData.status,
+      artifacts: initialData.artifacts,
+      requiredArtifactTypes: initialData.requiredArtifactTypes,
+      hasSkills: initialData.skills.length > 0,
+      hasBacklog: initialData.phases.length > 0,
+    }),
+  )
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationStage, setGenerationStage] = useState(0)
   const [completedGenerationStages, setCompletedGenerationStages] = useState(0)
@@ -531,6 +529,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     type: 'status' | 'error'
     text: string
   } | null>(null)
+  const [generationAnnouncement, setGenerationAnnouncement] = useState<string | null>(null)
+  const [generationOperation, setGenerationOperation] = useState<'initial' | 'retry' | null>(null)
   const [discoveryMessage, setDiscoveryMessage] = useState<{
     type: 'status' | 'error'
     text: string
@@ -574,16 +574,56 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     }
   }
 
-  const activePipelineIndex = getPipelineStageIndex(projectStatus, hasExportedZip)
+  const resolvedPipeline = resolvePipeline({
+    projectStatus,
+    hasContext: contextReady,
+    pendingClarifications: pendingClarifications.length,
+    artifacts,
+    hasExported: hasExportedZip,
+    canExport,
+  })
   const includesReadme = readyArtifacts.some((artifact) => artifact.path === 'README.md')
+  const [isExporting, setIsExporting] = useState(false)
 
   const handleDownloadZip = async () => {
-    setHasExportedZip(true)
-    setProjectStatus('EXPORTABLE')
-    // Silently notify the server to transition project to EXPORTABLE
+    if (isExporting) return
+    setIsExporting(true)
     try {
-      await fetch(`/api/projects/${initialData.id}/validate`, { method: 'POST' })
-    } catch {}
+      const validation = await fetch(`/api/projects/${initialData.id}/validate`, { method: 'POST' })
+      const validationData = (await validation.json().catch(() => null)) as { error?: string; report?: { isConsistent?: boolean } } | null
+      if (!validation.ok) throw new Error(validationData?.error ?? 'Export validation failed. Please retry.')
+      if (validationData?.report && !validationData.report.isConsistent) {
+        throw new Error('Consistency checks found document issues. Review the report before exporting.')
+      }
+      const download = await fetch(`/api/projects/${initialData.id}/export`)
+      if (!download.ok) {
+        const exportData = (await download.json().catch(() => null)) as { error?: string } | null
+        throw new Error(exportData?.error ?? 'Export failed. Review eligible documents and retry.')
+      }
+
+      const blob = await download.blob()
+      const contentDisposition = download.headers.get('content-disposition')
+      const filenameMatch = contentDisposition?.match(/filename="?([^";]+)"?/i)
+      const filename = filenameMatch?.[1] ?? `${initialData.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-bootstrap-pack.zip`
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = objectUrl
+      anchor.download = filename
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(objectUrl)
+
+      setHasExportedZip(true)
+      setProjectStatus('EXPORTABLE')
+    } catch (error) {
+      setGenMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Export validation failed. Please retry.',
+      })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const generateOneShotKickoffPrompt = (agent: string) => {
@@ -665,7 +705,7 @@ Begin execution immediately:
 
     event.preventDefault()
     const nextSection = SECTION_ITEMS[nextIndex].id
-    setActiveTab(nextSection)
+    selectTab(nextSection)
     sectionTabRefs.current.get(nextSection)?.focus()
   }
 
@@ -776,7 +816,7 @@ Begin execution immediately:
 
       setClarifications(stored.questions)
       setProjectStatus('CLARIFYING')
-      setActiveTab('context')
+      selectTab('context')
       setDiscoveryMessage({
         type: 'status',
         text: `Answer ${roundResult.questions.length} clarification question${roundResult.questions.length === 1 ? '' : 's'} to continue.`,
@@ -892,9 +932,125 @@ Begin execution immediately:
     }
   }
 
+  const updateGenerationState = (next: GenerationState) => {
+    setGenerationState(next)
+    const activeStage = next.activeStage
+    if (activeStage) {
+      setGenerationAnnouncement(t(getGenerationStageLabelKey(activeStage) as Parameters<typeof t>[0]))
+    }
+  }
+
+  const generationStageRequest = async (stage: GenerationStageId) => {
+    switch (stage) {
+      case 'planner':
+        await requestProjectStage<{ plan?: { artifacts?: Array<{ type: string; isRequired?: boolean }> } }>(
+          'planner',
+          { method: 'POST' },
+          'Artifact planning failed.',
+        )
+        return
+      case 'documents': {
+        const result = await requestProjectStage<{
+          artifacts?: Array<{ type: string; status: string; error?: string }>
+        }>(
+          'generate',
+          { method: 'POST' },
+          'Document generation failed.',
+        )
+        const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
+        if (failedArtifact) {
+          throw new Error(failedArtifact.error ?? `${failedArtifact.type}.md generation failed.`)
+        }
+        if (!result.artifacts?.length) throw new Error('Document generation returned no artifacts.')
+        return
+      }
+      case 'agentRules': {
+        const result = await requestProjectStage<{
+          artifacts?: Array<{ type: string; status: string; error?: string }>
+        }>(
+          'generate',
+          {
+            method: 'POST',
+            body: JSON.stringify({ type: 'AGENT_RULES' }),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          'Agent and rules generation failed.',
+        )
+        const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
+        if (failedArtifact) throw new Error(failedArtifact.error ?? 'Agent.md generation failed.')
+        if (!result.artifacts?.length) throw new Error('Agent instructions returned no artifact.')
+        return
+      }
+      case 'skills':
+        await requestProjectStage('skills', { method: 'POST' }, 'Skill resolution failed.')
+        return
+      case 'backlog':
+        await requestProjectStage('backlog', { method: 'POST' }, 'Backlog generation failed.')
+        return
+      case 'validation': {
+        const result = await requestProjectStage<{
+          report?: { isConsistent?: boolean }
+        }>('validate', { method: 'POST' }, 'Readiness validation failed.')
+        if (result.report && result.report.isConsistent === false) {
+          throw new Error(t('generationValidationFailed'))
+        }
+        return
+      }
+    }
+  }
+
+  const runGeneration = async (operation: 'initial' | 'retry') => {
+    if (!contextReady || isGenerating) return
+
+    setIsGenerating(true)
+    setGenerationOperation(operation)
+    setProjectStatus('GENERATING')
+    setGenMessage(null)
+
+    let state = operation === 'retry'
+      ? resetGenerationForRetry(generationState)
+      : createQueuedGenerationState()
+    setGenerationState(state)
+
+    const stagesToRun = operation === 'retry'
+      ? getRetryableGenerationStages(state)
+      : GENERATION_STAGES.map(({ id }) => id)
+
+    try {
+      for (const stage of stagesToRun) {
+        state = markGenerationStageRunning(state, stage)
+        updateGenerationState(state)
+        setGenMessage({
+          type: 'status',
+          text: t(getGenerationStageLabelKey(stage) as Parameters<typeof t>[0]),
+        })
+
+        try {
+          await generationStageRequest(stage)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : t('generationFailed')
+          state = markGenerationStageFailed(state, stage, message)
+          updateGenerationState(state)
+          setProjectStatus('GENERATION_FAILED')
+          setGenMessage({ type: 'error', text: message })
+          return
+        }
+
+        state = markGenerationStageComplete(state, stage)
+        updateGenerationState(state)
+      }
+
+      setGenMessage({ type: 'status', text: t('generationComplete') })
+      window.location.reload()
+    } finally {
+      setIsGenerating(false)
+      setGenerationOperation(null)
+    }
+  }
+
   const handleGenerateAll = async () => {
     if (!contextReady) {
-      setActiveTab('context')
+      selectTab('context')
       setDiscoveryMessage({
         type: 'error',
         text: 'Complete project discovery before generating documents.',
@@ -902,138 +1058,90 @@ Begin execution immediately:
       return
     }
 
-    setIsGenerating(true)
-    setProjectStatus('GENERATING')
-    setGenMessage(null)
-
-    interface GenerationStage {
-      label: string
-      path: string
-      type?: 'AGENT_RULES'
-    }
-
-    const stages: GenerationStage[] = [
-      { label: 'artifact planning', path: 'planner' },
-      { label: 'core document generation', path: 'generate' },
-      { label: 'agent & rules generation', path: 'generate', type: 'AGENT_RULES' },
-      { label: 'skill resolution', path: 'skills' },
-      { label: 'backlog generation', path: 'backlog' },
-    ]
-
     try {
-      for (const [index, stage] of stages.entries()) {
-        setGenerationStage(index)
-        setGenMessage({ type: 'status', text: `Running ${stage.label}…` })
-        const body = stage.type ? JSON.stringify({ type: stage.type }) : undefined
-        await requestProjectStage(
-          stage.path,
-          { method: 'POST', body, headers: { 'Content-Type': 'application/json' } },
-          `${formatLabel(stage.label)} failed.`,
-        )
-        setCompletedGenerationStages(index + 1)
-      }
-
-      setGenMessage({ type: 'status', text: 'Full pack generated. Refreshing workspace…' })
-      window.location.reload()
+      await runGeneration('initial')
     } catch (error) {
       setProjectStatus('GENERATION_FAILED')
       setGenMessage({
         type: 'error',
-        text:
-          error instanceof Error
-            ? error.message
-            : 'Generation failed. Check the project context and retry.',
+        text: error instanceof Error ? error.message : t('generationFailed'),
       })
-    } finally {
-      setIsGenerating(false)
     }
   }
 
   const handleRegenerateFailed = async () => {
     if (!contextReady) return
 
-    setIsGenerating(true)
-    setProjectStatus('GENERATING')
-    setGenMessage(null)
-
     try {
-      const coreCandidateTypes = ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'] as const
-      const needingAttention = artifacts
-        .filter((a) => a.status !== 'READY' && a.status !== 'MODIFIED')
-        .map((a) => a.type)
-
-      const coreToRetry = coreCandidateTypes.filter((t) => needingAttention.includes(t))
-
-      if (coreToRetry.length > 0) {
-        for (let i = 0; i < coreToRetry.length; i++) {
-          const docType = coreToRetry[i]
-          setGenMessage({
-            type: 'status',
-            text: `Regenerating ${docType}.md (${i + 1} of ${coreToRetry.length})…`,
-          })
-          const stageResult = await requestProjectStage<{
-            artifacts?: Array<{ type: string; status: string; error?: string }>
-          }>(
-            'generate',
-            {
-              method: 'POST',
-              body: JSON.stringify({ type: docType }),
-              headers: { 'Content-Type': 'application/json' },
-            },
-            `Failed to regenerate ${docType}.md.`,
-          )
-          const failedItem = stageResult?.artifacts?.find(
-            (a) => a.type === docType && a.status === 'FAILED',
-          )
-          if (failedItem) {
-            throw new Error(`Generation of ${docType}.md failed: ${failedItem.error || 'The model did not return output.'}`)
-          }
-        }
-      }
-
-      if (needingAttention.includes('AGENT') || needingAttention.includes('RULES')) {
-        setGenMessage({ type: 'status', text: 'Regenerating Agent.md & RULES.md…' })
-        await requestProjectStage(
-          'generate',
-          {
-            method: 'POST',
-            body: JSON.stringify({ type: 'AGENT_RULES' }),
-            headers: { 'Content-Type': 'application/json' },
-          },
-          'Failed to regenerate Agent & Rules.',
-        )
-      }
-
-      if (needingAttention.includes('SKILLS')) {
-        setGenMessage({ type: 'status', text: 'Resolving skills…' })
-        await requestProjectStage('skills', { method: 'POST' }, 'Skill resolution failed.')
-      }
-
-      if (needingAttention.includes('BACKLOG')) {
-        setGenMessage({ type: 'status', text: 'Generating backlog…' })
-        await requestProjectStage('backlog', { method: 'POST' }, 'Backlog generation failed.')
-      }
-
-      setGenMessage({ type: 'status', text: 'All required documents updated. Refreshing workspace…' })
-      window.location.reload()
+      await runGeneration('retry')
     } catch (error) {
       setProjectStatus('GENERATION_FAILED')
       setGenMessage({
         type: 'error',
-        text:
-          error instanceof Error
-            ? error.message
-            : 'Retry failed. Check the project context and retry.',
+        text: error instanceof Error ? error.message : t('generationRetryFailed'),
       })
-    } finally {
-      setIsGenerating(false)
     }
   }
+
+  const generationStatusLabel = (status: GenerationStageStatus) =>
+    t(getGenerationStageStatusKey(status) as Parameters<typeof t>[0])
+
+  const generationProgress = (
+    <section
+      aria-labelledby="generation-progress-title"
+      className="mt-5 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-4 shadow-[3px_3px_0_var(--workspace-ink)]"
+      aria-busy={isGenerating}
+    >
+      <div className="flex items-start justify-between gap-3 border-b-2 border-[var(--workspace-ink)] pb-3">
+        <div>
+          <h2 id="generation-progress-title" className="font-mono text-xs font-black">
+            {t('generationProgressTitle')}
+          </h2>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--workspace-muted)]">
+            {t('generationProgressDesc')}
+          </p>
+        </div>
+        <span className="font-mono text-xs font-black text-[var(--workspace-muted)]">
+          {generationOperation ? t(generationOperation === 'retry' ? 'generationRetrying' : 'generationRunning') : t('generationIdle')}
+        </span>
+      </div>
+      <ol className="mt-3 space-y-2">
+        {GENERATION_STAGES.map(({ id }) => {
+          const stage = generationState.stages[id]
+          const isActive = generationState.activeStage === id && stage.status === 'running'
+          const isFailed = stage.status === 'failed'
+          return (
+            <li
+              key={id}
+              aria-current={isActive ? 'step' : undefined}
+              className={`grid grid-cols-[auto_1fr_auto] items-start gap-3 border-l-4 px-3 py-2 ${
+                isFailed ? 'border-[var(--workspace-rose)] bg-[var(--workspace-rose-soft)]' : isActive ? 'border-[var(--workspace-primary)] bg-[var(--workspace-blue-soft)]' : 'border-[var(--workspace-ink)]/20'
+              }`}
+            >
+              <span aria-hidden="true" className="mt-0.5 font-mono text-xs font-black">{isActive ? '→' : stage.status === 'complete' ? '✓' : stage.status === 'failed' ? '!' : '·'}</span>
+              <div>
+                <p className="text-sm font-black">{t(getGenerationStageLabelKey(id) as Parameters<typeof t>[0])}</p>
+                <p className="text-xs font-semibold leading-5 text-[var(--workspace-muted)]">
+                  {t(getGenerationStageDescriptionKey(id) as Parameters<typeof t>[0])}
+                </p>
+                {stage.error && <p className="mt-1 text-xs font-bold text-[var(--workspace-rose)]">{stage.error}</p>}
+              </div>
+              <span className="font-mono text-[0.68rem] font-black">{generationStatusLabel(stage.status)}</span>
+            </li>
+          )
+        })}
+      </ol>
+      <p className="sr-only" role="status" aria-live="polite">{generationAnnouncement}</p>
+      {genMessage?.type === 'error' && (
+        <p className="sr-only" role="alert" aria-live="assertive">{genMessage.text}</p>
+      )}
+    </section>
+  )
 
   const discoveryButton = pendingClarifications.length > 0 ? (
     <button
       type="button"
-      onClick={() => setActiveTab('context')}
+      onClick={() => selectTab('context')}
       className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
     >
       <MessageSquareText aria-hidden="true" className="size-4" />
@@ -1047,11 +1155,11 @@ Begin execution immediately:
       className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
     >
       {isAnalyzing ? (
-        <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+        <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
       ) : (
         <Braces aria-hidden="true" className="size-4" />
       )}
-      {isAnalyzing ? 'Normalizing context…' : t('actionGenerate')}
+      {isAnalyzing ? t('normalizingContext') : t('actionGenerate')}
     </button>
   ) : (
     <button
@@ -1061,11 +1169,11 @@ Begin execution immediately:
       className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
     >
       {isAnalyzing ? (
-        <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+        <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
       ) : (
         <ScanText aria-hidden="true" className="size-4" />
       )}
-      {isAnalyzing ? 'Analyzing project…' : t('actionGenerate')}
+      {isAnalyzing ? t('analyzingProject') : t('actionGenerate')}
     </button>
   )
 
@@ -1078,7 +1186,7 @@ Begin execution immediately:
         className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-black text-white shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
       >
         {isGenerating ? (
-          <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+          <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
         ) : readyArtifacts.length > 0 ? (
           <RefreshCw aria-hidden="true" className="size-4" />
         ) : (
@@ -1094,7 +1202,7 @@ Begin execution immediately:
           className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--electric-yellow)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
         >
           <RefreshCw aria-hidden="true" className="size-4" />
-          Retry failed ({attentionArtifacts.length})
+          {t('retryFailed', { count: attentionArtifacts.length })}
         </button>
       )}
     </div>
@@ -1115,7 +1223,7 @@ Begin execution immediately:
               className={`inline-flex items-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-3 py-1.5 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-[3px_3px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 ${BUTTON_FOCUS_CLASS}`}
             >
               <ArrowLeft aria-hidden="true" className="size-4" />
-              Projects
+              {t('backProjects')}
             </Link>
             
           </div>
@@ -1129,7 +1237,7 @@ Begin execution immediately:
                   {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
                 </span>
                 <span className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                  {t('updated', { date: formatDate(initialData.updatedAt) })}
+                  {t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}
                 </span>
                 <Button size="sm" variant="neutral" onClick={() => setIsSettingsOpen(true)} className="h-7 px-2 text-[10px] ml-2 font-black uppercase tracking-wider">
                   <Wrench className="size-3" /> {t('settings')}
@@ -1149,24 +1257,7 @@ Begin execution immediately:
                 {t('controlRoomAction')}
               </p>
               <div className="mt-4">{generateButton}</div>
-              {isGenerating && (
-                <section className="mt-5 border-t-2 border-[var(--workspace-ink)] pt-4" aria-labelledby="generation-progress-title">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 id="generation-progress-title" className="font-mono text-xs font-black">{t('generationProgress')}</h2>
-                    <span className="font-mono text-xs font-bold">{Math.round((completedGenerationStages / GENERATION_STAGES.length) * 100)}%</span>
-                  </div>
-                  <div className="mt-2 h-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((completedGenerationStages / GENERATION_STAGES.length) * 100)} aria-label={t('generationProgressLabel')}>
-                    <div className="h-full bg-[var(--workspace-primary)] motion-safe:transition-[width] motion-safe:duration-300" style={{ width: `${(completedGenerationStages / GENERATION_STAGES.length) * 100}%` }} />
-                  </div>
-                  <ol className="mt-3 space-y-1 text-xs font-semibold">
-                    {GENERATION_STAGES.map((stage, index) => (
-                      <li key={stage.id} className={index < completedGenerationStages ? 'text-[var(--workspace-ink)]' : index === generationStage ? 'text-[var(--workspace-primary)]' : 'text-[var(--workspace-muted)]'}>
-                        <span aria-hidden="true">{index < completedGenerationStages ? '✓' : index === generationStage ? '→' : '○'}</span>{' '}{stage.label}
-                      </li>
-                    ))}
-                  </ol>
-                </section>
-              )}
+              {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && generationProgress}
               <p
                 role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'}
                 aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'}
@@ -1191,83 +1282,30 @@ Begin execution immediately:
       <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
         <aside className="border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r-4">
           <div className="px-4 py-5 sm:px-6 lg:px-5 lg:py-8">
-            <div className={`${PANEL_SOFT_CLASS} bg-[var(--workspace-paper)] p-4`}>
-              <h2 className="text-xl font-black tracking-[-0.04em]">{t('pipelineSpine')}</h2>
-              <p className="mt-1 font-mono text-xs font-bold leading-5 text-[var(--workspace-muted)]">
-                {t('stepXofY', { current: activePipelineIndex + 1, total: PIPELINE_STAGES.length })}
-              </p>
-            </div>
-
-            <ol className="mt-6 flex gap-3 overflow-x-auto pb-2 lg:block lg:space-y-0 lg:overflow-visible lg:pb-0">
-              {PIPELINE_STAGES.map((stage, index) => {
-                const isComplete = index < activePipelineIndex
-                const isCurrent = index === activePipelineIndex
-                const Icon = stage.icon
-
-                return (
-                  <li
-                    key={stage.label}
-                    className="relative min-w-40 lg:min-w-0 lg:pb-7 lg:pl-10 lg:last:pb-0"
-                  >
-                    {index < PIPELINE_STAGES.length - 1 && (
-                      <span
-                        aria-hidden="true"
-                        className={`absolute left-[0.875rem] top-8 hidden h-[calc(100%-1.25rem)] w-1 border-x border-[var(--workspace-ink)] lg:block ${
-                          isComplete ? 'bg-[var(--workspace-ink)]' : 'bg-[var(--workspace-paper)]'
-                        }`}
-                      />
-                    )}
-                    <span
-                      className={`mb-2 flex size-8 items-center justify-center border-2 border-[var(--workspace-ink)] shadow-[3px_3px_0_var(--workspace-ink)] lg:absolute lg:left-0 lg:top-0 lg:mb-0 ${
-                        isComplete
-                          ? 'bg-[var(--workspace-mint)] text-[var(--workspace-ink)]'
-                          : isCurrent
-                            ? projectStatus === 'GENERATION_FAILED'
-                              ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
-                              : 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)]'
-                            : 'bg-[var(--workspace-paper)] text-[var(--workspace-faint)]'
-                      }`}
-                    >
-                      {isComplete ? (
-                        <Check aria-hidden="true" className="size-4" />
-                      ) : (
-                        <Icon aria-hidden="true" className="size-4" />
-                      )}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-sm font-black ${
-                          isCurrent || isComplete
-                            ? 'text-[var(--workspace-ink)]'
-                            : 'text-[var(--workspace-faint)]'
-                        }`}
-                      >
-                        {stage.label}
-                      </span>
-                      {isCurrent && (
-                        <span className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-1.5 py-0.5 font-mono text-[0.65rem] font-black leading-none text-white shadow-[2px_2px_0_var(--workspace-ink)]">
-                          now
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-[var(--workspace-muted)]">
-                      {t(`pl${stage.id}Desc` as Parameters<typeof t>[0])}
-                    </p>
-                  </li>
-                )
-              })}
-            </ol>
+            <PipelineSpine
+              current={resolvedPipeline.current.key}
+              pipeline={resolvedPipeline}
+              compact={false}
+              className="mt-6 border-0 bg-transparent p-0 shadow-none"
+              hrefForStage={(stage) => {
+                const tab = resolvedPipeline.stages.find((item) => item.key === stage)?.tab
+                return tab ? `?tab=${tab}` : undefined
+              }}
+            />
+            <p className="mt-4 font-mono text-xs font-bold leading-5 text-[var(--workspace-muted)]">
+              {t('stepXofY', { current: resolvedPipeline.currentIndex + 1, total: resolvedPipeline.stages.length })}
+            </p>
           </div>
         </aside>
 
         <div className="min-w-0">
           <nav
-            aria-label="Project workspace sections"
+            aria-label={t('workspaceSections')}
             className="border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]"
           >
             <div
               role="tablist"
-              aria-label="Project workspace sections"
+              aria-label={t('workspaceSections')}
               className="flex gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8"
             >
               {SECTION_ITEMS.map((section) => {
@@ -1287,9 +1325,9 @@ Begin execution immediately:
                     tabIndex={isActive ? 0 : -1}
                     aria-selected={isActive}
                     aria-controls={getSectionPanelId(section.id)}
-                    onClick={() => setActiveTab(section.id)}
+                    onClick={() => selectTab(section.id)}
                     onKeyDown={(event) => handleSectionKeyDown(event, section.id)}
-                    title={section.description}
+                    title={t(section.descriptionKey as Parameters<typeof t>[0])}
                     className={`flex shrink-0 items-center gap-2 border-2 border-[var(--workspace-ink)] px-3 py-2 font-mono text-xs font-black shadow-[3px_3px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 sm:px-4 ${BUTTON_FOCUS_CLASS} ${
                       isActive
                         ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)]'
@@ -1350,7 +1388,7 @@ Begin execution immediately:
                     <dl className="mt-8 grid border-y-4 border-[var(--workspace-ink)] sm:grid-cols-2">
                       <div className="border-b-2 border-[var(--workspace-ink)] py-4 sm:border-r-2 sm:pr-5">
                         <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                          Project type
+                          {t('projectType')}
                         </dt>
                         <dd className="mt-1 text-sm font-black">
                           {formatLabel(initialData.classification)}
@@ -1358,7 +1396,7 @@ Begin execution immediately:
                       </div>
                       <div className="border-b-2 border-[var(--workspace-ink)] py-4 sm:pl-5">
                         <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                          Target agent
+                          {t('targetAgent')}
                         </dt>
                         <dd className="mt-1 text-sm font-black">
                           {formatLabel(initialData.targetAgent)}
@@ -1366,18 +1404,18 @@ Begin execution immediately:
                       </div>
                       <div className="border-b-2 border-[var(--workspace-ink)] py-4 sm:border-b-0 sm:border-r-2 sm:pr-5">
                         <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                          Context snapshot
+                          {t('contextSnapshot')}
                         </dt>
                         <dd className="mt-1 text-sm font-black">
-                          Version {initialData.contextVersion}
+                          {t('snapshot', { version: initialData.contextVersion })}
                         </dd>
                       </div>
                       <div className="py-4 sm:pl-5">
                         <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                          Created
+                          {t('created')}
                         </dt>
                         <dd className="mt-1 text-sm font-black">
-                          {formatDate(initialData.createdAt)}
+                          {formatDate(initialData.createdAt, locale) ?? t('unknownDate')}
                         </dd>
                       </div>
                     </dl>
@@ -1455,8 +1493,8 @@ Begin execution immediately:
 
               <div className={activeTab === 'context' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
-                  title="Canonical project context"
-                  description="The normalized source of truth consumed by every generator. Provenance labels distinguish confirmed decisions from assumptions and unknowns."
+                  title={t('canonicalProjectContext')}
+                  description={t('canonicalProjectContextDesc')}
                   action={
                     <span
                       className={`${PANEL_SOFT_CLASS} inline-flex items-center gap-2 px-3 py-2 font-mono text-xs font-black text-[var(--workspace-ink)]`}
@@ -1472,17 +1510,17 @@ Begin execution immediately:
                     <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
                       <div className="border-b-4 border-[var(--workspace-ink)] pb-5">
                         <p className="font-mono text-xs font-black text-[var(--workspace-faint)]">
-                          Discovery interview
+                          {t('discoveryInterview')}
                         </p>
                         <h3 className="mt-2 text-3xl font-black leading-none tracking-[-0.05em]">
                           {pendingClarifications.length > 0
-                            ? 'Answer the open decisions'
-                            : 'Canonical context has not been assembled'}
+                            ? t('answerOpenDecisions')
+                            : t('contextNotAssembled')}
                         </h3>
                         <p className="mt-3 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
                           {pendingClarifications.length > 0
-                            ? 'These answers become confirmed input for the canonical context. Keep them specific; the generator will not silently invent these decisions.'
-                            : 'Start requirement analysis first. If important decisions are missing, the system will ask focused clarification questions before document generation.'}
+                            ? t('answersBecomeConfirmed')
+                            : t('startAnalysisFirst')}
                         </p>
                       </div>
 
@@ -1509,10 +1547,10 @@ Begin execution immediately:
                             >
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)]">
-                                  Round {question.round}
+                                  {t('roundLabel', { round: question.round })}
                                 </span>
                                 <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
-                                  Question {index + 1} of {pendingClarifications.length}
+                                  {t('questionOf', { current: index + 1, total: pendingClarifications.length })}
                                 </span>
                               </div>
                               <label
@@ -1568,11 +1606,11 @@ Begin execution immediately:
                             className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-black text-white shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
                           >
                             {isSubmittingAnswers ? (
-                              <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                              <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
                             ) : (
                               <Check aria-hidden="true" className="size-4" />
                             )}
-                            {isSubmittingAnswers ? 'Saving answers…' : 'Submit answers and continue'}
+                            {isSubmittingAnswers ? t('savingAnswers') : t('submitAnswersContinue')}
                           </button>
                         </form>
                       ) : (
@@ -1581,9 +1619,9 @@ Begin execution immediately:
                     </div>
 
                     <aside className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-5 xl:rotate-1`}>
-                      <h3 className="text-2xl font-black tracking-[-0.04em]">Decision ledger</h3>
+                      <h3 className="text-2xl font-black tracking-[-0.04em]">{t('decisionLedger')}</h3>
                       <p className="mt-2 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                        Answered questions stay attached to this project and are folded into the context normalizer.
+                        {t('decisionLedgerDesc')}
                       </p>
 
                       <dl className="mt-5 divide-y-2 divide-[var(--workspace-ink)] border-y-4 border-[var(--workspace-ink)]">
@@ -1601,7 +1639,7 @@ Begin execution immediately:
                         </div>
                         <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
                           <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                            Context snapshot
+                            {t('contextSnapshot')}
                           </dt>
                           <dd className="font-mono text-sm font-black">v{initialData.contextVersion}</dd>
                         </div>
@@ -1615,7 +1653,7 @@ Begin execution immediately:
                               className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-3 shadow-[3px_3px_0_var(--workspace-ink)]"
                             >
                               <p className="font-mono text-[0.68rem] font-black text-[var(--workspace-faint)]">
-                                Round {question.round} answered
+                                {t('answerRound', { round: question.round })}
                               </p>
                               <p className="mt-1 text-sm font-black leading-5">{question.question}</p>
                               <p className="mt-2 line-clamp-3 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
@@ -1628,21 +1666,21 @@ Begin execution immediately:
                     </aside>
                   </section>
                 ) : (
-                  <section aria-label="Structured project context">
+                  <section aria-label={t('structuredProjectContext')}>
                     <div
                       className={`${PANEL_SOFT_CLASS} mb-7 flex flex-wrap items-center gap-x-5 gap-y-2 bg-[var(--workspace-paper)] p-4 font-mono text-xs font-bold text-[var(--workspace-muted)]`}
                     >
                       <span className="inline-flex items-center gap-2">
                         <span className="size-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-mint)]" />
-                        Confirmed by the project owner
+                        {t('confirmedByOwner')}
                       </span>
                       <span className="inline-flex items-center gap-2">
                         <span className="size-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)]" />
-                        Assumed by the system
+                        {t('assumedBySystem')}
                       </span>
                       <span className="inline-flex items-center gap-2">
                         <span className="size-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]" />
-                        Still unknown
+                        {t('stillUnknown')}
                       </span>
                     </div>
                     <div
@@ -1662,10 +1700,10 @@ Begin execution immediately:
                             {SENSITIVE_CONTEXT_KEY.test(key) ? (
                               <span className="inline-flex items-center gap-2 text-[var(--workspace-muted)]">
                                 <ShieldCheck aria-hidden="true" className="size-4" />
-                                Sensitive value hidden
+                                {sensitiveLabel}
                               </span>
                             ) : (
-                              <ContextValue value={value} />
+                              <ContextValue value={value} {...contextLabels} />
                             )}
                           </div>
                         </section>
@@ -1677,16 +1715,16 @@ Begin execution immediately:
 
               <div className={activeTab === 'documents' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
-                  title="Generated documents"
-                  description="Edit markdown, compare rendered output, and save intentional changes. Ready and modified documents are eligible for export."
+                  title={t('generatedDocuments')}
+                  description={t('generatedDocumentsDesc')}
                   action={
                     artifacts.length > 0 ? (
                       <div
                         className={`${PANEL_SOFT_CLASS} flex items-center gap-3 px-3 py-2 font-mono text-xs font-black text-[var(--workspace-ink)]`}
                       >
-                        <span>{readyArtifacts.length} ready</span>
+                        <span>{t('readyCount', { count: readyArtifacts.length })}</span>
                         <span aria-hidden="true">/</span>
-                        <span>{attentionArtifacts.length} need attention</span>
+                        <span>{t('attentionCount', { count: attentionArtifacts.length })}</span>
                       </div>
                     ) : undefined
                   }
@@ -1695,8 +1733,8 @@ Begin execution immediately:
                 {artifacts.length === 0 ? (
                   <EmptyState
                     icon={FileText}
-                    title="No documentation has been generated"
-                    description="Generate the full pack to create the planned project documents. The workspace will then support per-file editing without regenerating unrelated artifacts."
+                    title={t('noDocumentationGenerated')}
+                    description={t('noDocumentationGeneratedDesc')}
                     action={generateButton}
                   />
                 ) : (
@@ -1712,15 +1750,16 @@ Begin execution immediately:
 
               <div className={activeTab === 'skills' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
-                  title="Resolved agent skills"
-                  description="Capabilities selected for this project, with the conditions that should invoke them and the implementation phases they support."
+                  title={t('resolvedAgentSkills')}
+                  description={t('resolvedAgentSkillsDesc')}
                   action={
                     initialData.skills.length > 0 ? (
                       <span
                         className={`${PANEL_SOFT_CLASS} px-3 py-2 font-mono text-xs font-black text-[var(--workspace-ink)]`}
                       >
-                        {initialData.skills.length} recommendation
-                        {initialData.skills.length === 1 ? '' : 's'}
+                        {initialData.skills.length === 1
+                          ? t('recommendationCount', { count: initialData.skills.length })
+                          : t('recommendationCountPlural', { count: initialData.skills.length })}
                       </span>
                     ) : undefined
                   }
@@ -1729,8 +1768,8 @@ Begin execution immediately:
                 {initialData.skills.length === 0 ? (
                   <EmptyState
                     icon={Wrench}
-                    title="No skills have been resolved"
-                    description="Skill resolution runs after document generation and uses the canonical context to choose only capabilities relevant to the project."
+                    title={t('noSkillsResolved')}
+                    description={t('noSkillsResolvedDesc')}
                     action={generateButton}
                   />
                 ) : (
@@ -1755,7 +1794,7 @@ Begin execution immediately:
                         <div className="mt-5 space-y-5">
                           <div>
                             <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                              Purpose
+                              {t('purpose')}
                             </h4>
                             <p className="mt-1 text-sm font-semibold leading-6">{skill.purpose}</p>
                           </div>
@@ -1793,7 +1832,7 @@ Begin execution immediately:
                           {skill.metadata?.installation_hint && (
                             <div className="border-l-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-4">
                               <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                                Setup note
+                                {t('setupNote')}
                               </h4>
                               <p className="mt-1 font-mono text-xs font-bold leading-5 text-[var(--workspace-muted)]">
                                 {skill.metadata.installation_hint}
@@ -1809,17 +1848,17 @@ Begin execution immediately:
 
               <div className={activeTab === 'backlog' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
-                  title="Implementation backlog"
-                  description="Interactive Trello-style Kanban board. Drag tasks across columns or use quick actions to track coding agent progress."
+                  title={t('implementationBacklog')}
+                  description={t('implementationBacklogDesc')}
                   action={
                     allTasks.length > 0 ? (
                       <div
                         className={`${PANEL_SOFT_CLASS} flex flex-wrap items-center gap-4 px-3 py-2 font-mono text-xs font-black text-[var(--workspace-ink)]`}
                       >
-                        <span>{readyTasks.length} ready</span>
-                        <span>{doneTasks.length} done</span>
-                        <span>{blockedTasks.length} blocked</span>
-                        <span>{allTasks.length} total</span>
+                        <span>{t('readyCountShort', { count: readyTasks.length })}</span>
+                        <span>{t('doneCount', { count: doneTasks.length })}</span>
+                        <span>{t('blockedCount', { count: blockedTasks.length })}</span>
+                        <span>{t('totalCount', { count: allTasks.length })}</span>
                       </div>
                     ) : undefined
                   }
@@ -1828,8 +1867,8 @@ Begin execution immediately:
                 {initialData.phases.length === 0 ? (
                   <EmptyState
                     icon={FolderKanban}
-                    title="No implementation backlog exists"
-                    description="Generate the full pack to turn the project context and document plan into ordered, dependency-aware implementation tasks."
+                    title={t('noImplementationBacklog')}
+                    description={t('noImplementationBacklogDesc')}
                     action={generateButton}
                   />
                 ) : (
@@ -1843,8 +1882,8 @@ Begin execution immediately:
 
               <div className={activeTab === 'export' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
-                  title="Export & Agent Kickoff Prompt"
-                  description="Download the complete Project Bootstrap Pack archive and copy the one-shot prompt to immediately launch your coding agent."
+                  title={t('exportAgentPrompt')}
+                  description={t('exportAgentPromptDesc')}
                   action={
                     <span
                       className={`border-2 px-2.5 py-1 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${
@@ -1853,7 +1892,7 @@ Begin execution immediately:
                           : 'border-[var(--workspace-ink)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)]'
                       }`}
                     >
-                      {canExport ? (hasExportedZip ? 'Export completed' : 'Ready to download') : 'Not ready'}
+                      {canExport ? (hasExportedZip ? t('exportCompleted') : t('readyToDownload')) : t('notReady')}
                     </span>
                   }
                 />
@@ -1861,23 +1900,23 @@ Begin execution immediately:
                 {!canExport ? (
                   <EmptyState
                     icon={Package}
-                    title="The archive has no eligible documents"
-                    description="Generate at least one document first. Only artifacts marked ready or modified are included; failed, outdated, and incomplete files remain outside the archive."
+                    title={t('archiveNoEligibleDocuments')}
+                    description={t('archiveNoEligibleDocumentsDesc')}
                     action={generateButton}
                   />
                 ) : (
                   <div className="space-y-10">
                     {/* One-Shot Kickoff Prompt Card */}
-                    <section aria-label="One-shot agent prompt" className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
+                    <section aria-label={t('oneShotAgentPrompt')} className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
                       <div className="flex flex-col gap-4 border-b-2 border-[var(--workspace-ink)] pb-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                           <span className="flex size-10 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] shadow-[3px_3px_0_var(--workspace-ink)]">
                             <Bot aria-hidden="true" className="size-5" />
                           </span>
                           <div>
-                            <h3 className="text-xl font-black tracking-tight">One-Shot Agent Kickoff Prompt</h3>
+                            <h3 className="text-xl font-black tracking-tight">{t('oneShotAgentPrompt')}</h3>
                             <p className="text-xs font-semibold text-[var(--workspace-muted)]">
-                              Copy this prompt and paste it as the very first message into your coding agent.
+                              {t('oneShotAgentPromptDesc')}
                             </p>
                           </div>
                         </div>
@@ -1889,6 +1928,7 @@ Begin execution immediately:
                               key={agent}
                               type="button"
                               onClick={() => setSelectedAgentTarget(agent)}
+                              aria-pressed={selectedAgentTarget === agent}
                               className={`border-2 border-[var(--workspace-ink)] px-2.5 py-1 font-mono text-xs font-black transition-colors ${
                                 selectedAgentTarget === agent
                                   ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)]'
@@ -1915,12 +1955,12 @@ Begin execution immediately:
                           {copiedPrompt ? (
                             <>
                               <Check aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-                              Prompt Copied to Clipboard!
+                              {t('promptCopiedToClipboard')}
                             </>
                           ) : (
                             <>
                               <Copy aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-                              Copy Agent Kickoff Prompt
+                              {t('copyAgentKickoffPrompt')}
                             </>
                           )}
                         </button>
@@ -1932,10 +1972,10 @@ Begin execution immediately:
                       <section aria-labelledby="manifest-title" className={PANEL_CLASS}>
                         <div className="flex items-center justify-between border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] p-5">
                           <h3 id="manifest-title" className="text-2xl font-black tracking-[-0.05em]">
-                            Archive manifest
+                            {t('archiveManifest')}
                           </h3>
                           <span className="font-mono text-xs font-black text-[var(--workspace-ink)]">
-                            {readyArtifacts.length + (includesReadme ? 0 : 1)} files
+                            {t('filesCount', { count: readyArtifacts.length + (includesReadme ? 0 : 1) })}
                           </span>
                         </div>
                         <ul className="bg-[var(--workspace-paper)] divide-y-2 divide-[var(--workspace-ink)]">
@@ -1972,7 +2012,7 @@ Begin execution immediately:
                                 </span>
                               </div>
                               <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
-                                Added during export
+                                {t('addedDuringExport')}
                               </span>
                             </li>
                           )}
@@ -1987,33 +2027,34 @@ Begin execution immediately:
                             <Package aria-hidden="true" className="size-6" />
                           </span>
                           <h3 className="mt-6 text-3xl font-black leading-none tracking-[-0.05em]">
-                            Bootstrap pack
+                            {t('bootstrapPack')}
                           </h3>
                           <p className="mt-3 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                            Prepared for {formatLabel(selectedAgentTarget)}. Provider keys and credentials are never included in the archive.
+                            {t('preparedFor', { agent: formatLabel(selectedAgentTarget) })}
                           </p>
 
                           <div className="mt-6 space-y-3 border-y-4 border-[var(--workspace-ink)] py-4 text-sm font-black">
                             <div className="flex items-center gap-3">
                               <ShieldCheck aria-hidden="true" className="size-4" />
-                              Content is scanned before packaging
+                              {t('contentScanned')}
                             </div>
                             <div className="flex items-center gap-3">
                               <CheckCircle2 aria-hidden="true" className="size-4" />
-                              Controlled filenames & UTF-8 Markdown
+                              {t('controlledFilenames')}
                             </div>
                           </div>
                         </div>
 
-                        <a
-                          href={`/api/projects/${initialData.id}/export`}
-                          download
+                        <button
+                          type="button"
                           onClick={handleDownloadZip}
-                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-black text-white shadow-[5px_5px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
+                          disabled={isExporting}
+                          aria-busy={isExporting}
+                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-black text-white shadow-[5px_5px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--workspace-ink)] disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
                         >
-                          <Download aria-hidden="true" className="size-4" />
-                          Download ZIP pack
-                        </a>
+                          {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
+                          {isExporting ? t('validatingPack') : t('downloadZipPack')}
+                        </button>
                       </aside>
                     </div>
                   </div>
@@ -2024,7 +2065,12 @@ Begin execution immediately:
         </div>
       </div>
       
-      <Modal open={isSettingsOpen} onClose={() => !isSavingSettings && setIsSettingsOpen(false)} title={t('settings')}>
+      <Modal
+        open={isSettingsOpen}
+        onClose={() => !isSavingSettings && setIsSettingsOpen(false)}
+        title={t('settings')}
+        closeLabel={t('closeDialog')}
+      >
         <form onSubmit={handleSaveSettings} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="projectName" className="text-sm font-black text-[var(--ink)]">

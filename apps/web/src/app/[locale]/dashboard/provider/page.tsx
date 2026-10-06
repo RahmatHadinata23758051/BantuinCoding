@@ -1,10 +1,10 @@
 import { KeyRound, ShieldCheck } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/i18n/routing'
 import { redirect } from 'next/navigation'
 
 import { ProviderSetupPanel } from '@/app/components/ProviderSetupPanel'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
-import { Caption, Panel, buttonClassName } from '@/app/components/ui'
+import { Caption, Panel, PageFrame, TopBar, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { getTranslations } from 'next-intl/server'
 
@@ -15,22 +15,21 @@ export default async function ProviderSettingsPage() {
   if (!session?.user?.id) redirect('/login')
 
   return (
-    <main className="min-h-screen px-4 py-5 text-[var(--ink)] sm:px-6">
-      <div className="mx-auto max-w-5xl border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hero)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
-            <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
-              {tNew('backDashboard')}
-            </Link>
-            <span>{t('breadcrumb')}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="max-w-56 truncate font-mono text-xs font-bold">{session.user.email}</span>
-            <LanguageSwitcher />
-          </div>
-        </header>
+    <PageFrame width="5xl">
+      <TopBar>
+        <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
+          <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
+            {tNew('backDashboard')}
+          </Link>
+          <span>{t('breadcrumb')}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="max-w-56 truncate font-mono text-xs font-bold">{session.user.email}</span>
+          <LanguageSwitcher />
+        </div>
+      </TopBar>
 
-        <section className="grid lg:grid-cols-[0.85fr_1.15fr]">
+      <section className="grid lg:grid-cols-[0.85fr_1.15fr]">
           <aside className="border-b-2 border-[var(--ink)] bg-[var(--cobalt)] p-6 text-white sm:p-8 lg:border-b-0 lg:border-r-2">
             <Caption className="bg-[var(--electric-yellow)] text-[var(--ink)]">{t('caption')}</Caption>
             <h1 className="mt-6 text-5xl font-black leading-[0.92] tracking-[-0.06em]">
@@ -75,7 +74,6 @@ export default async function ProviderSettingsPage() {
             </Panel>
           </div>
         </section>
-      </div>
-    </main>
+    </PageFrame>
   )
 }

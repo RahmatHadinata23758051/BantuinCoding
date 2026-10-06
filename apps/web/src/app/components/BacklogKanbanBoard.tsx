@@ -117,6 +117,8 @@ export function BacklogKanbanBoard({
   targetAgent = 'CLAUDE_CODE',
   onTaskUpdated,
 }: BacklogKanbanBoardProps) {
+  const t = useTranslations('Workspace')
+
   // Flatten tasks with phase info
   const t = useTranslations('Workspace')
   const initialTasks: KanbanTask[] = phases.flatMap((phase) =>
@@ -138,6 +140,7 @@ export function BacklogKanbanBoard({
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [copiedTaskKey, setCopiedTaskKey] = useState<string | null>(null)
   const [boardMessage, setBoardMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [copyMessage, setCopyMessage] = useState<string | null>(null)
 
   // Map task IDs to taskKeys for dependency labels
   const taskKeyById = new Map(tasks.map((t) => [t.id, t.taskKey]))
@@ -282,7 +285,11 @@ export function BacklogKanbanBoard({
     const prompt = buildTaskExecutionPrompt(taskKey)
     void navigator.clipboard.writeText(prompt)
     setCopiedTaskKey(taskKey)
-    setTimeout(() => setCopiedTaskKey(null), 2000)
+    setCopyMessage(t('backlogPromptCopied'))
+    setTimeout(() => {
+      setCopiedTaskKey(null)
+      setCopyMessage(null)
+    }, 2000)
   }
 
   const handleCopyQuickPrompt = (taskKey: string) => {
@@ -291,7 +298,11 @@ export function BacklogKanbanBoard({
     const prompt = `Read Agent.md and execute task ${taskKey}${title} from BACKLOG.md as ${targetAgent}. Follow all acceptance criteria and quality gates.`
     void navigator.clipboard.writeText(prompt)
     setCopiedTaskKey(taskKey)
-    setTimeout(() => setCopiedTaskKey(null), 2000)
+    setCopyMessage(t('backlogPromptCopied'))
+    setTimeout(() => {
+      setCopiedTaskKey(null)
+      setCopyMessage(null)
+    }, 2000)
   }
 
   const nextReadyTask = tasks.find((t) => t.status === 'READY')
@@ -331,7 +342,8 @@ export function BacklogKanbanBoard({
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search tasks..."
+              placeholder={t('backlogSearch')}
+              aria-label={t('backlogSearch')}
               className="w-48 border-2 border-[var(--ink)] bg-[var(--paper)] px-3 py-1 font-mono text-xs font-bold text-[var(--ink)] shadow-[var(--shadow-xs)] placeholder:text-[var(--paper-muted)] focus:w-64 focus:outline-none"
             />
           </div>
@@ -340,7 +352,7 @@ export function BacklogKanbanBoard({
         {nextReadyTask && (
           <div className="flex items-center gap-2 border-2 border-[var(--ink)] bg-[var(--electric-yellow-dim)] px-3 py-1.5 shadow-[var(--shadow-xs)]">
             <span className="font-mono text-[0.68rem] font-black uppercase text-[var(--ink)]">
-              Next Action:
+              {t('backlogNextAction')}:
             </span>
             <span className="font-mono text-xs font-black text-[var(--cobalt)]">
               {nextReadyTask.taskKey}
@@ -358,17 +370,23 @@ export function BacklogKanbanBoard({
             >
               {copiedTaskKey === nextReadyTask.taskKey ? (
                 <>
-                  <Check size={12} aria-hidden="true" /> Copied
+                  <Check size={12} aria-hidden="true" /> {t('backlogCopied')}
                 </>
               ) : (
                 <>
-                  <Copy size={12} aria-hidden="true" /> Copy Prompt
+                  <Copy size={12} aria-hidden="true" /> {t('backlogCopyPrompt')}
                 </>
               )}
             </Button>
           </div>
         )}
       </div>
+
+      {copyMessage && (
+        <p className="sr-only" role="status" aria-live="polite">
+          {copyMessage}
+        </p>
+      )}
 
       {boardMessage && (
         <div
@@ -387,7 +405,7 @@ export function BacklogKanbanBoard({
             onClick={() => setBoardMessage(null)}
             className="text-xs font-black underline hover:no-underline ml-4"
           >
-            Dismiss
+            {t('backlogDismiss')}
           </button>
         </div>
       )}
@@ -402,6 +420,8 @@ export function BacklogKanbanBoard({
           return (
             <div
               key={col.id}
+              role="region"
+              aria-labelledby={`backlog-column-${col.id}`}
               onDragOver={(e) => handleDragOver(e, col.id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, col.id)}
@@ -414,7 +434,7 @@ export function BacklogKanbanBoard({
               <div className="mb-3 flex items-center justify-between border-b-2 border-[var(--ink)] pb-2.5">
                 <div className="flex items-center gap-2">
                   <Icon size={16} className="text-[var(--ink)]" aria-hidden="true" />
-                  <h3 className="font-mono text-sm font-black tracking-tight">{t(`backlogColumn${col.id}` as never)}</h3>
+                  <h3 id={`backlog-column-${col.id}`} className="font-mono text-sm font-black tracking-tight">{t(`backlogColumn${col.id}` as never)}</h3>
                 </div>
                 <StatusBadge tone={col.badgeTone}>{colTasks.length}</StatusBadge>
               </div>
@@ -442,6 +462,15 @@ export function BacklogKanbanBoard({
                       <div
                         key={task.id}
                         draggable
+                        tabIndex={0}
+                        role="article"
+                        aria-label={`${task.taskKey}: ${task.title}`}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            setExpandedTaskId(expandedTaskId === task.id ? null : task.id)
+                          }
+                        }}
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={cn(
                           'group relative flex flex-col border-2 border-[var(--ink)] bg-[var(--paper)] p-3 shadow-[var(--shadow-xs)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-sm)]',
@@ -464,6 +493,7 @@ export function BacklogKanbanBoard({
                                 handleUpdateTaskStatus(task.id, e.target.value as TaskStatus)
                               }
                               className="border border-[var(--ink)] bg-[var(--paper-raised)] px-1 py-0.5 font-mono text-[0.65rem] font-bold text-[var(--ink)]"
+                              aria-label={`Move ${task.taskKey} to column`}
                               title="Move task to column"
                             >
                               {COLUMNS.map((c) => (
@@ -512,7 +542,10 @@ export function BacklogKanbanBoard({
 
                         {/* Expanded Details: Acceptance Criteria, DoD, Docs */}
                         {isExpanded && (
-                          <div className="mt-3 border-t-2 border-[var(--ink)] pt-2.5 text-[0.7rem] space-y-2">
+                          <div
+                            id={`task-details-${task.id}`}
+                            className="mt-3 border-t-2 border-[var(--ink)] pt-2.5 text-[0.7rem] space-y-2"
+                          >
                             {task.acceptanceCriteria.length > 0 && (
                               <div>
                                 <span className="block font-mono text-[0.65rem] font-black uppercase text-[var(--paper-muted)]">
@@ -575,6 +608,8 @@ export function BacklogKanbanBoard({
                         {/* Expand/Collapse Toggle Button */}
                         <button
                           type="button"
+                          aria-expanded={isExpanded}
+                          aria-controls={`task-details-${task.id}`}
                           onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
                           className="mt-2.5 flex items-center justify-between border-t border-[var(--ink)]/20 pt-1.5 font-mono text-[0.65rem] font-bold text-[var(--paper-muted)] hover:text-[var(--ink)]"
                         >

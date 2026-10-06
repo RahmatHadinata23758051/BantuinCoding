@@ -1,11 +1,11 @@
 import { ArrowRight, FolderKanban, KeyRound, Plus } from 'lucide-react'
-import Link from 'next/link'
+import { Link } from '@/i18n/routing'
 import { redirect } from 'next/navigation'
 
 import { PipelineSpine } from '@/app/components/PipelineSpine'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { ProviderSetupPanel } from '@/app/components/ProviderSetupPanel'
-import { Caption, Panel, StatusBadge, buttonClassName } from '@/app/components/ui'
+import { Caption, Panel, StatusBadge, TopBar, PageFrame, buttonClassName } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { logoutAction } from '@/lib/auth/actions'
 import { getUserProjects } from '@/lib/projects/project-service'
@@ -59,32 +59,31 @@ export default async function DashboardPage() {
   const projects = await getUserProjects(session.user.id)
 
   return (
-    <main className="min-h-screen px-4 py-4 text-[var(--ink)] sm:px-6">
-      <div className="mx-auto max-w-7xl border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hero)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
-            <span className="inline-flex size-7 items-center justify-center border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-raised)]">
-              BC
-            </span>
-            <span>bantuin.dev / dashboard</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <span className="hidden max-w-56 truncate font-mono text-xs font-bold sm:inline">
-              {session.user.email}
-            </span>
-            <LanguageSwitcher />
-            <form action={logoutAction}>
-              <button type="submit" className={buttonClassName({ variant: 'neutral', size: 'sm' })}>
-                Sign out
-              </button>
-            </form>
-            <Link href="/projects/new" className={buttonClassName({ variant: 'primary', size: 'sm' })}>
-              <Plus size={16} aria-hidden="true" /> {tCommon('newProject')}
-            </Link>
-          </div>
-        </header>
+    <PageFrame width="7xl" className="py-4">
+      <TopBar>
+        <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
+          <span className="inline-flex size-7 items-center justify-center border-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-raised)]">
+            BC
+          </span>
+          <span>bantuin.dev / dashboard</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <span className="hidden max-w-56 truncate font-mono text-xs font-bold sm:inline">
+            {session.user.email}
+          </span>
+          <LanguageSwitcher />
+          <form action={logoutAction}>
+            <button type="submit" className={buttonClassName({ variant: 'neutral', size: 'sm' })}>
+              {tCommon('signOut')}
+            </button>
+          </form>
+          <Link href="/projects/new" className={buttonClassName({ variant: 'primary', size: 'sm' })}>
+            <Plus size={16} aria-hidden="true" /> {tCommon('newProject')}
+          </Link>
+        </div>
+      </TopBar>
 
-        <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="border-b-2 border-[var(--ink)] bg-[var(--lavender)] p-4 sm:p-6 lg:border-b-0 lg:border-r-2">
             <Caption>{t('controlDesk')}</Caption>
             <h1 className="mt-5 text-4xl font-black leading-[0.92] tracking-[-0.055em]">
@@ -210,7 +209,6 @@ export default async function DashboardPage() {
             )}
           </section>
         </div>
-      </div>
-    </main>
+    </PageFrame>
   )
 }

@@ -7,6 +7,9 @@ export async function getProjectWorkspaceData(userId: string, projectId: string)
       contexts: {
         where: { isCurrent: true },
         take: 1,
+        include: {
+          artifactPlans: { where: { isRequired: true }, select: { type: true } },
+        },
       },
       artifacts: true,
       clarificationQuestions: {
@@ -45,6 +48,7 @@ export async function getProjectWorkspaceData(userId: string, projectId: string)
     updatedAt: project.updatedAt.toISOString(),
     context: contextData,
     contextVersion: currentContextRecord?.version ?? 0,
+    requiredArtifactTypes: currentContextRecord?.artifactPlans.map((item) => item.type) ?? [],
     clarifications: project.clarificationQuestions.map((question) => {
       let optionsList: string[] = []
       try {

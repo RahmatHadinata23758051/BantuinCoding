@@ -1,8 +1,8 @@
 'use client'
 
 import { ArrowRight, CheckCircle2, KeyRound, ShieldCheck } from 'lucide-react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Link, useRouter } from '@/i18n/routing'
+import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 
 import { loginAction } from '@/lib/auth/actions'

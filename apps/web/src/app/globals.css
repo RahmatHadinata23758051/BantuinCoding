@@ -42,6 +42,10 @@
   --fail-rose-dim: var(--action-red-dim);
 
   /* Surfaces */
+  --surface-base: var(--paper-raised);
+  --surface-soft: var(--paper);
+  --surface-emphasis: var(--electric-yellow-dim);
+  --surface-action: var(--cobalt);
   --bg-page: var(--paper);
   --bg-panel: var(--paper-raised);
   --bg-surface: #fff3c9;

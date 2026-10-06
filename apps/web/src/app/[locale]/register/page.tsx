@@ -1,8 +1,7 @@
 'use client'
 
 import { ArrowRight, FileArchive, KeyRound, UserRoundPlus } from 'lucide-react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { Link, useRouter } from '@/i18n/routing'
 import { useState } from 'react'
 
 import { registerAction } from '@/lib/auth/actions'
