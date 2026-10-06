@@ -145,6 +145,14 @@ const SECTION_ITEMS: {
   },
 ]
 
+const GENERATION_STAGES = [
+  { id: 'plan', label: 'Plan the document pack' },
+  { id: 'documents', label: 'Generate core documents' },
+  { id: 'agent', label: 'Prepare agent guidance' },
+  { id: 'skills', label: 'Resolve useful skills' },
+  { id: 'backlog', label: 'Build the backlog' },
+] as const
+
 const PIPELINE_STAGES: {
   id: string
   label: string
@@ -515,6 +523,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [projectLang, setProjectLang] = useState(initialData.language || 'id')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationStage, setGenerationStage] = useState(0)
+  const [completedGenerationStages, setCompletedGenerationStages] = useState(0)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false)
   const [genMessage, setGenMessage] = useState<{
@@ -911,7 +921,8 @@ Begin execution immediately:
     ]
 
     try {
-      for (const stage of stages) {
+      for (const [index, stage] of stages.entries()) {
+        setGenerationStage(index)
         setGenMessage({ type: 'status', text: `Running ${stage.label}…` })
         const body = stage.type ? JSON.stringify({ type: stage.type }) : undefined
         await requestProjectStage(
@@ -919,6 +930,7 @@ Begin execution immediately:
           { method: 'POST', body, headers: { 'Content-Type': 'application/json' } },
           `${formatLabel(stage.label)} failed.`,
         )
+        setCompletedGenerationStages(index + 1)
       }
 
       setGenMessage({ type: 'status', text: 'Full pack generated. Refreshing workspace…' })
@@ -1137,6 +1149,24 @@ Begin execution immediately:
                 {t('controlRoomAction')}
               </p>
               <div className="mt-4">{generateButton}</div>
+              {isGenerating && (
+                <section className="mt-5 border-t-2 border-[var(--workspace-ink)] pt-4" aria-labelledby="generation-progress-title">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 id="generation-progress-title" className="font-mono text-xs font-black">{t('generationProgress')}</h2>
+                    <span className="font-mono text-xs font-bold">{Math.round((completedGenerationStages / GENERATION_STAGES.length) * 100)}%</span>
+                  </div>
+                  <div className="mt-2 h-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((completedGenerationStages / GENERATION_STAGES.length) * 100)} aria-label={t('generationProgressLabel')}>
+                    <div className="h-full bg-[var(--workspace-primary)] motion-safe:transition-[width] motion-safe:duration-300" style={{ width: `${(completedGenerationStages / GENERATION_STAGES.length) * 100}%` }} />
+                  </div>
+                  <ol className="mt-3 space-y-1 text-xs font-semibold">
+                    {GENERATION_STAGES.map((stage, index) => (
+                      <li key={stage.id} className={index < completedGenerationStages ? 'text-[var(--workspace-ink)]' : index === generationStage ? 'text-[var(--workspace-primary)]' : 'text-[var(--workspace-muted)]'}>
+                        <span aria-hidden="true">{index < completedGenerationStages ? '✓' : index === generationStage ? '→' : '○'}</span>{' '}{stage.label}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
               <p
                 role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'}
                 aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'}
