@@ -1,6 +1,11 @@
 {
   "Common": {
     "backToHome": "← bantuin.dev",
+    "closeModal": "Close dialog",
+    "markdownWorkspace": "Markdown workspace",
+    "generatedArtifacts": "Generated artifacts",
+    "workspaceViewMode": "Workspace view mode",
+    "markdownSourceContent": "Markdown source content",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "getStarted": "Get started",
@@ -111,6 +116,7 @@
     "export": "Export",
     "exportDetail": "Package for agent",
     "currentChapter": "Current chapter",
+    "pipelineLabel": "Project pipeline",
     "stepPrefix": "{step} · "
   },
   "ProviderSetup": {

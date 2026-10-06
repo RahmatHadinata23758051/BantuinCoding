@@ -1,6 +1,11 @@
 {
   "Common": {
     "backToHome": "← bantuin.dev",
+    "closeModal": "Tutup dialog",
+    "markdownWorkspace": "Ruang kerja Markdown",
+    "generatedArtifacts": "Dokumen hasil generate",
+    "workspaceViewMode": "Mode tampilan ruang kerja",
+    "markdownSourceContent": "Konten sumber Markdown",
     "signIn": "Masuk",
     "signOut": "Keluar",
     "getStarted": "Mulai sekarang",
@@ -111,6 +116,7 @@
     "export": "Ekspor",
     "exportDetail": "Kemas untuk agen",
     "currentChapter": "Bab saat ini",
+    "pipelineLabel": "Jalur pipeline proyek",
     "stepPrefix": "{step} · "
   },
   "ProviderSetup": {

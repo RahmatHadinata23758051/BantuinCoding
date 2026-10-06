@@ -62,7 +62,11 @@ export function PipelineSpine({
 
   return (
     <nav
+<<<<<<< HEAD
       aria-label={tWorkspace('pipelineAriaLabel')}
+=======
+      aria-label={t('pipelineLabel')}
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
       className={cn(
         'border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hard)]',
         compact ? 'overflow-hidden' : 'p-4',
@@ -132,8 +136,15 @@ export function PipelineSpine({
                 <Link
                   href={href}
                   className={cn(
+<<<<<<< HEAD
                     'flex min-w-0 flex-1 gap-3 px-3 py-3 text-left transition-colors hover:bg-[var(--cobalt-dim)]',
                     !compact && 'px-0 py-0',
+=======
+                    'relative z-10 flex size-6 shrink-0 items-center justify-center rounded-[3px] border-2 border-[var(--ink)] font-mono text-[10px] font-black shadow-[var(--shadow-xs)]',
+                    complete && 'bg-[var(--cobalt)] text-white',
+                    active && 'bg-[var(--electric-yellow)] text-[var(--ink)] motion-safe:animate-pulse-dot',
+                    future && 'bg-[var(--paper)] text-[var(--paper-muted)]',
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
                   )}
                 >
                   {stageContent}

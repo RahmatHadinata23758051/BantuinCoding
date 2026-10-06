@@ -91,7 +91,7 @@ export function getArtifactStatusBadgeStyle(status: ArtifactStatus | string): {
     case 'FAILED':
       return { label: 'Generation Failed', colorClass: 'border-[var(--ink)] bg-[var(--action-red-dim)] text-[var(--ink)]' }
     case 'GENERATING':
-      return { label: 'Generating...', colorClass: 'border-[var(--ink)] bg-[var(--cobalt-dim)] text-[var(--ink)] animate-pulse-dot' }
+      return { label: 'Generating...', colorClass: 'border-[var(--ink)] bg-[var(--cobalt-dim)] text-[var(--ink)] motion-safe:animate-pulse-dot' }
     default:
       return { label: 'Not Generated', colorClass: 'border-[var(--ink)] bg-[var(--paper)] text-[var(--paper-muted)]' }
   }

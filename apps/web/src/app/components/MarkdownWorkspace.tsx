@@ -99,7 +99,11 @@ export function MarkdownWorkspace({
   artifacts,
   onArtifactUpdated,
 }: MarkdownWorkspaceProps) {
+<<<<<<< HEAD
   const t = useTranslations('Workspace')
+=======
+  const tCommon = useTranslations('Common')
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
   const [selectedType, setSelectedType] = useState<string>(artifacts[0]?.type || 'PRD')
   const [activeTab, setActiveTab] = useState<WorkspaceMode>('split')
   const [isSaving, setIsSaving] = useState(false)
@@ -210,7 +214,11 @@ export function MarkdownWorkspace({
 
   if (artifacts.length === 0) {
     return (
+<<<<<<< HEAD
       <Panel className="p-8 text-center" aria-label={t('markdownWorkspace')}>
+=======
+      <Panel className="p-8 text-center" aria-label={tCommon('markdownWorkspace')}>
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
         <div className="mx-auto flex max-w-md flex-col items-center gap-3">
           <FileText className="size-9 text-[var(--paper-muted)]" aria-hidden="true" />
           <p className="text-sm font-semibold leading-6 text-[var(--paper-muted)]">
@@ -226,7 +234,11 @@ export function MarkdownWorkspace({
   return (
     <section
       className="flex min-h-[760px] w-full flex-col overflow-hidden border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-[var(--shadow-hard)] lg:h-[760px] lg:flex-row"
+<<<<<<< HEAD
       aria-label={t('markdownWorkspace')}
+=======
+      aria-label={tCommon('markdownWorkspace')}
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
     >
       <aside className="border-b-2 border-[var(--ink)] bg-[var(--lavender-dim)] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r-2">
         <div className="flex items-start gap-3 border-b-2 border-[var(--ink)] bg-[var(--lavender)] px-4 py-4">
@@ -241,7 +253,11 @@ export function MarkdownWorkspace({
 
         <nav
           className="flex gap-3 overflow-x-auto p-3 lg:max-h-[calc(760px-82px)] lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
+<<<<<<< HEAD
           aria-label={t('markdownArtifacts')}
+=======
+          aria-label={tCommon('generatedArtifacts')}
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
         >
           {artifacts.map((artifact) => {
             const isSelected = artifact.type === selectedType
@@ -326,7 +342,7 @@ export function MarkdownWorkspace({
                     aria-busy={isRegenerating}
                   >
                     {isRegenerating ? (
-                      <Loader2 className="animate-spin size-4" aria-hidden="true" />
+                      <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" />
                     ) : (
                       <RefreshCw className="size-4" aria-hidden="true" />
                     )}
@@ -337,7 +353,7 @@ export function MarkdownWorkspace({
                 <div
                   className="grid grid-cols-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-1 shadow-[var(--shadow-xs)]"
                   role="group"
-                  aria-label="Workspace view mode"
+                  aria-label={tCommon('workspaceViewMode')}
                 >
                   {localizedViewModes.map(({ id, label, icon: Icon }) => {
                     const isActive = activeTab === id
@@ -364,8 +380,13 @@ export function MarkdownWorkspace({
 
                 <Button type="button" onClick={handleSave} disabled={isSaving} variant="success">
                   {isSaving ? (
+<<<<<<< HEAD
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   ) : saveMessageType === 'status' && saveMessage ? (
+=======
+                    <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" />
+                  ) : saveMessage?.startsWith('Saved') ? (
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
                     <CheckCircle2 className="size-4" aria-hidden="true" />
                   ) : (
                     <Save className="size-4" aria-hidden="true" />
@@ -403,8 +424,13 @@ export function MarkdownWorkspace({
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
                 className="min-h-0 flex-1 resize-none bg-[var(--ink)] px-4 py-5 font-mono text-sm leading-7 text-[var(--paper-raised)] caret-[var(--electric-yellow)] placeholder:text-[var(--paper-dim)] focus:bg-[var(--ink-soft)] focus-visible:outline-[3px] focus-visible:outline-offset-[-6px] focus-visible:outline-[var(--electric-yellow)] sm:px-6"
+<<<<<<< HEAD
                 placeholder={t('markdownWritePlaceholder')}
                 aria-label={t('markdownSource')}
+=======
+                placeholder="Write markdown content..."
+                aria-label={tCommon('markdownSourceContent')}
+>>>>>>> ff396f2 (fix: polish reduced motion and accessibility labels)
                 spellCheck={false}
               />
             </section>
