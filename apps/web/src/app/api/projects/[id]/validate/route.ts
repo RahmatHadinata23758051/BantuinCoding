@@ -38,6 +38,8 @@ export async function POST(
     })
     if (report.isConsistent) {
       await updateProject(session.user.id, id, { status: 'EXPORTABLE' })
+    } else {
+      await updateProject(session.user.id, id, { status: 'READY' })
     }
 
     return NextResponse.json({ report, readiness })

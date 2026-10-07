@@ -34,7 +34,7 @@ const ACTION_ALLOWED_STATES = {
   PLAN: ['CONTEXT_READY', 'GENERATING', 'READY', 'EXPORTABLE', 'GENERATION_FAILED'],
   GENERATE: ['CONTEXT_READY', 'GENERATING', 'READY', 'EXPORTABLE', 'GENERATION_FAILED'],
   VALIDATE: ['READY', 'EXPORTABLE'],
-  EXPORT: ['READY', 'EXPORTABLE'],
+  EXPORT: ['EXPORTABLE'],
 } as const satisfies Record<string, readonly ProjectStatus[]>
 
 export type ProjectAction = keyof typeof ACTION_ALLOWED_STATES
@@ -45,7 +45,6 @@ const AI_BACKED_ACTIONS = new Set<ProjectAction>([
   'CONTEXT',
   'PLAN',
   'GENERATE',
-  'VALIDATE',
 ])
 
 export async function requireProjectAction(
