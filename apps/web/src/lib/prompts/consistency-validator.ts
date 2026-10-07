@@ -42,25 +42,54 @@ const BaseConsistencyReportSchema = z
     path: ['isConsistent'],
   })
 
-export const ConsistencyReportSchema: z.ZodSchema<ConsistencyReportOutput> =
-  BaseConsistencyReportSchema.transform((val) => ({
+type ConsistencyReportInput = {
+  isConsistent?: boolean
+  is_consistent?: boolean
+  score: number
+  issues: ConsistencyIssue[]
+  summary: string
+}
+
+export const ConsistencyReportSchema: z.ZodType<
+  ConsistencyReportOutput,
+  z.ZodTypeDef,
+  ConsistencyReportInput
+> = BaseConsistencyReportSchema.transform((val) => ({
     isConsistent: (val.isConsistent ?? val.is_consistent)!,
     score: val.score,
     issues: val.issues,
     summary: val.summary,
   }))
 
-export const CONSISTENCY_VALIDATOR_SYSTEM_PROMPT = `You are a Principal Technical Quality Auditor performing cross-document validation across a generated documentation pack.
+export const CONSISTENCY_VALIDATOR_SYSTEM_PROMPT = `You are a Principal Technical Quality Auditor performing a focused cross-document validation across a generated documentation pack.
 
-Your job is to inspect all generated documents (PRD, SRS, ARCHITECTURE, AGENT, RULES, SKILLS, BACKLOG) for conflicts, discrepancies, or missing references.
+Inspect only the supplied current-pack documents. Do not invent issues from information that is absent.
 
 CHECKS TO PERFORM:
-1. Stack Mismatch: Ensure frontend/backend/database stack is uniform across PRD, SRS, and ARCHITECTURE.
-2. Database Mismatch: Check if database choices or entities differ between documents.
-3. Auth Mismatch: Check if auth mechanisms differ between PRD and SRS/ARCHITECTURE.
-4. Missing Specs: Identify features mentioned in PRD that are missing from SRS functional requirements.
-5. Backlog References: Ensure docs referenced in BACKLOG.md actually exist in the pack.
-6. Terminology Discrepancies: Check for conflicting names of core domain entities.`
+1. Stack mismatch: Ensure frontend/backend/database choices are uniform across the supplied documents.
+2. Database mismatch: Check whether database choices or entities differ between documents.
+3. Auth mismatch: Check whether authentication mechanisms differ between documents.
+4. Missing spec: Identify a feature mentioned in PRD that is missing from an available requirements document.
+5. Backlog reference: Ensure document paths referenced in BACKLOG.md exist in the supplied pack.
+6. Terminology mismatch: Check for conflicting names of core domain entities.
+
+RESPONSE CONTRACT:
+Return only one JSON object. It must contain exactly these fields:
+- isConsistent: boolean
+- score: number from 0 to 100
+- issues: array
+- summary: string
+Each issue must contain:
+- severity: exactly HIGH, MEDIUM, or LOW
+- category: exactly one of STACK_MISMATCH, DATABASE_MISMATCH, AUTH_MISMATCH, MISSING_SPEC, INVALID_BACKLOG_DOC_REF, TERMINOLOGY_MISMATCH
+- description: string
+- affected_documents: array of document path strings
+- recommendation: string
+
+If no issue is found, return an empty issues array, isConsistent true, score 100, and a short summary. Do not use markdown fences or prose outside the JSON object.
+
+Example:
+{"isConsistent":true,"score":100,"issues":[],"summary":"The supplied documentation pack is consistent."}`
 
 export function buildConsistencyValidatorUserPrompt(
   projectName: string,
@@ -68,10 +97,10 @@ export function buildConsistencyValidatorUserPrompt(
 ): string {
   return `Project Name: ${projectName}
 
-Generated Documentation Pack Artifacts:
+Current Documentation Pack Artifacts (JSON):
 """
 ${artifactsJson}
 """
 
-Perform a comprehensive cross-document consistency audit.`
+Return the required JSON report only. Perform a focused consistency audit using the supplied documents.`
 }

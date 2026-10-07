@@ -82,7 +82,7 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
     ).rejects.toThrow('Project not found')
   })
 
-  it('blocks AI consistency validation when no active BYOK session exists', async () => {
+  it('uses deterministic validation when no active BYOK session exists', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
 
@@ -90,9 +90,30 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
       id: 'p-1',
       userId: 'u-1',
       name: 'Test Project',
+      contexts: [
+        {
+          id: 'context-current',
+          artifactPlans: [
+            { type: 'PRD', path: 'PRD.md', isRequired: true },
+            { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', isRequired: true },
+          ],
+        },
+      ],
       artifacts: [
-        { type: 'PRD', path: 'PRD.md', content: '# PRD' },
-        { type: 'SRS', path: 'SRS.md', content: '# SRS' },
+        {
+          contextId: 'context-current',
+          type: 'PRD',
+          path: 'PRD.md',
+          content: '# PRD',
+          status: 'READY',
+        },
+        {
+          contextId: 'context-current',
+          type: 'ARCHITECTURE',
+          path: 'ARCHITECTURE.md',
+          content: '# Architecture',
+          status: 'READY',
+        },
       ],
     } as never)
 
@@ -100,6 +121,122 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
 
     await expect(
       auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' }),
-    ).rejects.toThrow('No active AI provider session found')
+    ).resolves.toMatchObject({ isConsistent: true, issues: [] })
+  })
+
+  it('excludes stale and unplanned artifacts from the audit', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [
+        {
+          id: 'context-current',
+          artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }],
+        },
+      ],
+      artifacts: [
+        {
+          contextId: 'context-current',
+          type: 'PRD',
+          path: 'PRD.md',
+          content: '# Current PRD',
+          status: 'READY',
+        },
+        {
+          contextId: 'context-old',
+          type: 'ARCHITECTURE',
+          path: 'ARCHITECTURE.md',
+          content: 'MongoDB',
+          status: 'READY',
+        },
+        {
+          contextId: 'context-current',
+          type: 'SKILLS',
+          path: 'SKILLS.md',
+          content: 'stale unplanned document',
+          status: 'READY',
+        },
+      ],
+    } as never)
+
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'test-model',
+      apiKey: 'test-key',
+    } as never)
+    vi.mocked(createProvider).mockReturnValueOnce({
+      generateStructured: vi.fn().mockResolvedValue({
+        isConsistent: true,
+        score: 100,
+        issues: [],
+        summary: 'Consistent',
+      }),
+    } as never)
+
+    await auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' })
+
+    const providerPrompt = vi.mocked(createProvider).mock.results[0]?.value
+      .generateStructured.mock.calls[0]?.[0] as string
+    expect(providerPrompt).toContain('Current PRD')
+    expect(providerPrompt).not.toContain('MongoDB')
+    expect(providerPrompt).not.toContain('stale unplanned document')
+  })
+
+  it('falls back to deterministic results when the AI report is malformed', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [
+        {
+          id: 'context-current',
+          artifactPlans: [
+            { type: 'PRD', path: 'PRD.md', isRequired: true },
+            { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', isRequired: true },
+          ],
+        },
+      ],
+      artifacts: [
+        {
+          contextId: 'context-current',
+          type: 'PRD',
+          path: 'PRD.md',
+          content: 'MongoDB',
+          status: 'READY',
+        },
+        {
+          contextId: 'context-current',
+          type: 'ARCHITECTURE',
+          path: 'ARCHITECTURE.md',
+          content: 'PostgreSQL',
+          status: 'READY',
+        },
+      ],
+    } as never)
+
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'test-model',
+      apiKey: 'test-key',
+    } as never)
+    vi.mocked(createProvider).mockReturnValueOnce({
+      generateStructured: vi.fn().mockRejectedValue(new Error('schema validation failed')),
+    } as never)
+
+    await expect(
+      auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' }),
+    ).resolves.toMatchObject({
+      isConsistent: false,
+      issues: [expect.objectContaining({ category: 'DATABASE_MISMATCH' })],
+    })
   })
 })
