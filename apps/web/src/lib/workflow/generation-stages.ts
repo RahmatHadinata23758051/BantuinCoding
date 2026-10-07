@@ -95,7 +95,7 @@ export function createPersistedGenerationState({
   const state = createQueuedGenerationState()
   const artifactByType = new Map(artifacts.map((artifact) => [artifact.type, artifact]))
   const coreTypes = ['PRD', 'SRS', 'DESIGN', 'ARCHITECTURE']
-  const requiredCoreTypes = (requiredArtifactTypes ?? coreTypes).filter((type) => coreTypes.includes(type))
+  const requiredCoreTypes = (requiredArtifactTypes ?? ['PRD', 'DESIGN', 'ARCHITECTURE']).filter((type) => coreTypes.includes(type))
   const coreArtifacts = requiredCoreTypes.map((type) => artifactByType.get(type))
   const hasCoreFailure = coreArtifacts.some(
     (artifact) => artifact && FAILED_ARTIFACT_STATUSES.has(artifact.status),

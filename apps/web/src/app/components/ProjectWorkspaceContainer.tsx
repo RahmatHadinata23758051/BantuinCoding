@@ -551,7 +551,18 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const pendingClarifications = clarifications.filter((question) => question.status === 'PENDING')
   const answeredClarifications = clarifications.filter((question) => question.status === 'ANSWERED')
   const contextReady = hasContextData(initialData.context)
-  const canExport = readyArtifacts.length > 0
+  const requiredArtifacts = initialData.requiredArtifactTypes
+    .map((type) => artifacts.find((artifact) => artifact.type === type))
+    .filter((artifact): artifact is WorkspaceArtifactItem => Boolean(artifact))
+  const readyRequiredArtifacts = requiredArtifacts.filter(
+    (artifact) => artifact.status === 'READY' || artifact.status === 'MODIFIED',
+  )
+  // The export action first runs validation, so READY projects with a complete
+  // current pack must still be able to start that validation request.
+  const canExport =
+    (projectStatus === 'READY' || projectStatus === 'EXPORTABLE') &&
+    initialData.requiredArtifactTypes.length > 0 &&
+    readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
   const [selectedAgentTarget, setSelectedAgentTarget] = useState(initialData.targetAgent || 'CLAUDE_CODE')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
