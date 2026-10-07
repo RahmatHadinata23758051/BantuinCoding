@@ -33,9 +33,9 @@ export interface AIProvider {
    * Generate structured output validated against a Zod schema.
    * All internal AI responses used by business logic MUST use this method.
    */
-  generateStructured<T>(
+  generateStructured<T, I = T>(
     prompt: string,
-    schema: z.ZodSchema<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, I>,
     options?: GenerateOptions,
   ): Promise<T>
 
@@ -86,9 +86,9 @@ abstract class BaseProvider implements AIProvider {
   }
 
   abstract testConnection(): Promise<TestConnectionResult>
-  abstract generateStructured<T>(
+  abstract generateStructured<T, I = T>(
     prompt: string,
-    schema: z.ZodSchema<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, I>,
     options?: GenerateOptions,
   ): Promise<T>
 
@@ -281,7 +281,7 @@ abstract class BaseProvider implements AIProvider {
    * 3. Extract markdown_content from parsed object if schema accepts it
    * 4. Extract markdown_content directly from raw text if schema accepts it
    */
-  protected parseAndValidate<T>(raw: string, schema: z.ZodSchema<T>): T {
+  protected parseAndValidate<T, I = T>(raw: string, schema: z.ZodType<T, z.ZodTypeDef, I>): T {
     let parsed: unknown
     try {
       parsed = this.extractJson(raw)
@@ -380,9 +380,9 @@ class AnthropicProvider extends BaseProvider {
     }
   }
 
-  async generateStructured<T>(
+  async generateStructured<T, I = T>(
     prompt: string,
-    schema: z.ZodSchema<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, I>,
     options: GenerateOptions = {},
   ): Promise<T> {
     const { Anthropic } = await import('@anthropic-ai/sdk')
@@ -476,9 +476,9 @@ class OpenAIProvider extends BaseProvider {
     }
   }
 
-  async generateStructured<T>(
+  async generateStructured<T, I = T>(
     prompt: string,
-    schema: z.ZodSchema<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, I>,
     options: GenerateOptions = {},
   ): Promise<T> {
     const { default: OpenAI } = await import('openai')
@@ -554,9 +554,9 @@ class GeminiProvider extends BaseProvider {
     }
   }
 
-  async generateStructured<T>(
+  async generateStructured<T, I = T>(
     prompt: string,
-    schema: z.ZodSchema<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, I>,
     options: GenerateOptions = {},
   ): Promise<T> {
     const { GoogleGenerativeAI } = await import('@google/generative-ai')
@@ -640,9 +640,9 @@ class OpenRouterProvider extends BaseProvider {
     }
   }
 
-  async generateStructured<T>(
+  async generateStructured<T, I = T>(
     prompt: string,
-    schema: z.ZodSchema<T>,
+    schema: z.ZodType<T, z.ZodTypeDef, I>,
     options: GenerateOptions = {},
   ): Promise<T> {
     const { default: OpenAI } = await import('openai')
@@ -723,7 +723,7 @@ function mapError(
   ) {
     return {
       status: 'MODEL_UNAVAILABLE',
-      message: `Model unavailable for ${provider}: ${msg}`,
+      message: 'Selected model is unavailable for this provider',
     }
   }
 
@@ -736,5 +736,5 @@ function mapError(
     return { status: 'NETWORK_ERROR', message: 'Network error — check connectivity' }
   }
 
-  return { status: 'PROVIDER_ERROR', message: `${provider} error: ${msg}` }
+  return { status: 'PROVIDER_ERROR', message: 'Provider connection failed. Please retry or choose another provider.' }
 }

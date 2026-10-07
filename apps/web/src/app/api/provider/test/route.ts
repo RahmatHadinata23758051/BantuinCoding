@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { createProvider } from '@/lib/ai/provider'
+import { getSafeApiErrorMessage } from '@/lib/api/errors'
+
+function safeProviderMessage(message: string): string {
+  return getSafeApiErrorMessage(new Error(message), 'Provider connection failed. Please retry.')
+}
 import { z } from 'zod'
 import type { AIProviderType } from '@repo/types'
 
@@ -92,7 +97,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         status: testResult.status,
-        message: testResult.message,
+        message: safeProviderMessage(testResult.message),
         models, // still return models so user can pick a different one!
       },
       { status: 200 },
