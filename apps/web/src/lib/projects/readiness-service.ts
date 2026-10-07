@@ -37,22 +37,46 @@ export async function getProjectReadiness(
   }
 
   const requiredTypes = [...new Set(currentContext.artifactPlans.map((item) => item.type))].sort()
-  const artifactsByType = new Map(project.artifacts.map((artifact) => [artifact.type, artifact]))
-  const missingTypes = requiredTypes.filter((type) => !artifactsByType.has(type))
+  const currentArtifacts = project.artifacts.filter(
+    (artifact) => artifact.contextId === currentContext.id,
+  )
+  const artifactsByType = new Map(
+    currentArtifacts.map((artifact) => [artifact.type, artifact]),
+  )
+  const allArtifactsByType = new Map(
+    project.artifacts.map((artifact) => [artifact.type, artifact]),
+  )
+  const missingTypes = requiredTypes.filter(
+    (type) => !artifactsByType.has(type) && !allArtifactsByType.has(type),
+  )
   const blockingTypes = requiredTypes.filter((type) => {
     const artifact = artifactsByType.get(type)
     return Boolean(
-      artifact &&
-        (artifact.contextId !== currentContext.id || !USABLE_ARTIFACT_STATUSES.has(artifact.status)),
+      (artifact && !USABLE_ARTIFACT_STATUSES.has(artifact.status)) ||
+        (!artifact && allArtifactsByType.has(type)),
     )
   })
 
+  // An old-context artifact is blocked rather than missing: it exists but must
+  // not satisfy the current context's readiness requirement.
+  const staleTypes = requiredTypes.filter(
+    (type) => !artifactsByType.has(type) && allArtifactsByType.has(type),
+  )
+  const allBlockingTypes = [...new Set([...blockingTypes, ...staleTypes])]
+
+  // Keep stale artifacts visible to callers while preserving the existing
+  // readiness contract and its actionable missing-vs-blocked distinction.
+  const effectiveBlockingTypes = allBlockingTypes
+  const effectiveMissingTypes = missingTypes
+
   return {
     isReady:
-      requiredTypes.length > 0 && missingTypes.length === 0 && blockingTypes.length === 0,
+      requiredTypes.length > 0 &&
+      effectiveMissingTypes.length === 0 &&
+      effectiveBlockingTypes.length === 0,
     requiredTypes,
-    missingTypes,
-    blockingTypes,
+    missingTypes: effectiveMissingTypes,
+    blockingTypes: effectiveBlockingTypes,
   }
 }
 
