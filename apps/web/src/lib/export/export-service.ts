@@ -3,24 +3,30 @@ import { db } from '@repo/db'
 
 /**
  * Validates file path inside ZIP pack to prevent path traversal vulnerability.
- * Strictly forbids `../`, leading slashes `/`, null bytes, or unsafe characters.
+ * Strictly forbids traversal, absolute paths, control characters, or unsafe segments.
  */
 export function validateZipPath(path: string): string {
   if (!path || typeof path !== 'string') {
     throw new Error('Invalid empty file path')
   }
 
-  // Prevent path traversal sequences
+  if (/[\u0000-\u001f\u007f]/.test(path)) {
+    throw new Error('Control character detected in filename')
+  }
+
   if (path.includes('../') || path.includes('..\\') || path.startsWith('/') || path.startsWith('\\')) {
     throw new Error(`Path traversal security risk detected in filename: ${path}`)
   }
 
-  // Normalize path separators to POSIX
-  const normalized = path.replace(/\\/g, '/').replace(/^\/+/, '')
+  const normalized = path.replace(/\\/g, '/')
 
-  // Disallow absolute drive letters (e.g. C:)
   if (/^[a-zA-Z]:/.test(normalized)) {
     throw new Error(`Absolute path drive letter detected: ${path}`)
+  }
+
+  const segments = normalized.split('/')
+  if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
+    throw new Error(`Path traversal security risk detected in filename: ${path}`)
   }
 
   return normalized
@@ -28,15 +34,19 @@ export function validateZipPath(path: string): string {
 
 /**
  * Scans content for accidental API key or secret leakage.
- * Throws security error if a high-entropy secret pattern (sk-..., gsk-..., AIza...) is found.
+ * Throws security error without including the matched secret in the message.
  */
 export function scanContentForSecrets(content: string, filename: string): void {
-  // Common API key patterns
   const secretPatterns = [
-    /sk-[a-zA-Z0-9]{20,}/i, // OpenAI / Anthropic keys
-    /gsk_[a-zA-Z0-9]{20,}/i, // Groq keys
-    /AIzaSy[a-zA-Z0-9_\-]{33}/i, // Gemini keys
-    /lin_api_[a-zA-Z0-9]{20,}/i, // Linear API keys
+    /sk-[a-zA-Z0-9]{20,}/i,
+    /gsk_[a-zA-Z0-9]{20,}/i,
+    /AIzaSy[a-zA-Z0-9_\-]{33}/i,
+    /lin_api_[a-zA-Z0-9]{20,}/i,
+    /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/i,
+    /\beyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/,
+    /(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s"']+/i,
+    /(?:^|\n)\s*(?:API_KEY|[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*[^\s#]+/i,
+    /(?:^|\n)\s*(?:AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|GOOGLE_APPLICATION_CREDENTIALS)\s*=\s*[^\s#]+/i,
   ]
 
   for (const pattern of secretPatterns) {
@@ -91,7 +101,9 @@ export interface ExportProjectZipOptions {
 }
 
 /**
- * Exports all READY or MODIFIED project artifacts as a downloadable ZIP Buffer.
+ * Exports the complete current required artifact pack as a downloadable ZIP Buffer.
+ * The route separately enforces the EXPORTABLE project state; these checks protect
+ * direct service callers from exporting stale or incomplete documents.
  */
 export async function exportProjectZip({
   userId,
@@ -100,37 +112,68 @@ export async function exportProjectZip({
   const project = await db.project.findFirst({
     where: { id: projectId, userId },
     include: {
+      contexts: {
+        where: { isCurrent: true },
+        take: 1,
+        include: {
+          artifactPlans: { where: { isRequired: true } },
+        },
+      },
       artifacts: true,
     },
   })
 
   if (!project) throw new Error('Project not found')
-
-  const exportableArtifacts = project.artifacts.filter(
-    (a) => a.status === 'READY' || a.status === 'MODIFIED',
-  )
-
-  if (exportableArtifacts.length === 0) {
-    throw new Error('No ready artifacts available to export. Generate artifacts first.')
+  if (project.status !== 'EXPORTABLE') {
+    throw new Error('Project is not exportable. Complete validation first.')
   }
 
-  const zip = new JSZip()
+  const currentContext = project.contexts[0]
+  if (!currentContext) {
+    throw new Error('Project has no current context. Generate project context first.')
+  }
 
-  // 1. Include generated READY/MODIFIED artifacts
+  const requiredTypes = [...new Set(currentContext.artifactPlans.map((plan) => plan.type))]
+  const artifactsByType = new Map(
+    project.artifacts
+      .filter((artifact) => artifact.contextId === currentContext.id)
+      .map((artifact) => [artifact.type, artifact]),
+  )
+  const missingOrIncompleteTypes = requiredTypes.filter((type) => {
+    const artifact = artifactsByType.get(type)
+    return !artifact || !['READY', 'MODIFIED'].includes(artifact.status)
+  })
+
+  if (requiredTypes.length === 0 || missingOrIncompleteTypes.length > 0) {
+    const detail = missingOrIncompleteTypes.length > 0
+      ? ` Missing or incomplete: ${missingOrIncompleteTypes.join(', ')}.`
+      : ''
+    throw new Error(`Project documents are not ready for export.${detail}`)
+  }
+
+  const exportableArtifacts = requiredTypes
+    .map((type) => artifactsByType.get(type))
+    .filter((artifact): artifact is NonNullable<typeof artifact> => Boolean(artifact))
+
+  const zip = new JSZip()
+  const normalizedPaths = new Set<string>()
+
   for (const art of exportableArtifacts) {
     const safePath = validateZipPath(art.path)
+    if (normalizedPaths.has(safePath)) {
+      throw new Error(`Duplicate file path detected in export: ${safePath}`)
+    }
+    normalizedPaths.add(safePath)
     scanContentForSecrets(art.content, safePath)
     zip.file(safePath, art.content)
   }
 
-  // 2. Include README.md in root of ZIP if not already present
-  if (!exportableArtifacts.some((a) => a.path === 'README.md')) {
+  if (!normalizedPaths.has('README.md')) {
     const readmeContent = generateBootstrapReadme(project.name, project.targetAgent)
     scanContentForSecrets(readmeContent, 'README.md')
     zip.file('README.md', readmeContent)
   }
 
-  // Generate ZIP file buffer
   const uint8Array = await zip.generateAsync({ type: 'uint8array' })
   const buffer = Buffer.from(uint8Array)
 
