@@ -300,15 +300,23 @@ export async function generateCoreArtifacts({
     throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
   const provider = createProvider(providerConfig)
-  const generatedTypes = types ?? [
-    'PRD',
-    ...(currentContextRecord.artifactPlans.some(
-      (item) => item.type === 'DESIGN' && item.isRequired,
+  const generatedTypes = types ?? currentContextRecord.artifactPlans
+    .filter((item) => item.isRequired)
+    .map((item) => item.type)
+    .filter((type): type is 'PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN' =>
+      ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'].includes(type),
     )
-      ? (['DESIGN'] as const)
-      : []),
-    'ARCHITECTURE',
-  ]
+    .filter((type, index, all) => all.indexOf(type) === index)
+
+  const plannedCoreTypes = new Set(currentContextRecord.artifactPlans.map((item) => item.type))
+  const unplannedExplicitTypes = (types ?? []).filter((type) => !plannedCoreTypes.has(type))
+  if (unplannedExplicitTypes.length > 0 && plannedCoreTypes.size > 0) {
+    throw new Error(`Artifact type is not part of the current plan: ${unplannedExplicitTypes.join(', ')}`)
+  }
+
+  if (generatedTypes.length === 0) {
+    throw new Error('No core artifacts are required by the current project plan.')
+  }
 
   // Update project status to GENERATING only after BYOK is confirmed.
   await updateProject(userId, projectId, { status: 'GENERATING' })
@@ -436,22 +444,41 @@ export async function regenerateFailedArtifacts({
       .map((a) => a.type),
   )
 
-  const requiredPlanTypes = new Set(currentContext.artifactPlans.map((p) => p.type))
-  const coreCandidateTypes = ['PRD', 'ARCHITECTURE', 'DESIGN'] as const
+  const coreCandidateTypes = ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'] as const
+  const requiredPlanTypes = new Set(
+    currentContext.artifactPlans
+      .filter((plan) => plan.isRequired)
+      .map((plan) => plan.type),
+  )
 
-  const typesToGenerate = coreCandidateTypes.filter((type) => {
-    // Include if required by plan (or default core) and not already READY/MODIFIED
-    const isRequired = type === 'DESIGN' ? requiredPlanTypes.has('DESIGN') : true
-    return isRequired && !readyOrModified.has(type)
-  })
+  const typesToGenerate = coreCandidateTypes.filter((type) =>
+    requiredPlanTypes.has(type) && !readyOrModified.has(type),
+  )
 
-  if (typesToGenerate.length === 0) {
+  if (typesToGenerate.length === 0 && requiredPlanTypes.size > 0) {
     return []
   }
+
+  if (typesToGenerate.length === 0 && requiredPlanTypes.size === 0) {
+    throw new Error('No core artifacts are required by the current project plan.')
+  }
+
+  /*
+    Explicit plan membership is required here as well as in generateCoreArtifacts.
+    This prevents failed-artifact retries from silently recreating unplanned docs.
+  */
+  const plannedTypes = new Set(typesToGenerate)
+  if (plannedTypes.size === 0) return []
+
+  /* Keep the cast local because the candidate tuple is narrower than the public option. */
+  const retryTypes = typesToGenerate
+    .filter((type): type is 'PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN' => plannedTypes.has(type))
+
+  if (retryTypes.length === 0) return []
 
   return generateCoreArtifacts({
     userId,
     projectId,
-    types: typesToGenerate as ('PRD' | 'ARCHITECTURE' | 'DESIGN')[],
+    types: retryTypes,
   })
 }

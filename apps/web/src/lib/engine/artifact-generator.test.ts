@@ -456,6 +456,43 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     )
   })
 
+  it('uses only required core artifacts from the current plan', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [{
+        id: 'ctx-1',
+        version: 1,
+        contentJson: '{}',
+        artifactPlans: [
+          { type: 'PRD', isRequired: true },
+          { type: 'AGENT', isRequired: true },
+          { type: 'BACKLOG', isRequired: true },
+        ],
+      }],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'claude-sonnet-4-5',
+      apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValue({ markdown_content: '# PRD' }),
+    })
+
+    const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(results.map((result) => result.type)).toEqual(['PRD'])
+    expect(db.artifact.upsert).toHaveBeenCalledTimes(1)
+  })
+
   it('includes required DESIGN in default plan-aware core generation', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
@@ -489,13 +526,9 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
 
     const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1' })
 
-    expect(results.map((result) => result.type)).toEqual([
-      'PRD',
-      'DESIGN',
-      'ARCHITECTURE',
-    ])
-    expect(db.artifact.upsert).toHaveBeenCalledTimes(3)
-    expect(generateStructured).toHaveBeenCalledTimes(3)
+    expect(results.map((result) => result.type)).toEqual(['DESIGN'])
+    expect(db.artifact.upsert).toHaveBeenCalledTimes(1)
+    expect(generateStructured).toHaveBeenCalledTimes(1)
   })
 
   it('marks only the DESIGN artifact failed when design generation fails', async () => {

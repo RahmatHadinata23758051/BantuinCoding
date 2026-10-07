@@ -23,7 +23,7 @@ vi.mock('@repo/db', () => ({
       create: vi.fn(),
     },
     $transaction: vi.fn(async (callback) => callback({
-      artifact: { upsert: vi.fn() },
+      artifact: { upsert: vi.fn(), updateMany: vi.fn() },
       artifactPlanItem: { deleteMany: vi.fn(), create: vi.fn() },
     })),
   },

@@ -230,6 +230,14 @@ export async function planProjectArtifacts({
       where: { projectId, contextId: currentContextRecord.id },
     })
 
+    // A new plan invalidates every previous artifact snapshot. Planned rows are
+    // recreated as empty pending documents below; removed rows stay OUTDATED so
+    // they cannot be mistaken for part of the current pack.
+    await tx.artifact.updateMany({
+      where: { projectId },
+      data: { status: 'OUTDATED', content: '' },
+    })
+
     for (const item of plan.artifacts) {
       await tx.artifactPlanItem.create({
         data: {
@@ -247,12 +255,16 @@ export async function planProjectArtifacts({
           projectId_type: { projectId, type: item.type },
         },
         update: {
-          // A project has one artifact row per type, so re-planning must move
-          // the row to the current context and make it explicitly pending.
+          // A project has one artifact row per type. Re-planning moves the
+          // row to the current context and clears the previous document.
           contextId: currentContextRecord.id,
           path: item.path,
+          content: '',
+          status: 'NOT_GENERATED',
           isRequired: item.isRequired,
           planReason: item.reason,
+          provider: null,
+          model: null,
         },
         create: {
           projectId,
