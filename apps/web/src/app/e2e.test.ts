@@ -32,7 +32,7 @@ describe('End-to-End Pipeline & Final Quality Control Suite', () => {
     expect(srs).toContain('# SRS.md')
     expect(arch).toContain('# ARCHITECTURE.md')
     expect(agentMd).toContain('# Agent.md — Operational Contract')
-    expect(rulesMd).toContain('# RULES.md — Hard Constraints')
+    expect(rulesMd).toContain('# Agent.md — Operational Rules')
 
     // 2. Skill Catalog Resolution
     expect(internalCatalogFallback.length).toBeGreaterThan(0)

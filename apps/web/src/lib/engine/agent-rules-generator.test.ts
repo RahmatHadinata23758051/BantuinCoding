@@ -66,7 +66,7 @@ describe('Agent Rules Fallback Generators', () => {
 
   it('generates fallback RULES.md markdown', () => {
     const md = generateFallbackRulesMd('Acme App')
-    expect(md).toContain('# RULES.md — Hard Constraints for Acme App')
+    expect(md).toContain('# Agent.md — Operational Rules for Acme App')
     expect(md).toContain('BYOK API keys must remain session-scoped')
   })
 })

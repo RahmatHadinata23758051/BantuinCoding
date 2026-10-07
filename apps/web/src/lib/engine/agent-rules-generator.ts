@@ -30,13 +30,11 @@ You are the primary coding agent assigned to implement ${projectName}.
 
 ### 2. Document Hierarchy Precedence
 1. Explicit user instructions
-2. SRS.md
-3. PRD.md
+2. PRD.md
+3. ARCHITECTURE.md
 4. DESIGN.md (visual and interaction scope)
-5. ARCHITECTURE.md
-6. RULES.md
-7. Agent.md
-8. BACKLOG.md
+5. Agent.md
+6. BACKLOG.md
 
 ### 3. Implementation Workflow
 - **UNDERSTAND**: Read specifications and requirements.
@@ -59,10 +57,12 @@ Task is complete only when all quality gate checks pass.
 }
 
 /**
- * Fallback generator for RULES.md when AI is not configured or fails.
+ * Legacy compatibility fallback. Rules are now part of Agent.md.
  */
 export function generateFallbackRulesMd(projectName: string): string {
-  return `# RULES.md — Hard Constraints for ${projectName}
+  return `# Agent.md — Operational Rules for ${projectName}
+
+This content is consolidated into Agent.md in the current pack format.
 
 ## Non-Negotiable Rules
 
@@ -75,7 +75,7 @@ export function generateFallbackRulesMd(projectName: string): string {
 }
 
 /**
- * Generates AGENT.md and RULES.md artifacts consuming Canonical Project Context.
+ * Generates the unified Agent.md artifact consuming Canonical Project Context.
  */
 export async function generateAgentAndRulesArtifacts({
   userId,

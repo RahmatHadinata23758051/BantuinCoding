@@ -7,9 +7,9 @@ import { requireProjectAction } from '@/lib/projects/project-service'
 import { recomputeProjectReadiness } from '@/lib/projects/readiness-service'
 
 // ============================================================
-// POST /api/projects/[id]/generate — Generate core artifacts (PRD, SRS, Design, Architecture) or Agent/Rules
+// POST /api/projects/[id]/generate — Generate planned core artifacts or Agent.md.
 // Single-artifact regeneration is supported via optional `type` body param.
-// Orchestration uses `type: "AGENT_RULES"` to generate both Agent.md and RULES.md atomically.
+// `type: "AGENT_RULES"` is retained as a client compatibility alias for Agent.md.
 // ============================================================
 
 export async function POST(
