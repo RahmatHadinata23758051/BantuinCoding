@@ -13,11 +13,11 @@ export type PanelTone =
 
 const toneStyles: Record<PanelTone, string> = {
   paper: 'bg-[var(--paper-raised)] text-[var(--ink)]',
-  yellow: 'bg-[var(--electric-yellow)] text-[var(--ink)]',
-  blue: 'bg-[var(--cobalt)] text-white',
-  pink: 'bg-[var(--punch-pink)] text-[var(--ink)]',
-  mint: 'bg-[var(--mint)] text-[var(--ink)]',
-  lavender: 'bg-[var(--lavender)] text-[var(--ink)]',
+  yellow: 'bg-[var(--surface-soft)] text-[var(--ink)]',
+  blue: 'bg-[var(--surface-soft)] text-[var(--ink)]',
+  pink: 'bg-[var(--surface-soft)] text-[var(--ink)]',
+  mint: 'bg-[var(--surface-soft)] text-[var(--ink)]',
+  lavender: 'bg-[var(--surface-soft)] text-[var(--ink)]',
   ink: 'bg-[var(--ink)] text-[var(--paper-raised)]',
 }
 
@@ -31,9 +31,9 @@ export function panelClassName({
   className?: string
 } = {}) {
   return cn(
-    'rounded-[4px] border-2 border-[var(--ink)]',
-    raised && 'shadow-[var(--shadow-hard)]',
+    'rounded-[var(--radius-cards)] border border-[var(--border-subtle)]',
     toneStyles[tone],
+    raised && 'ring-1 ring-[var(--border-subtle)] ring-inset',
     className,
   )
 }
@@ -58,7 +58,7 @@ export function PanelHeader({ className, ...props }: HTMLAttributes<HTMLDivEleme
   return (
     <div
       className={cn(
-        'flex flex-wrap items-start justify-between gap-3 border-b-2 border-[var(--ink)] px-4 py-3',
+        'flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border-subtle)] px-4 py-3',
         className,
       )}
       {...props}

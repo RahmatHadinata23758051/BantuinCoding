@@ -12,11 +12,11 @@ export type ButtonVariant =
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon'
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-[var(--cobalt)] text-white hover:bg-[var(--cobalt-hover)]',
-  secondary: 'bg-[var(--electric-yellow)] text-[var(--ink)] hover:bg-[#ffce1f]',
-  neutral: 'bg-[var(--paper-raised)] text-[var(--ink)] hover:bg-white',
-  danger: 'bg-[var(--action-red)] text-[var(--ink)] hover:bg-[#d9342a] hover:text-white',
-  success: 'bg-[var(--mint)] text-[var(--ink)] hover:bg-[#38c98d]',
+  primary: 'border-[var(--ink)] bg-[var(--ink)] text-white hover:bg-[var(--ink-soft)]',
+  secondary: 'border-[var(--border-subtle)] bg-transparent text-[var(--ink)] hover:bg-[var(--surface-soft)]',
+  neutral: 'border-[var(--border-subtle)] bg-[var(--surface-soft)] text-[var(--ink)] hover:border-[var(--ink)]',
+  danger: 'border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--surface-soft)]',
+  success: 'border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--surface-soft)]',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -36,9 +36,9 @@ export function buttonClassName({
   className?: string
 } = {}) {
   return cn(
-    'nb-button-press inline-flex items-center justify-center gap-2 rounded-[4px] border-2 border-[var(--ink)] font-bold shadow-[var(--shadow-sm)]',
-    'hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[var(--shadow-hard)]',
-    'disabled:pointer-events-none disabled:translate-x-0 disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none',
+    'inline-flex items-center justify-center gap-2 rounded-[var(--radius-buttons)] border font-medium font-sans transition-colors',
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]',
+    'disabled:pointer-events-none disabled:opacity-50',
     variantStyles[variant],
     sizeStyles[size],
     className,

@@ -6,7 +6,7 @@ export function Caption({ className, ...props }: HTMLAttributes<HTMLSpanElement>
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-[3px] border-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-2.5 py-1 font-mono text-[11px] font-bold tracking-[0.04em] text-[var(--ink)] shadow-[var(--shadow-sm)]',
+        'inline-flex items-center rounded-[var(--radius-tags)] border border-[var(--border-subtle)] bg-[var(--surface-soft)] px-2.5 py-1 font-mono text-xs font-semibold tracking-[0.04em] text-[var(--ink)]',
         className,
       )}
       {...props}

@@ -11,12 +11,12 @@ export type StatusTone =
   | 'accent'
 
 const toneStyles: Record<StatusTone, string> = {
-  neutral: 'bg-[var(--paper-raised)]',
-  current: 'bg-[var(--cobalt)] text-white',
-  pending: 'bg-[var(--electric-yellow)]',
-  success: 'bg-[var(--mint)]',
-  danger: 'bg-[var(--action-red)] text-[var(--ink)]',
-  accent: 'bg-[var(--lavender)]',
+  neutral: 'bg-[var(--paper-raised)] text-[var(--ink)]',
+  current: 'bg-[var(--ink)] text-white',
+  pending: 'bg-[var(--surface-soft)] text-[var(--ink)]',
+  success: 'bg-[var(--surface-soft)] text-[var(--ink)]',
+  danger: 'bg-[var(--paper)] text-[var(--ink)]',
+  accent: 'bg-[var(--surface-soft)] text-[var(--ink)]',
 }
 
 export interface StatusBadgeProps extends HTMLAttributes<HTMLSpanElement> {
@@ -31,7 +31,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        'inline-flex min-h-7 items-center gap-1.5 rounded-[3px] border-2 border-[var(--ink)] px-2 py-0.5 font-mono text-[11px] font-bold leading-none',
+        'inline-flex min-h-7 items-center gap-1.5 rounded-[var(--radius-tags)] border border-[var(--border-subtle)] px-2 py-0.5 font-mono text-xs font-semibold leading-none',
         toneStyles[tone],
         className,
       )}

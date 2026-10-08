@@ -7,10 +7,10 @@ import type {
 import { cn } from '@/lib/ui'
 
 export const fieldClassName = cn(
-  'w-full rounded-[3px] border-2 border-[var(--ink)] bg-white px-3 py-2.5 text-sm text-[var(--ink)] shadow-[var(--shadow-xs)]',
-  'placeholder:text-[var(--paper-faint)] hover:bg-[var(--paper-raised)]',
-  'focus:bg-white focus-visible:outline-[3px] focus-visible:outline-offset-[3px] focus-visible:outline-[var(--focus-ring)]',
-  'disabled:cursor-not-allowed disabled:bg-[var(--paper)] disabled:opacity-60',
+  'w-full rounded-[var(--radius-inputs)] border border-[var(--border-subtle)] bg-[var(--paper)] px-3 py-2.5 font-sans text-sm text-[var(--ink)] transition-colors',
+  'placeholder:text-[var(--paper-muted)] hover:border-[var(--ink)]',
+  'focus:bg-[var(--paper)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]',
+  'disabled:cursor-not-allowed disabled:bg-[var(--surface-soft)] disabled:opacity-60',
 )
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
