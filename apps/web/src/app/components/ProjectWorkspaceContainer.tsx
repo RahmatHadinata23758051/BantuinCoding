@@ -41,6 +41,7 @@ import {
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
 import { PackHandoffVisual } from '@/app/components/PackHandoffVisual'
+import { PackHandoffWebGL } from '@/app/components/PackHandoffWebGL'
 import { PipelineSpine } from '@/app/components/PipelineSpine'
 import { Modal, Input, Select, Button } from '@/app/components/ui'
 import { resolvePipeline } from '@/lib/workflow/pipeline'
@@ -2087,6 +2088,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               connectorLabel: t('packHandoffConnectorLabel'),
                             }}
                           />
+                          <PackHandoffWebGL className="mt-6" />
                           <span className="flex size-12 items-center justify-center border border-black/[0.08] bg-[var(--workspace-paper)] shadow-none">
                             <Package aria-hidden="true" className="size-6" />
                           </span>
