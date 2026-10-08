@@ -226,7 +226,7 @@ export function MarkdownWorkspace({
 
   return (
     <section
-      className="flex min-h-[760px] w-full flex-col overflow-hidden rounded-xl border border-black/10 bg-white text-[var(--ink)] lg:h-[760px] lg:flex-row"
+      className="flex min-h-[600px] w-full flex-col overflow-hidden rounded-xl border border-black/10 bg-white text-[var(--ink)] sm:min-h-[760px] lg:h-[760px] lg:flex-row"
       aria-label={t('markdownWorkspace')}
     >
       <aside className="border-b border-black/10 bg-[#f6f5f4] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r">
