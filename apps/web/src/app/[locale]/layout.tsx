@@ -1,20 +1,26 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { IBM_Plex_Mono, Rubik } from 'next/font/google'
 import { notFound } from 'next/navigation'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages, setRequestLocale } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
 import '../globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const rubik = Rubik({
+  variable: '--font-rubik-variable',
   subsets: ['latin'],
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const plexMono = IBM_Plex_Mono({
+  variable: '--font-ibm-plex-mono',
+  weight: ['400', '600'],
   subsets: ['latin'],
 })
+
+const geistSans = rubik
+const geistMono = plexMono
+
+// SST uses a static CSS fallback when WebGL or future 3D enhancement is unavailable.
 
 export const metadata: Metadata = {
   title: 'Project Bootstrapper — Bantuin Coding',
