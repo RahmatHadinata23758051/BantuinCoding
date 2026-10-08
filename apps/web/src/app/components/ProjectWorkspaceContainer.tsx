@@ -627,6 +627,10 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
       const validationData = (await validation.json().catch(() => null)) as { error?: string; report?: { isConsistent?: boolean } } | null
       if (!validation.ok) throw new Error(validationData?.error ?? t('exportValidationFailed'))
       if (validationData?.report && !validationData.report.isConsistent) {
+        // Validation demotes EXPORTABLE projects back to READY on the server.
+        // Keep the export desk in sync so it does not claim the stale pack is complete.
+        setProjectStatus('READY')
+        setHasExportedZip(false)
         throw new Error(t('consistencyIssues'))
       }
       const download = await fetch(`/api/projects/${initialData.id}/export`)
