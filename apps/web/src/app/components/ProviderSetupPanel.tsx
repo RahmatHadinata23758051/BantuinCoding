@@ -84,6 +84,8 @@ export function ProviderSetupPanel() {
   const [autoTestStatus, setAutoTestStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle')
   const [modelSearch, setModelSearch] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autoTestRequestRef = useRef(0)
+  const autoTestAbortRef = useRef<AbortController | null>(null)
 
   const loadSavedKeys = async () => {
     setLoadingKeys(true)
@@ -119,13 +121,14 @@ export function ProviderSetupPanel() {
     return () => window.clearTimeout(timer)
   }, [])
 
-  const runAutoTest = async (key: string, providerName: Provider, customUrl?: string) => {
-    if (!key || key.length < 8) {
-      setAvailableModels([])
-      setModelsLoaded(false)
-      setAutoTestStatus('idle')
-      return
-    }
+  const runAutoTest = async (
+    requestId: number,
+    signal: AbortSignal,
+    key: string,
+    providerName: Provider,
+    customUrl?: string,
+  ) => {
+    if (signal.aborted || autoTestRequestRef.current !== requestId) return
 
     setAutoTestStatus('testing')
     setMessage(null)
@@ -139,8 +142,11 @@ export function ProviderSetupPanel() {
           apiKey: key,
           baseUrl: customUrl || undefined,
         }),
+        signal,
       })
       const modelsData = (await modelsResponse.json()) as { models?: ModelInfo[]; error?: string }
+
+      if (signal.aborted || autoTestRequestRef.current !== requestId) return
 
       if (modelsData.models && modelsData.models.length > 0) {
         setAvailableModels(modelsData.models)
@@ -159,8 +165,11 @@ export function ProviderSetupPanel() {
           apiKey: key,
           baseUrl: customUrl || undefined,
         }),
+        signal,
       })
       const testData = (await testResponse.json()) as TestResult
+
+      if (signal.aborted || autoTestRequestRef.current !== requestId) return
 
       if (testData.status === 'VALID' && testData.models && testData.models.length > 0) {
         setAvailableModels(testData.models)
@@ -173,6 +182,7 @@ export function ProviderSetupPanel() {
         setAutoTestStatus('invalid')
       }
     } catch {
+      if (signal.aborted || autoTestRequestRef.current !== requestId) return
       setAvailableModels([])
       setModelsLoaded(false)
       setAutoTestStatus('invalid')
@@ -180,23 +190,39 @@ export function ProviderSetupPanel() {
   }
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    if (autoTestAbortRef.current) {
+      autoTestAbortRef.current.abort()
+      autoTestAbortRef.current = null
+    }
+    const requestId = ++autoTestRequestRef.current
 
     if (apiKey.length < 8) {
-      setTimeout(() => {
-        setAvailableModels([])
-        setModelsLoaded(false)
-        setAutoTestStatus('idle')
-      }, 0)
+      setAvailableModels([])
+      setModelsLoaded(false)
+      setAutoTestStatus('idle')
       return
     }
 
     debounceRef.current = setTimeout(() => {
-      void runAutoTest(apiKey, provider, baseUrl)
+      const controller = new AbortController()
+      autoTestAbortRef.current = controller
+      void runAutoTest(requestId, controller.signal, apiKey, provider, baseUrl)
     }, 600)
 
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        debounceRef.current = null
+      }
+      if (autoTestAbortRef.current) {
+        autoTestAbortRef.current.abort()
+        autoTestAbortRef.current = null
+      }
+      autoTestRequestRef.current += 1
     }
   }, [apiKey, provider, baseUrl])
 
