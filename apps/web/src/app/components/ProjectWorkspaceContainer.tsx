@@ -637,53 +637,40 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   }
 
   const generateOneShotKickoffPrompt = (agent: string) => {
-    return `# 🚀 AUTONOMOUS ONE-SHOT EXECUTION DIRECTIVE — ${initialData.name}
+    return `# Project implementation brief — ${initialData.name}
 
-## 1. AGENT IDENTITY & RESPONSIBILITY
-You are the primary autonomous coding agent (${formatLabel(agent)}) assigned to implement **${initialData.name}** (${initialData.classification}) from end to end.
-This is an **AUTONOMOUS ONE-SHOT EXECUTION**. You have full authority to inspect the codebase, design implementations, write files, run tests, verify quality gates, and autonomously advance through the entire backlog until the project is 100% complete and production-ready.
+You are the coding agent (${formatLabel(agent)}) preparing an implementation plan for **${initialData.name}** (${initialData.classification}). Use the generated pack as the source of project context, and keep the human owner in control of scope, sequencing, and execution.
 
-## 2. MANDATORY SPECIFICATION READING ORDER (DO NOT SKIP)
-Before authoring or modifying any code in the workspace, you MUST read the specification files in this exact priority order:
-1. \`PRD.md\` — Product Requirements Document (Vision, Goals, Non-Goals, User Flows, Feature Scope)
-2. \`SRS.md\` — Software Requirements Specification (Functional Specs FR-xxx, Data Requirements, Error Behavior)
-3. \`DESIGN.md\` — Locked Visual Contract (Palette, Typography, Borders, Radii, Shadows, Components, Motion, Responsive, Accessibility)
-3. \`Agent.md\` — Agent Operational Contract (Hierarchy, Workflow, Definition of Done, Quality Gates)
-4. \`BACKLOG.md\` — Phased Backlog (Atomic Tasks with Acceptance Criteria & Verification Steps)
-5. \`ARCHITECTURE.md\` — System Architecture (Component Hierarchy, Boundaries, Data Flow, DB Design)
-6. \`RULES.md\` — Non-Negotiable Hard Constraints (Tech Stack Immutability, Secret Protection, Zero-Warning Rule)
-7. \`SKILLS.md\` — Recommended Agent Skills & Triggers
+## Pack reading order
+Read the available specification files before making implementation decisions:
+1. \`PRD.md\` — product goals, scope, user flows, and non-goals
+2. \`ARCHITECTURE.md\` — system boundaries, data flow, and technical structure
+3. \`DESIGN.md\` — the visual authority for interface direction, interaction, responsive behavior, and accessibility
+4. \`Agent.md\` — coding-agent workflow, constraints, and quality expectations
+5. \`BACKLOG.md\` — implementation tasks, acceptance criteria, and verification steps
+6. \`SRS.md\` — read this only when it is included in the pack; it provides detailed software requirements for higher-complexity projects
 
-## 3. VISUAL SOURCE OF TRUTH (LOCKED)
-- \`DESIGN.md\` is the sole authority for visual design. Follow its chosen archetype, references, palette, typography, spacing, borders, radii, shadows, components, motion, responsive behavior, and accessibility rules exactly.
-- Do not infer, invent, copy, or override visual tokens from this prompt, PRD.md, SRS.md, Agent.md, BACKLOG.md, RULES.md, or any internal BantuinCoding theme.
-- If another file conflicts with \`DESIGN.md\`, stop and resolve the conflict in favor of \`DESIGN.md\`; never silently substitute a different visual system.
-- ZERO AI-SLOP: Prohibit generic templates, glassmorphism, decorative gradients, fake metrics, unadapted library widgets, and childish cartoon styling unless \`DESIGN.md\` explicitly requires an equivalent direction.
+The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`, \`DESIGN.md\`, \`Agent.md\`, and \`BACKLOG.md\`. Guidance that older packs may have placed in standalone \`RULES.md\` or \`SKILLS.md\` is incorporated into \`Agent.md\`; do not expect those standalone files.
 
-## 4. AUTONOMOUS BACKLOG EXECUTION LOOP
-- **AUTONOMOUS EXECUTION PROTOCOL (DO NOT STOP MIDWAY):**
-  1. Read \`BACKLOG.md\` and start with Phase 1, task \`BK-001\`.
-  2. Implement the task completely according to its acceptance criteria and \`Agent.md\` guidelines.
-  3. Run quality gates: run typecheck, linter, and unit/integration tests. Verify there are ZERO errors, zero warnings, and zero regressions.
-  4. **QUALITY CHECKPOINT:** Before marking any task as \`DONE\`, you MUST verify there are no bugs or errors by running the full test suite, linter, and typecheck. If any issues are found, fix them completely before proceeding.
-  5. Once and ONLY once the task is 100% verified clear without any bugs or errors, mark the task as \`DONE\`.
-  6. Immediately advance to the next unblocked task in dependency order without pausing, asking for permission, or waiting for human intervention.
-  7. Repeat this continuous execution cycle task-by-task across all phases.
-  8. The mission is complete ONLY when ALL tasks across all phases in \`BACKLOG.md\` are marked \`DONE\` and the final test suite and build pass with zero errors.
-
-## 5. KICKOFF INSTRUCTION
-Begin execution immediately:
-1. Confirm receipt of this autonomous directive.
-2. Read the specification files (\`PRD.md\`, \`SRS.md\`, \`DESIGN.md\`, \`Agent.md\`).
-3. Start implementing task \`BK-001\` and autonomously drive all backlog tasks to completion.`
+## Working guidance
+- Treat \`DESIGN.md\` as the visual source of truth. Do not invent a competing visual system or override it with conventions from this prompt.
+- Review the backlog and its dependencies, then propose the next appropriate task for the human owner’s approval before implementation.
+- Follow the pack’s quality gates, verify your work with the relevant checks, and report assumptions, changes, and unresolved decisions clearly.
+- Do not assume that every backlog item is in scope for this session; do not silently expand the project beyond the generated requirements.`
   }
 
   const handleCopyOneShotPrompt = () => {
     const promptText = generateOneShotKickoffPrompt(selectedAgentTarget)
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      void navigator.clipboard.writeText(promptText)
-      setCopiedPrompt(true)
-      setTimeout(() => setCopiedPrompt(false), 2000)
+      void navigator.clipboard
+        .writeText(promptText)
+        .then(() => {
+          setCopiedPrompt(true)
+          setTimeout(() => setCopiedPrompt(false), 2000)
+        })
+        .catch(() => {
+          setCopiedPrompt(false)
+        })
     }
   }
 
