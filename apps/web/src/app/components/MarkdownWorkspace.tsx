@@ -50,17 +50,17 @@ const viewModes: Array<{
 function getStatusDotClass(status: string) {
   switch (status) {
     case 'READY':
-      return 'bg-[var(--mint)]'
+      return 'bg-[#62b894]'
     case 'MODIFIED':
-      return 'bg-[var(--cobalt)]'
+      return 'bg-[#0075de]'
     case 'OUTDATED':
-      return 'bg-[var(--electric-yellow)]'
+      return 'bg-[#ffb110]'
     case 'FAILED':
-      return 'bg-[var(--action-red)]'
+      return 'bg-[#e32d14]'
     case 'GENERATING':
-      return 'bg-[var(--cobalt)] motion-safe:animate-pulse-dot'
+      return 'bg-[#0075de] motion-safe:animate-pulse-dot'
     default:
-      return 'bg-[var(--paper-dim)]'
+      return 'bg-[#757575]'
   }
 }
 
@@ -213,8 +213,8 @@ export function MarkdownWorkspace({
     return (
       <Panel className="p-8 text-center" aria-label={t('markdownWorkspace')}>
         <div className="mx-auto flex max-w-md flex-col items-center gap-3">
-          <FileText className="size-9 text-[var(--paper-muted)]" aria-hidden="true" />
-          <p className="text-sm font-semibold leading-6 text-[var(--paper-muted)]">
+          <FileText className="size-9 text-[#757575]" aria-hidden="true" />
+          <p className="text-sm font-semibold leading-6 text-[#757575]">
             {t('markdownEmpty')}
           </p>
         </div>
@@ -226,15 +226,15 @@ export function MarkdownWorkspace({
 
   return (
     <section
-      className="flex min-h-[760px] w-full flex-col overflow-hidden border-2 border-[var(--ink)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-[var(--shadow-hard)] lg:h-[760px] lg:flex-row"
+      className="flex min-h-[760px] w-full flex-col overflow-hidden rounded-xl border border-black/10 bg-white text-[var(--ink)] lg:h-[760px] lg:flex-row"
       aria-label={t('markdownWorkspace')}
     >
-      <aside className="border-b-2 border-[var(--ink)] bg-[var(--lavender-dim)] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r-2">
-        <div className="flex items-start gap-3 border-b-2 border-[var(--ink)] bg-[var(--lavender)] px-4 py-4">
-          <PanelLeft className="mt-0.5 size-5 flex-shrink-0" aria-hidden="true" />
+      <aside className="border-b border-black/10 bg-[#f6f5f4] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r">
+        <div className="flex items-start gap-3 border-b border-black/10 bg-white px-4 py-4">
+          <PanelLeft className="mt-0.5 size-5 flex-shrink-0 text-[#0075de]" aria-hidden="true" />
           <div className="min-w-0">
-            <h2 className="text-base font-black tracking-[-0.03em]">{t('markdownDocuments')}</h2>
-            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--ink-soft)]">
+            <h2 className="text-base font-semibold tracking-[-0.02em]">{t('markdownDocuments')}</h2>
+            <p className="mt-1 text-xs leading-5 text-[#615d59]">
               {t('markdownDocumentsDesc')}
             </p>
           </div>
@@ -255,24 +255,24 @@ export function MarkdownWorkspace({
                 onClick={() => handleSelectArtifact(artifact)}
                 aria-current={isSelected ? 'page' : undefined}
                 className={cn(
-                  'nb-button-press min-w-[15rem] border-2 border-[var(--ink)] px-3 py-3 text-left shadow-[var(--shadow-xs)] lg:min-w-0',
+                  'min-w-[15rem] rounded-lg border border-black/10 px-3 py-3 text-left transition-colors lg:min-w-0',
                   isSelected
-                    ? 'bg-[var(--electric-yellow)] text-[var(--ink)]'
-                    : 'bg-[var(--paper-raised)] text-[var(--ink)] hover:bg-white',
+                    ? 'bg-[#e6f3fe] text-[var(--ink)] ring-1 ring-[#0075de]/20'
+                    : 'bg-white text-[var(--ink)] hover:bg-[#f6f5f4]',
                 )}
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block truncate font-mono text-sm font-black leading-5">
+                    <span className="block truncate font-mono text-sm font-medium leading-5">
                       {artifact.path}
                     </span>
-                    <span className="mt-1 block truncate text-xs font-semibold leading-5 text-[var(--paper-muted)]">
+                    <span className="mt-1 block truncate text-xs leading-5 text-[#757575]">
                       {artifactBadge.label}
                     </span>
                   </span>
                   <span
                     className={cn(
-                      'mt-1 size-3 flex-shrink-0 border-2 border-[var(--ink)]',
+                      'mt-1 size-2.5 flex-shrink-0 rounded-full',
                       getStatusDotClass(artifact.status),
                     )}
                     title={artifactBadge.label}
@@ -285,17 +285,17 @@ export function MarkdownWorkspace({
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--paper)]">
-        <header className="border-b-2 border-[var(--ink)] bg-[var(--paper-raised)]">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f6f5f4]">
+        <header className="border-b border-black/10 bg-white">
           <div className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:justify-between lg:px-5">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate font-mono text-base font-black tracking-tight">
+                <h1 className="truncate font-mono text-base font-medium tracking-tight">
                   {activeArtifact?.path}
                 </h1>
                 {activeArtifact && <StatusBadge tone={statusTone(activeArtifact.status)}>{badge?.label}</StatusBadge>}
               </div>
-              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--paper-muted)]">
+              <p className="mt-1 text-xs leading-5 text-[#757575]">
                 {activeArtifact
                   ? t('updated', { date: formatUpdatedAt(activeArtifact.updatedAt) })
                   : t('markdownNoArtifact')}
@@ -305,10 +305,10 @@ export function MarkdownWorkspace({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
               <p
                 className={cn(
-                  'min-h-5 text-xs font-bold leading-5',
+                  'min-h-5 text-xs leading-5',
                   saveMessageType === 'error'
-                    ? 'text-[var(--action-red)]'
-                    : 'text-[var(--paper-muted)]',
+                    ? 'text-[#e32d14]'
+                    : 'text-[#757575]',
                 )}
                 role={saveMessageType === 'error' ? 'alert' : 'status'}
                 aria-live={saveMessageType === 'error' ? 'assertive' : 'polite'}
@@ -336,7 +336,7 @@ export function MarkdownWorkspace({
                 )}
 
                 <div
-                  className="grid grid-cols-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-1 shadow-[var(--shadow-xs)]"
+                  className="grid grid-cols-3 rounded-lg border border-black/10 bg-[#f6f5f4] p-1"
                   role="group"
                   aria-label={tCommon('workspaceViewMode')}
                 >
@@ -350,10 +350,10 @@ export function MarkdownWorkspace({
                         onClick={() => setActiveTab(id)}
                         aria-pressed={isActive}
                         className={cn(
-                          'inline-flex items-center justify-center gap-2 border-2 border-transparent px-3 py-2 text-xs font-black transition-colors sm:min-w-24',
+                          'inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-3 py-2 text-xs font-medium transition-colors sm:min-w-24',
                           isActive
-                            ? 'border-[var(--ink)] bg-[var(--electric-yellow)] text-[var(--ink)]'
-                            : 'text-[var(--paper-muted)] hover:border-[var(--ink)] hover:bg-white hover:text-[var(--ink)]',
+                            ? 'border-[#0075de]/20 bg-white text-[#0075de]'
+                            : 'text-[#757575] hover:bg-white hover:text-[var(--ink)]',
                         )}
                       >
                         <Icon className="size-3.5" aria-hidden="true" />
@@ -387,23 +387,23 @@ export function MarkdownWorkspace({
           {(activeTab === 'editor' || activeTab === 'split') && (
             <section
               className={cn(
-                'flex min-h-[360px] flex-col overflow-hidden bg-[var(--ink)] text-[var(--paper-raised)]',
-                activeTab === 'split' && 'border-b-2 border-[var(--ink)] lg:border-b-0 lg:border-r-2',
+                'flex min-h-[360px] flex-col overflow-hidden bg-[#f6f5f4] text-[var(--ink)]',
+                activeTab === 'split' && 'border-b border-black/10 lg:border-b-0 lg:border-r',
               )}
               aria-labelledby="markdown-editor-title"
             >
-              <div className="flex items-center justify-between border-b-2 border-[var(--paper-raised)] bg-[var(--ink)] px-4 py-2.5">
-                <h2 id="markdown-editor-title" className="text-sm font-black">
+              <div className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-2.5">
+                <h2 id="markdown-editor-title" className="text-sm font-semibold">
                   {t('markdownSource')}
                 </h2>
-                <span className="font-mono text-xs text-[var(--paper-dim)]">
+                <span className="font-mono text-xs text-[#757575]">
                   {content.length.toLocaleString()} chars
                 </span>
               </div>
               <textarea
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
-                className="min-h-0 flex-1 resize-none bg-[var(--ink)] px-4 py-5 font-mono text-sm leading-7 text-[var(--paper-raised)] caret-[var(--electric-yellow)] placeholder:text-[var(--paper-dim)] focus:bg-[var(--ink-soft)] focus-visible:outline-[3px] focus-visible:outline-offset-[-6px] focus-visible:outline-[var(--electric-yellow)] sm:px-6"
+                className="min-h-0 flex-1 resize-none bg-white px-4 py-5 font-mono text-sm leading-7 text-[var(--ink)] caret-[#0075de] placeholder:text-[#757575] focus:bg-[#f6f5f4] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#0075de] sm:px-6"
                 placeholder={t('markdownWritePlaceholder')}
                 aria-label={tCommon('markdownSourceContent')}
                 spellCheck={false}
@@ -413,20 +413,20 @@ export function MarkdownWorkspace({
 
           {(activeTab === 'preview' || activeTab === 'split') && (
             <section
-              className="flex min-h-[360px] flex-col overflow-hidden bg-[var(--paper)]"
+              className="flex min-h-[360px] flex-col overflow-hidden bg-[#f6f5f4]"
               aria-labelledby="markdown-preview-title"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-[var(--ink)] bg-[var(--mint-dim)] px-4 py-2.5">
-                <h2 id="markdown-preview-title" className="text-sm font-black">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 bg-[#e6f3fe] px-4 py-2.5">
+                <h2 id="markdown-preview-title" className="text-sm font-semibold">
                   {t('markdownPreview')}
                 </h2>
-                <span className="text-xs font-bold text-[var(--paper-muted)]">
+                <span className="text-xs text-[#757575]">
                   {t('markdownUnsafeStripped')}
                 </span>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 <article
-                  className="prose-doc bg-[var(--paper-raised)] p-5 shadow-[var(--shadow-sm)]"
+                  className="prose-doc rounded-xl border border-black/10 bg-white p-5"
                   dangerouslySetInnerHTML={{
                     __html: renderedPreview,
                   }}
