@@ -74,7 +74,7 @@ const COLUMNS: Array<{
     id: 'PENDING',
     label: 'Backlog',
     sublabel: 'Waiting on prerequisites',
-    color: '#757575',
+    color: '#615d59',
     badgeTone: 'neutral',
     icon: Clock,
   },
@@ -337,7 +337,7 @@ export function BacklogKanbanBoard({
           </div>
 
           <div className="flex items-center gap-2">
-            <Layers size={16} className="text-[#757575]" aria-hidden="true" />
+            <Layers size={16} className="text-[#615d59]" aria-hidden="true" />
             <label htmlFor="phase-filter" className="text-xs font-medium">
               {t('phaseLabel')}
             </label>
@@ -363,7 +363,7 @@ export function BacklogKanbanBoard({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('backlogSearch')}
               aria-label={t('backlogSearch')}
-              className="w-48 rounded-md border border-black/10 bg-white px-3 py-1.5 font-mono text-xs font-medium text-[var(--ink)] placeholder:text-[#757575] focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
+              className="w-48 rounded-md border border-black/10 bg-white px-3 py-1.5 font-mono text-xs font-medium text-[var(--ink)] placeholder:text-[#615d59] focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
             />
           </div>
         </div>
@@ -467,10 +467,10 @@ export function BacklogKanbanBoard({
               <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
                 {colTasks.length === 0 ? (
                   <div className="flex h-28 flex-col items-center justify-center rounded-lg border border-dashed border-black/10 bg-[#f6f5f4] p-3 text-center">
-                    <p className="font-mono text-xs font-medium text-[#757575]">
+                    <p className="font-mono text-xs font-medium text-[#615d59]">
                       {t('backlogNoTasks', { column: getColumnLabel(col.id) })}
                     </p>
-                    <p className="mt-1 text-[0.68rem] text-[#757575]">
+                    <p className="mt-1 text-[0.68rem] text-[#615d59]">
                       {t('backlogDragHint')}
                     </p>
                   </div>
@@ -540,7 +540,7 @@ export function BacklogKanbanBoard({
                         </h4>
 
                         {/* Task Description Snippet */}
-                        <p className="mt-1 line-clamp-2 text-[0.72rem] font-medium leading-4 text-[#757575]">
+                        <p className="mt-1 line-clamp-2 text-[0.72rem] font-medium leading-4 text-[#615d59]">
                           {task.description}
                         </p>
 
@@ -579,7 +579,7 @@ export function BacklogKanbanBoard({
                           >
                             {task.acceptanceCriteria.length > 0 && (
                               <div>
-                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#757575]">
+                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#615d59]">
                                   {t('backlogAcceptanceCriteria')}
                                 </span>
                                 <ul className="mt-1 list-disc space-y-0.5 pl-3.5">
@@ -594,7 +594,7 @@ export function BacklogKanbanBoard({
 
                             {task.definitionOfDone && (
                               <div>
-                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#757575]">
+                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#615d59]">
                                   {t('backlogDefinitionOfDone')}
                                 </span>
                                 <p className="mt-0.5 font-medium text-[var(--ink)]">
@@ -605,7 +605,7 @@ export function BacklogKanbanBoard({
 
                             {task.relevantDocs.length > 0 && (
                               <div>
-                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#757575]">
+                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#615d59]">
                                   {t('backlogRelevantDocs')}
                                 </span>
                                 <p className="mt-0.5 font-mono text-[0.65rem] font-medium text-[#0075de]">
@@ -644,7 +644,7 @@ export function BacklogKanbanBoard({
                           aria-expanded={isExpanded}
                           aria-controls={`task-details-${task.id}`}
                           onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                          className="mt-2.5 flex items-center justify-between border-t border-black/10 pt-1.5 font-mono text-[0.65rem] font-medium text-[#757575] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
+                          className="mt-2.5 flex items-center justify-between border-t border-black/10 pt-1.5 font-mono text-[0.65rem] font-medium text-[#615d59] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
                         >
                           <span>{isExpanded ? t('backlogHideSpecs') : t('backlogViewSpecs')}</span>
                           <ChevronDown
