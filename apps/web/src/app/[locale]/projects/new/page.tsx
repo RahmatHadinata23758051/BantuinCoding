@@ -2,10 +2,10 @@ import { ArrowRight, KeyRound, Lightbulb, ListChecks } from 'lucide-react'
 import { Link } from '@/i18n/routing'
 import { redirect } from 'next/navigation'
 
-import { PipelineSpine } from '@/app/components/PipelineSpine'
-import { Caption, Input, PageFrame, Panel, Select, StatusBadge, Textarea, TopBar, buttonClassName } from '@/app/components/ui'
+import { StatusBadge } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { createProject } from '@/lib/projects/project-service'
+import { getTranslations } from 'next-intl/server'
 
 async function handleCreateProject(formData: FormData) {
   'use server'
@@ -52,16 +52,9 @@ const AGENTS = [
   { value: 'OTHER', label: 'Other agent' },
 ]
 
-const NEXT_STEPS = [
-  'nextStep1',
-  'nextStep2',
-  'nextStep3',
-  'nextStep4',
-  'nextStep5',
-  'nextStep6',
-]
+const NEXT_STEPS = ['nextStep1', 'nextStep2', 'nextStep3', 'nextStep4', 'nextStep5', 'nextStep6']
 
-import { getTranslations } from 'next-intl/server'
+const PIPELINE_STEPS = ['Idea', 'Clarify', 'Context', 'Generate', 'Review', 'Export']
 
 export default async function NewProjectPage() {
   const t = await getTranslations('NewProject')
@@ -69,157 +62,97 @@ export default async function NewProjectPage() {
   if (!session?.user?.id) redirect('/login')
 
   return (
-    <PageFrame width="7xl">
-      <TopBar>
-        <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
-          <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
+    <main className="min-h-screen bg-[#f6f5f4] px-4 py-5 text-[#111111] sm:px-8 lg:px-12">
+      <div className="mx-auto max-w-6xl">
+        <header className="flex items-center justify-between gap-4 border-b border-black/10 pb-5">
+          <Link href="/dashboard" className="text-sm font-medium text-black/60 transition-colors hover:text-black focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0075de]">
             {t('backDashboard')}
           </Link>
-          <span>{t('breadcrumb')}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <StatusBadge tone="neutral">{t('initialStateDraft')}</StatusBadge>
-        </div>
-      </TopBar>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm text-black/45 sm:inline">{t('breadcrumb')}</span>
+            <StatusBadge tone="neutral">{t('initialStateDraft')}</StatusBadge>
+          </div>
+        </header>
 
-      <div className="border-b-2 border-[var(--ink)] bg-[var(--paper)] p-4 sm:p-6">
-          <PipelineSpine current="idea" compact />
-        </div>
+        <nav aria-label="Project workflow" className="mt-8 overflow-x-auto border-b border-black/10 pb-5">
+          <ol className="flex min-w-[560px] items-center justify-between gap-3">
+            {PIPELINE_STEPS.map((step, index) => (
+              <li key={step} className="flex flex-1 items-center gap-2 text-xs font-medium text-black/40 last:flex-none">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#0075de] text-[11px] font-semibold text-white" aria-current={index === 0 ? 'step' : undefined}>
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className={index === 0 ? 'text-black' : undefined}>{step}</span>
+                {index < PIPELINE_STEPS.length - 1 && <span className="mx-2 h-px flex-1 bg-black/10" aria-hidden="true" />}
+              </li>
+            ))}
+          </ol>
+        </nav>
 
-        <section className="grid lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-          <div className="border-b-2 border-[var(--ink)] bg-[var(--paper-raised)] p-5 sm:p-8 lg:border-b-0 lg:border-r-2">
-            <Caption>{t('caption')}</Caption>
-            <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-6xl">
-              {t('title')}
-            </h1>
-            <p className="mt-5 max-w-2xl text-sm leading-6 text-[var(--paper-muted)]">
-              {t('subtitle')}
-            </p>
+        <div className="grid gap-12 py-12 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-20 lg:py-16">
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#0075de]">{t('caption')}</p>
+            <h1 className="mt-5 max-w-2xl text-4xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-6xl">{t('title')}</h1>
+            <p className="mt-6 max-w-xl text-base leading-7 text-[#615d59]">{t('subtitle')}</p>
 
-            <form action={handleCreateProject} className="mt-8 grid gap-6">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="name" className="text-sm font-black">
-                  {t('projectName')}
-                </label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  minLength={2}
-                  maxLength={100}
-                  placeholder={t('projectNamePlaceholder')}
-                />
+            <form action={handleCreateProject} className="mt-12 max-w-2xl space-y-8">
+              <div>
+                <label htmlFor="name" className="text-sm font-semibold">{t('projectName')}</label>
+                <input id="name" name="name" type="text" required minLength={2} maxLength={100} placeholder={t('projectNamePlaceholder')} className="mt-2 h-12 w-full rounded-lg border border-black/15 bg-white px-4 text-base outline-none transition-colors placeholder:text-black/35 focus:border-[#0075de] focus:ring-2 focus:ring-[#0075de]/15" />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label htmlFor="rawIdea" className="text-sm font-black">
-                  {t('projectIdea')}
-                </label>
-                <Textarea
-                  id="rawIdea"
-                  name="rawIdea"
-                  rows={10}
-                  required
-                  minLength={10}
-                  maxLength={5000}
-                  placeholder={t('projectIdeaPlaceholder')}
-                  className="min-h-64 leading-6"
-                />
-                <p className="text-xs leading-5 text-[var(--paper-muted)]">
-                  {t('projectIdeaNote')}
-                </p>
+              <div>
+                <label htmlFor="rawIdea" className="text-sm font-semibold">{t('projectIdea')}</label>
+                <textarea id="rawIdea" name="rawIdea" rows={10} required minLength={10} maxLength={5000} placeholder={t('projectIdeaPlaceholder')} className="mt-2 min-h-64 w-full resize-y rounded-lg border border-black/15 bg-white px-4 py-3 text-base leading-7 outline-none transition-colors placeholder:text-black/35 focus:border-[#0075de] focus:ring-2 focus:ring-[#0075de]/15" />
+                <p className="mt-2 text-sm leading-6 text-[#615d59]">{t('projectIdeaNote')}</p>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="classification" className="text-sm font-black">
-                    {t('classification')}
-                  </label>
-                  <Select id="classification" name="classification" defaultValue="SAAS">
-                    {CLASSIFICATIONS.map((classification) => (
-                      <option key={classification.value} value={classification.value}>
-                        {classification.label}
-                      </option>
-                    ))}
-                  </Select>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="classification" className="text-sm font-semibold">{t('classification')}</label>
+                  <select id="classification" name="classification" defaultValue="SAAS" className="mt-2 h-12 w-full rounded-lg border border-black/15 bg-white px-3 text-sm outline-none focus:border-[#0075de] focus:ring-2 focus:ring-[#0075de]/15">
+                    {CLASSIFICATIONS.map((classification) => <option key={classification.value} value={classification.value}>{classification.label}</option>)}
+                  </select>
                 </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="targetAgent" className="text-sm font-black">
-                    {t('targetAgent')}
-                  </label>
-                  <Select id="targetAgent" name="targetAgent" defaultValue="CLAUDE_CODE">
-                    {AGENTS.map((agent) => (
-                      <option key={agent.value} value={agent.value}>
-                        {agent.label}
-                      </option>
-                    ))}
-                  </Select>
+                <div>
+                  <label htmlFor="targetAgent" className="text-sm font-semibold">{t('targetAgent')}</label>
+                  <select id="targetAgent" name="targetAgent" defaultValue="CLAUDE_CODE" className="mt-2 h-12 w-full rounded-lg border border-black/15 bg-white px-3 text-sm outline-none focus:border-[#0075de] focus:ring-2 focus:ring-[#0075de]/15">
+                    {AGENTS.map((agent) => <option key={agent.value} value={agent.value}>{agent.label}</option>)}
+                  </select>
                 </div>
-              </div>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="language" className="text-sm font-black">
-                    {t('language')}
-                  </label>
-                  <Select id="language" name="language" defaultValue="id">
+                <div>
+                  <label htmlFor="language" className="text-sm font-semibold">{t('language')}</label>
+                  <select id="language" name="language" defaultValue="id" className="mt-2 h-12 w-full rounded-lg border border-black/15 bg-white px-3 text-sm outline-none focus:border-[#0075de] focus:ring-2 focus:ring-[#0075de]/15">
                     <option value="id">Bahasa Indonesia</option>
                     <option value="en">English</option>
-                  </Select>
+                  </select>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 border-t-[3px] border-[var(--ink)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold text-[var(--paper-muted)]">
-                  <Lightbulb size={17} className="text-[var(--proof-amber)]" aria-hidden="true" />
-                  {t('refineNote')}
-                </div>
-                <button
-                  type="submit"
-                  className={buttonClassName({ variant: 'primary', size: 'lg', className: 'w-full sm:w-auto' })}
-                >
-                  {t('createBtn')} <ArrowRight size={18} aria-hidden="true" />
-                </button>
+              <div className="flex flex-col gap-4 border-t border-black/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <p className="flex items-start gap-2 text-sm leading-6 text-[#615d59]"><Lightbulb size={18} className="mt-1 shrink-0 text-[#e89d01]" aria-hidden="true" />{t('refineNote')}</p>
+                <button type="submit" className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0075de] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#0068c7] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0075de] sm:w-auto">{t('createBtn')} <ArrowRight size={17} aria-hidden="true" /></button>
               </div>
             </form>
-          </div>
+          </section>
 
-          <aside className="bg-[var(--lavender)] p-5 sm:p-8">
-            <Panel tone="yellow" className="p-5">
-              <ListChecks size={28} strokeWidth={2.5} aria-hidden="true" />
-              <h2 className="mt-4 text-2xl font-black tracking-[-0.04em]">{t('whatHappensNext')}</h2>
-              <ol className="mt-5 grid gap-4">
-                {NEXT_STEPS.map((step, index) => (
-                  <li key={step} className="grid grid-cols-[34px_1fr] gap-3">
-                    <span className="flex size-8 items-center justify-center border-2 border-[var(--ink)] bg-[var(--paper-raised)] font-mono text-xs font-black shadow-[var(--shadow-xs)]">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                    <span className="pt-1 text-sm font-bold leading-5">{t(step as Parameters<typeof t>[0])}</span>
-                  </li>
-                ))}
+          <aside className="space-y-8 lg:pt-12">
+            <section className="rounded-xl bg-white p-6 ring-1 ring-black/8">
+              <ListChecks size={24} className="text-[#0075de]" aria-hidden="true" />
+              <h2 className="mt-5 text-2xl font-semibold tracking-[-0.03em]">{t('whatHappensNext')}</h2>
+              <ol className="mt-6 space-y-5">
+                {NEXT_STEPS.map((step, index) => <li key={step} className="flex gap-3 text-sm leading-6 text-[#615d59]"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#e6f3fe] text-xs font-semibold text-[#0075de]">{index + 1}</span><span>{t(step as Parameters<typeof t>[0])}</span></li>)}
               </ol>
-            </Panel>
+            </section>
 
-            <Panel raised={false} className="mt-6 p-5 shadow-[var(--shadow-sm)]">
-              <div className="flex items-start gap-3">
-                <KeyRound className="mt-0.5 shrink-0" size={21} aria-hidden="true" />
-                <div>
-                  <p className="font-mono text-xs font-black">{t('prerequisite')}</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--paper-muted)]">
-                    {t('prerequisiteDesc')}
-                  </p>
-                  <Link
-                    href="/dashboard/provider"
-                    className="mt-3 inline-block text-sm font-black underline decoration-2 underline-offset-4"
-                  >
-                    {t('openProviderDesk')}
-                  </Link>
-                </div>
-              </div>
-            </Panel>
+            <section className="rounded-xl bg-[#e6f3fe] p-6">
+              <KeyRound size={21} className="text-[#0075de]" aria-hidden="true" />
+              <p className="mt-4 text-sm font-semibold">{t('prerequisite')}</p>
+              <p className="mt-2 text-sm leading-6 text-[#615d59]">{t('prerequisiteDesc')}</p>
+              <Link href="/dashboard/provider" className="mt-4 inline-flex text-sm font-semibold text-[#0075de] underline decoration-[#0075de]/30 underline-offset-4 transition-colors hover:text-[#005cae] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0075de]">{t('openProviderDesk')}</Link>
+            </section>
           </aside>
-        </section>
-    </PageFrame>
+        </div>
+      </div>
+    </main>
   )
 }
