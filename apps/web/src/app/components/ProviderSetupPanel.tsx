@@ -66,6 +66,7 @@ export function ProviderSetupPanel() {
   const [meta, setMeta] = useState<ProviderMeta | null>(null)
   const [savedKeys, setSavedKeys] = useState<SavedKeyItem[]>([])
   const [loadingKeys, setLoadingKeys] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
 
   // Form state
@@ -86,22 +87,27 @@ export function ProviderSetupPanel() {
 
   const loadSavedKeys = async () => {
     setLoadingKeys(true)
+    setLoadError(false)
     try {
       const res = await fetch('/api/provider/keys')
-      if (res.ok) {
-        const data = (await res.json()) as { keys?: SavedKeyItem[] }
-        setSavedKeys(data.keys || [])
-        const activeKey = data.keys?.find((k) => k.isActive)
-        if (activeKey) {
-          setMeta({
-            configured: true,
-            provider: activeKey.provider,
-            model: activeKey.model,
-            configuredAt: activeKey.lastValidated || undefined,
-          })
-        }
+      if (!res.ok) {
+        setLoadError(true)
+        return
       }
-    } catch {} finally {
+      const data = (await res.json()) as { keys?: SavedKeyItem[] }
+      setSavedKeys(data.keys || [])
+      const activeKey = data.keys?.find((k) => k.isActive)
+      if (activeKey) {
+        setMeta({
+          configured: true,
+          provider: activeKey.provider,
+          model: activeKey.model,
+          configuredAt: activeKey.lastValidated || undefined,
+        })
+      }
+    } catch {
+      setLoadError(true)
+    } finally {
       setLoadingKeys(false)
     }
   }
@@ -367,7 +373,17 @@ export function ProviderSetupPanel() {
           </div>
 
           {/* Saved Keys List */}
-          {savedKeys.length > 0 ? (
+          {loadingKeys ? (
+            <div className="flex items-center gap-2 border-y border-black/[0.08] py-4 text-xs text-[var(--paper-muted)]" role="status">
+              <LoaderCircle size={14} className="animate-spin" aria-hidden="true" />
+              {t('loadingKeys')}
+            </div>
+          ) : loadError ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-y border-[var(--action-red)]/30 bg-[var(--action-red-dim)] px-4 py-3 text-xs text-[var(--ink)]" role="alert">
+              <span>{t('loadFailed')}</span>
+              <Button type="button" variant="secondary" size="sm" onClick={() => void loadSavedKeys()}>{t('retryLoad')}</Button>
+            </div>
+          ) : savedKeys.length > 0 ? (
             <div className="divide-y divide-black/[0.08] rounded-lg border border-black/[0.08] bg-[var(--paper)] overflow-hidden">
               {savedKeys.map((item) => (
                 <div
@@ -387,7 +403,7 @@ export function ProviderSetupPanel() {
                           ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-raised)]'
                           : 'border-[var(--ink)] bg-[var(--paper-raised)] hover:bg-[var(--electric-yellow)]',
                       )}
-                      title={item.isActive ? t('active') : t('activate')}
+                      aria-label={item.isActive ? t('active') : t('activate')}
                     >
                       {item.isActive && <Check size={12} strokeWidth={4} />}
                     </button>
@@ -430,7 +446,7 @@ export function ProviderSetupPanel() {
                       type="button"
                       onClick={() => handleDeleteKey(item.id, item.name)}
                       className="nb-button-press rounded-lg p-1.5 text-[var(--ink-soft)] transition-colors hover:bg-[var(--action-red-dim)] hover:text-[var(--action-red)]"
-                      title={t('deleteKey')}
+                      aria-label={t('deleteKey')}
                     >
                       <Trash2 size={16} strokeWidth={2.5} />
                     </button>
@@ -496,7 +512,19 @@ export function ProviderSetupPanel() {
                     className="text-xs font-mono"
                   />
                   {autoTestStatus !== 'idle' && (
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-white px-1">
+                    <span
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-white px-1"
+                      role="status"
+                      aria-label={t(
+                        `autoTest${
+                          autoTestStatus === 'testing'
+                            ? 'Testing'
+                            : autoTestStatus === 'valid'
+                              ? 'Valid'
+                              : 'Invalid'
+                        }` as 'autoTestTesting' | 'autoTestValid' | 'autoTestInvalid',
+                      )}
+                    >
                       {autoTestStatus === 'testing' && <LoaderCircle size={16} strokeWidth={2.5} className="motion-safe:animate-spin text-[var(--ink-soft)]" />}
                       {autoTestStatus === 'valid' && <CheckCircle2 size={16} strokeWidth={2.5} className="text-[var(--mint)]" />}
                       {autoTestStatus === 'invalid' && <AlertTriangle size={16} strokeWidth={2.5} className="text-[var(--action-red)]" />}
