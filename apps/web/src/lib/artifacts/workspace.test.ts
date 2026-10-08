@@ -36,6 +36,17 @@ describe('Markdown Sanitizer', () => {
     expect(clean).toContain('<h1>Header</h1>')
   })
 
+  it('strips dangerous URL schemes from quoted and unquoted attributes', () => {
+    const dangerous =
+      '<a href=javascript:alert(1)>link</a><img src="data:text/html,<script>alert(1)</script>" onerror=alert(1)>'
+    const clean = sanitizeHtml(dangerous)
+
+    expect(clean).not.toMatch(/(?:javascript|data):/i)
+    expect(clean).not.toContain('onerror')
+    expect(clean).toContain('href="#"')
+    expect(clean).toContain('src="#"')
+  })
+
   it('renders markdown to sanitized HTML', () => {
     const md = '# Title\n\nThis is **bold** text.'
     const html = renderMarkdownToHtml(md)

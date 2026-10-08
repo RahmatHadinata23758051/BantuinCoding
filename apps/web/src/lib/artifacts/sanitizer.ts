@@ -5,14 +5,29 @@ import { marked } from 'marked'
  * ensuring zero script execution or XSS when rendering raw HTML generated from Markdown.
  */
 export function sanitizeHtml(html: string): string {
-  // Strip <script>...</script>
-  let clean = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-  // Strip <iframe>...</iframe>
-  clean = clean.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-  // Strip inline event handlers e.g. onclick=..., onerror=...
-  clean = clean.replace(/\s+on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '')
-  // Strip javascript: URLs
-  clean = clean.replace(/href\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*")/gi, 'href="#"')
+  // Strip executable elements and their contents.
+  let clean = html.replace(
+    /<(script|iframe|object|embed|style|link|meta|base)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
+    '',
+  )
+  clean = clean.replace(/<\/?(script|iframe|object|embed|style|link|meta|base)\b[^>]*>/gi, '')
+
+  // Strip inline event handlers e.g. onclick=..., onerror=... (quoted or unquoted).
+  clean = clean.replace(/\s+on[\w:-]+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '')
+
+  // Replace dangerous URL schemes in every URL-bearing attribute, including unquoted values.
+  clean = clean.replace(
+    /\b(?:href|src|action|formaction|poster|background|cite|data|xlink:href)\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi,
+    (attribute) => {
+      const separator = attribute.indexOf('=')
+      const name = attribute.slice(0, separator)
+      const value = attribute.slice(separator + 1).trim()
+      const unquotedValue = value.replace(/^['"]|['"]$/g, '')
+      const normalizedValue = unquotedValue.replace(/[\u0000- ]+/g, '').toLowerCase()
+
+      return /^(?:javascript|vbscript|data):/.test(normalizedValue) ? `${name}="#"` : attribute
+    },
+  )
 
   return clean
 }
