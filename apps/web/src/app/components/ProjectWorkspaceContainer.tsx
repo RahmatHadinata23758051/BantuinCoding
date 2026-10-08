@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
+import { PackHandoffVisual } from '@/app/components/PackHandoffVisual'
 import { PipelineSpine } from '@/app/components/PipelineSpine'
 import { Modal, Input, Select, Button } from '@/app/components/ui'
 import { resolvePipeline } from '@/lib/workflow/pipeline'
@@ -2074,6 +2075,19 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-6 flex flex-col justify-between`}
                       >
                         <div>
+                          <PackHandoffVisual
+                            className="mb-7"
+                            labels={{
+                              ariaLabel: t('packHandoffVisualLabel'),
+                              packageLabel: t('packHandoffPackageLabel'),
+                              packageMeta: t('packHandoffPackageMeta'),
+                              documentLabel: t('packHandoffDocumentLabel'),
+                              documentMeta: t('packHandoffDocumentMeta'),
+                              handoffLabel: t('packHandoffAgentLabel'),
+                              handoffMeta: t('packHandoffAgentMeta'),
+                              connectorLabel: t('packHandoffConnectorLabel'),
+                            }}
+                          />
                           <span className="flex size-12 items-center justify-center border border-black/[0.08] bg-[var(--workspace-paper)] shadow-none">
                             <Package aria-hidden="true" className="size-6" />
                           </span>
