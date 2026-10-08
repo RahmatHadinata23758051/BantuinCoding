@@ -1956,16 +1956,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     action={generateButton}
                   />
                 ) : (
-                  <div className="space-y-10">
+                  <div className="space-y-8">
                     {/* One-Shot Kickoff Prompt Card */}
-                    <section aria-label={t('oneShotAgentPrompt')} className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
-                      <div className="flex flex-col gap-4 border-b border-black/[0.08] pb-4 sm:flex-row sm:items-center sm:justify-between">
+                    <section aria-label={t('oneShotAgentPrompt')} className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6 sm:p-8`}>
+                      <div className="flex flex-col gap-5 border-b border-black/[0.08] pb-6 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="flex size-10 items-center justify-center border border-black/[0.08] bg-[var(--workspace-sun)] shadow-none">
+                          <span className="flex size-10 items-center justify-center border border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]">
                             <Bot aria-hidden="true" className="size-5" />
                           </span>
                           <div>
-                            <h3 className="text-xl font-semibold tracking-tight">{t('oneShotAgentPrompt')}</h3>
+                            <h3 className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">{t('oneShotAgentPrompt')}</h3>
                             <p className="text-xs font-semibold text-[var(--workspace-muted)]">
                               {t('oneShotAgentPromptDesc')}
                             </p>
