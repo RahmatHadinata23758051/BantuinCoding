@@ -17,11 +17,12 @@ export function LanguageSwitcher() {
 
   return (
     <button
+      type="button"
       onClick={switchLocale}
-      className="nb-button-press inline-flex h-9 items-center justify-center gap-2 rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper-raised)] px-3 text-xs font-bold text-[var(--ink)] shadow-[var(--shadow-xs)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-[var(--electric-yellow)] hover:shadow-[var(--shadow-sm)]"
-      title={locale === 'en' ? 'Ganti ke Bahasa Indonesia' : 'Switch to English'}
+      aria-label={locale === 'en' ? 'Ganti ke Bahasa Indonesia' : 'Switch to English'}
+      className="inline-flex h-9 items-center justify-center gap-2 border border-black/10 bg-white px-3 text-xs font-semibold text-[#111] transition-colors hover:bg-[#fafaf9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0075de] focus-visible:ring-offset-2"
     >
-      <Languages size={14} strokeWidth={2.5} />
+      <Languages size={14} strokeWidth={2} aria-hidden="true" />
       <span className="uppercase tracking-wider">{locale}</span>
     </button>
   )
