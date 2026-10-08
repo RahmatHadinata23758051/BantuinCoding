@@ -15,28 +15,28 @@ export default async function ProviderSettingsPage() {
   if (!session?.user?.id) redirect('/login')
 
   return (
-    <PageFrame width="5xl">
-      <TopBar>
-        <div className="flex items-center gap-2 font-mono text-xs font-black sm:text-sm">
+    <PageFrame width="5xl" className="bg-[#f6f5f4]" contentClassName="bg-[#f6f5f4]">
+      <TopBar className="bg-[#f6f5f4]">
+        <div className="flex items-center gap-2 text-xs font-medium sm:text-sm">
           <Link href="/dashboard" className="underline decoration-2 underline-offset-4">
             {tNew('backDashboard')}
           </Link>
           <span>{t('breadcrumb')}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="max-w-56 truncate font-mono text-xs font-bold">{session.user.email}</span>
+          <span className="max-w-56 truncate text-xs text-[#757575]">{session.user.email}</span>
           <LanguageSwitcher />
         </div>
       </TopBar>
 
-      <section className="rounded-xl border border-black/10 bg-white p-6 sm:p-8 lg:p-10">
+      <section className="rounded-xl border border-black/[0.08] bg-white p-6 sm:p-8 lg:p-10">
         <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
           <aside>
             <Caption className="rounded-full bg-[#ffb110] px-3 py-1 text-black">{t('caption')}</Caption>
-            <h1 className="mt-5 max-w-md text-4xl font-semibold leading-tight tracking-[-0.04em] text-black sm:text-5xl">
+            <h1 className="mt-5 max-w-md text-4xl font-semibold leading-[1.04] tracking-[-0.048em] text-black sm:text-5xl">
               {t('title')}
             </h1>
-            <p className="mt-4 max-w-md text-base leading-7 text-[#615d59]">{t('subtitle')}</p>
+            <p className="mt-4 max-w-md font-[var(--font-lyon-text)] text-base leading-7 text-[#615d59]">{t('subtitle')}</p>
             <Link href="/projects/new" className={buttonClassName({ variant: 'primary', size: 'md', className: 'mt-6 rounded-lg' })}>
               {t('captureIdea')}
             </Link>
@@ -48,7 +48,7 @@ export default async function ProviderSettingsPage() {
                 <KeyRound size={20} aria-hidden="true" />
               </span>
               <div>
-                <h2 className="text-2xl font-semibold tracking-[-0.03em] text-black">{t('aiProvider')}</h2>
+                <h2 className="text-2xl font-semibold tracking-[-0.035em] text-black">{t('aiProvider')}</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#615d59]">{t('aiProviderDesc')}</p>
               </div>
             </div>

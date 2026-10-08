@@ -60,9 +60,9 @@ function LoginPageContent({ registered }: { registered: boolean }) {
         </header>
         <div className="grid flex-1 items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
           <aside className="max-w-md">
-            <Caption className="text-[#757575]">{t('loginCaption')}</Caption>
-            <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-[-0.04em] sm:text-5xl">{t('loginHeading')}</h1>
-            <p className="mt-5 text-base leading-7 text-[#615d59]">{t('loginDesc')}</p>
+            <Caption>{t('loginCaption')}</Caption>
+            <h1 className="mt-4 text-4xl font-semibold leading-[1.04] tracking-[-0.048em] sm:text-5xl">{t('loginHeading')}</h1>
+            <p className="mt-5 font-[var(--font-lyon-text)] text-base leading-7 text-[#615d59]">{t('loginDesc')}</p>
             <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
               <div className="rounded-xl border border-black/[0.08] bg-white p-4">
                 <KeyRound className="mb-3 text-[#0075de]" size={20} aria-hidden="true" />

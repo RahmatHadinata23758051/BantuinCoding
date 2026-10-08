@@ -295,19 +295,19 @@ export function ProviderSetupPanel() {
   const showModelSelect = modelsLoaded && availableModels.length > 0
 
   return (
-    <Panel className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-none">
+    <Panel className="overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-none">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className={cn(
-          'flex w-full items-center justify-between gap-4 border-b border-black/10 px-4 py-4 text-left transition-colors sm:px-5',
+          'flex w-full items-center justify-between gap-4 border-b border-black/[0.08] px-4 py-4 text-left transition-colors sm:px-5',
           isConfigured ? 'bg-[#e6f3fe] hover:bg-[#d9edfc]' : 'bg-[#ffb110] hover:bg-[#f5a900]',
         )}
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className={cn(
-            'flex size-10 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-white text-black',
+            'flex size-10 shrink-0 items-center justify-center rounded-lg border border-black/[0.08] bg-white text-black',
             isConfigured ? 'text-[var(--ink)]' : 'text-[var(--ink)]',
           )}>
             {isConfigured ? <CheckCircle2 size={20} strokeWidth={2.5} /> : <KeyRound size={20} strokeWidth={2.5} />}
@@ -347,12 +347,12 @@ export function ProviderSetupPanel() {
       )}
 
       {open && (
-        <div className="border-t-2 border-[var(--ink)] bg-[var(--paper-raised)] p-5 space-y-6">
+        <div className="border-t border-black/[0.08] bg-[var(--paper-raised)] p-5 space-y-6">
           {/* Saved Keys Vault Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-black text-[var(--ink)]">{t('savedKeys')}</h3>
-              <p className="text-xs font-semibold text-[var(--paper-muted)]">{t('manageKeys')}</p>
+              <h3 className="text-sm font-semibold text-[var(--ink)]">{t('savedKeys')}</h3>
+              <p className="text-xs text-[var(--paper-muted)]">{t('manageKeys')}</p>
             </div>
             <Button
               type="button"
@@ -368,7 +368,7 @@ export function ProviderSetupPanel() {
 
           {/* Saved Keys List */}
           {savedKeys.length > 0 ? (
-            <div className="divide-y-2 divide-[var(--ink)] rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper)] shadow-[var(--shadow-sm)] overflow-hidden">
+            <div className="divide-y divide-black/[0.08] rounded-lg border border-black/[0.08] bg-[var(--paper)] overflow-hidden">
               {savedKeys.map((item) => (
                 <div
                   key={item.id}
@@ -382,7 +382,7 @@ export function ProviderSetupPanel() {
                       type="button"
                       onClick={() => handleActivateKey(item.id)}
                       className={cn(
-                        'flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                        'flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors',
                         item.isActive
                           ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-raised)]'
                           : 'border-[var(--ink)] bg-[var(--paper-raised)] hover:bg-[var(--electric-yellow)]',
@@ -395,7 +395,7 @@ export function ProviderSetupPanel() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-black text-[var(--ink)] truncate">{item.name}</span>
                         {item.isActive && (
-                          <span className="rounded-[3px] border-2 border-[var(--ink)] bg-[var(--mint)] px-1.5 py-0.5 text-[0.6rem] font-bold text-[var(--ink)] uppercase tracking-wider">
+                          <span className="rounded-full bg-[var(--mint-dim)] px-2 py-0.5 text-[0.6rem] font-medium text-[#1b6a4e]">
                             {t('active')}
                           </span>
                         )}
@@ -429,7 +429,7 @@ export function ProviderSetupPanel() {
                     <button
                       type="button"
                       onClick={() => handleDeleteKey(item.id, item.name)}
-                      className="nb-button-press p-1.5 border-2 border-transparent text-[var(--ink-soft)] hover:border-[var(--ink)] hover:bg-[var(--action-red)] hover:text-[var(--ink)] hover:shadow-[var(--shadow-xs)] rounded-[3px] transition-all"
+                      className="nb-button-press rounded-lg p-1.5 text-[var(--ink-soft)] transition-colors hover:bg-[var(--action-red-dim)] hover:text-[var(--action-red)]"
                       title={t('deleteKey')}
                     >
                       <Trash2 size={16} strokeWidth={2.5} />
@@ -439,17 +439,17 @@ export function ProviderSetupPanel() {
               ))}
             </div>
           ) : !loadingKeys && (
-            <div className="rounded-[4px] border-2 border-dashed border-[var(--ink)] p-6 text-center text-xs font-bold text-[var(--paper-muted)]">
+            <div className="rounded-lg border border-dashed border-black/[0.12] p-6 text-center text-xs text-[var(--paper-muted)]">
               {t('noKeys')}
             </div>
           )}
 
           {/* Add Key Form (Collapsible or toggle) */}
           {(showAddForm || savedKeys.length === 0) && (
-            <form onSubmit={handleSaveToVault} className="space-y-4 rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper)] p-4 shadow-[var(--shadow-sm)]">
-              <div className="flex items-center justify-between border-b-2 border-[var(--ink)] pb-2.5">
-                <span className="text-xs font-black uppercase tracking-wider text-[var(--ink)]">{t('addKeyVault')}</span>
-                <span className="text-[10px] font-bold text-[var(--paper-muted)] font-mono uppercase tracking-wider">{t('encrypted')}</span>
+            <form onSubmit={handleSaveToVault} className="space-y-4 rounded-lg border border-black/[0.08] bg-[var(--paper)] p-4">
+              <div className="flex items-center justify-between border-b border-black/[0.08] pb-2.5">
+                <span className="text-xs font-semibold text-[var(--ink)]">{t('addKeyVault')}</span>
+                <span className="text-[10px] text-[var(--paper-muted)] font-mono">{t('encrypted')}</span>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">

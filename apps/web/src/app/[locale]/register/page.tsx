@@ -117,9 +117,9 @@ export default function RegisterPage() {
 
         <aside className="order-1 flex flex-col justify-center gap-8 lg:order-2">
           <div>
-            <Caption className="text-[#757575]">{t('openNewProject')}</Caption>
-            <h2 className="mt-4 max-w-lg text-4xl font-semibold leading-tight tracking-[-0.04em] sm:text-5xl">{t('oneAccount')}</h2>
-            <p className="mt-5 max-w-md text-base leading-7 text-[#615d59]">{t('oneAccountDesc')}</p>
+            <Caption>{t('openNewProject')}</Caption>
+            <h2 className="mt-4 max-w-lg text-4xl font-semibold leading-[1.04] tracking-[-0.048em] sm:text-5xl">{t('oneAccount')}</h2>
+            <p className="mt-5 max-w-md font-[var(--font-lyon-text)] text-base leading-7 text-[#615d59]">{t('oneAccountDesc')}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-black/[0.08] bg-[#ffb110] p-4">
