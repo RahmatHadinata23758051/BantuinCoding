@@ -1803,7 +1803,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   action={
                     initialData.skills.length > 0 ? (
                       <span
-                        className={`${PANEL_SOFT_CLASS} px-3 py-2 font-mono text-xs font-semibold text-[var(--workspace-ink)]`}
+                        className={`${PANEL_SOFT_CLASS} rounded-lg px-3 py-2 font-mono text-xs font-semibold text-[var(--workspace-muted)]`}
                       >
                         {initialData.skills.length === 1
                           ? t('recommendationCount', { count: initialData.skills.length })
@@ -1825,43 +1825,46 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     {initialData.skills.map((skill, index) => (
                       <article
                         key={skill.id}
-                        className={`${PANEL_CLASS} ${index % 2 === 0 ? 'bg-[var(--workspace-paper)]' : 'bg-[var(--workspace-blue-soft)]'} p-6`}
+                        className="rounded-xl border border-black/[0.08] bg-white p-5 transition-colors hover:border-black/20"
                       >
-                        <div className="flex items-start justify-between gap-4 border-b border-black/[0.08] pb-4">
-                          <div className="flex items-center gap-3">
-                            <span className="flex size-9 items-center justify-center border border-black/[0.08] bg-[var(--workspace-sun)] shadow-none">
-                              <Wrench aria-hidden="true" className="size-4" />
+                        <div className="flex min-w-0 flex-col gap-3 border-b border-black/[0.08] pb-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <span
+                              className={`flex size-8 shrink-0 items-center justify-center rounded-lg border border-black/[0.08] ${index % 2 === 0 ? 'bg-[var(--workspace-sun)]' : 'bg-[var(--workspace-blue-soft)]'}`}
+                              aria-hidden="true"
+                            >
+                              <Wrench className="size-4 text-[var(--workspace-ink)]" />
                             </span>
-                            <h3 className="text-xl font-semibold tracking-[-0.04em]">{skill.name}</h3>
+                            <h3 className="min-w-0 break-words text-base font-semibold leading-6 text-[var(--workspace-ink)]">
+                              {skill.name}
+                            </h3>
                           </div>
-                          <p className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
+                          <p className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
                             {skill.source}
                           </p>
                         </div>
 
-                        <div className="mt-5 space-y-5">
+                        <div className="mt-4 space-y-4">
                           <div>
-                            <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
+                            <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
                               {t('purpose')}
                             </h4>
-                            <p className="mt-1 text-sm font-semibold leading-6">{skill.purpose}</p>
+                            <p className="mt-1.5 text-sm leading-6 text-[var(--workspace-ink)]">{skill.purpose}</p>
                           </div>
                           <div>
-                            <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
+                            <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
                               {t('trigger')}
                             </h4>
-                            <p className="mt-1 text-sm font-medium leading-6 text-[var(--workspace-muted)]">
-                              {skill.trigger}
-                            </p>
+                            <p className="mt-1.5 text-sm leading-6 text-[var(--workspace-muted)]">{skill.trigger}</p>
                           </div>
 
                           {(skill.metadata?.applicable_phases?.length ||
                             skill.metadata?.applicable_task_types?.length) && (
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2" aria-label={t('purpose')}>
                               {skill.metadata?.applicable_phases?.map((phase) => (
                                 <span
                                   key={`phase-${phase}`}
-                                  className="border border-black/[0.08] bg-[var(--workspace-paper)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-none"
+                                  className="rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
                                 >
                                   {phase}
                                 </span>
@@ -1869,7 +1872,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               {skill.metadata?.applicable_task_types?.map((taskType) => (
                                 <span
                                   key={`type-${taskType}`}
-                                  className="border border-black/[0.08] bg-[var(--workspace-mint-soft)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-none"
+                                  className="rounded-lg border border-black/[0.08] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
                                 >
                                   {formatLabel(taskType)}
                                 </span>
@@ -1878,11 +1881,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           )}
 
                           {skill.metadata?.installation_hint && (
-                            <div className="rounded-lg border-l-2 border-black/[0.12] bg-[var(--workspace-paper)] p-4">
-                              <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
+                            <div className="rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-3">
+                              <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
                                 {t('setupNote')}
                               </h4>
-                              <p className="mt-1 font-mono text-xs font-bold leading-5 text-[var(--workspace-muted)]">
+                              <p className="mt-1.5 break-words font-mono text-xs leading-5 text-[var(--workspace-muted)]">
                                 {skill.metadata.installation_hint}
                               </p>
                             </div>
