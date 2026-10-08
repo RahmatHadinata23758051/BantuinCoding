@@ -64,13 +64,13 @@ export function PipelineSpine({
     <nav
       aria-label={tWorkspace('pipelineAriaLabel')}
       className={cn(
-        'border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hard)]',
+        'overflow-hidden rounded-[var(--radius-cards)] border border-[var(--border-subtle)] bg-[var(--paper-raised)]',
         compact ? 'overflow-hidden' : 'p-4',
         className,
       )}
     >
       {compact && (
-        <div className="border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-3 py-2 text-xs font-bold sm:hidden">
+        <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-soft)] px-3 py-2 text-xs font-medium sm:hidden">
           <span className="font-mono">{t(resolved.current.labelKey)}</span>
           <span className="mx-2" aria-hidden="true">·</span>
           <span>{stateLabel(resolved.current.state, translatedStateLabel)}</span>
@@ -83,11 +83,11 @@ export function PipelineSpine({
             <>
               <span
                 className={cn(
-                  'relative z-10 flex size-7 shrink-0 items-center justify-center border-2 border-[var(--ink)] font-mono text-[10px] font-black shadow-[var(--shadow-xs)]',
-                  stage.state === 'complete' && 'bg-[var(--mint)] text-[var(--ink)]',
-                  stage.state === 'current' && 'bg-[var(--electric-yellow)] text-[var(--ink)]',
-                  stage.state === 'loading' && 'bg-[var(--cobalt)] text-white animate-pulse-dot',
-                  stage.state === 'error' && 'bg-[var(--action-red)] text-[var(--ink)]',
+                  'relative z-10 flex size-7 shrink-0 items-center justify-center rounded-[var(--radius-tags)] border border-[var(--border-subtle)] font-mono text-[10px] font-semibold',
+                  stage.state === 'complete' && 'bg-[var(--surface-soft)] text-[var(--ink)]',
+                  stage.state === 'current' && 'bg-[var(--ink)] text-white',
+                  stage.state === 'loading' && 'bg-[var(--ink)] text-white motion-safe:animate-pulse-dot',
+                  stage.state === 'error' && 'bg-[var(--surface-soft)] text-[var(--ink)]',
                   stage.state === 'blocked' && 'bg-[var(--paper)] text-[var(--paper-muted)]',
                   stage.state === 'upcoming' && 'bg-[var(--paper-raised)] text-[var(--paper-muted)]',
                 )}
@@ -101,7 +101,7 @@ export function PipelineSpine({
                   {String(index + 1).padStart(2, '0')} · {t(stage.labelKey)}
                 </span>
                 <span className="mt-0.5 block text-[10px] font-semibold leading-snug text-[var(--paper-muted)]">
-                  {compact && isActive ? stateLabel(stage.state, translatedStateLabel) : t(stage.detailKey)}
+                  {isActive ? stateLabel(stage.state, translatedStateLabel) : t(stage.detailKey)}
                 </span>
               </span>
             </>
@@ -115,7 +115,7 @@ export function PipelineSpine({
               className={cn(
                 'relative flex min-w-0',
                 compact
-                  ? 'items-stretch border-b-2 border-r-2 border-[var(--ink)] last:border-r-0 sm:border-b-0'
+                  ? 'items-stretch border-b border-r border-[var(--border-subtle)] [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(3n)]:border-r-0 sm:border-b-0 lg:[&:nth-child(3n)]:border-r lg:[&:nth-child(6n)]:border-r-0'
                   : 'items-start gap-3 pb-5 last:pb-0',
               )}
             >
@@ -123,8 +123,8 @@ export function PipelineSpine({
                 <span
                   aria-hidden="true"
                   className={cn(
-                    'absolute left-[13px] top-8 h-[calc(100%-0.5rem)] w-[3px] border-x border-[var(--ink)]',
-                    stage.state === 'complete' ? 'bg-[var(--cobalt)]' : 'bg-[var(--paper)]',
+                    'absolute left-[14px] top-8 h-[calc(100%-0.5rem)] w-px bg-[var(--border-subtle)]',
+                    stage.state === 'complete' ? 'bg-[var(--ink)]' : 'bg-[var(--border-subtle)]',
                   )}
                 />
               )}
@@ -132,7 +132,7 @@ export function PipelineSpine({
                 <Link
                   href={href}
                   className={cn(
-                    'flex min-w-0 flex-1 gap-3 px-3 py-3 text-left transition-colors hover:bg-[var(--cobalt-dim)]',
+                    'flex min-w-0 flex-1 gap-3 rounded-[var(--radius-buttons)] px-3 py-3 text-left transition-colors hover:bg-[var(--surface-soft)]',
                     !compact && 'px-0 py-0',
                     stage.state === 'loading' && 'motion-safe:animate-pulse-dot',
                   )}
@@ -142,11 +142,11 @@ export function PipelineSpine({
               ) : (
                 <div
                   className={cn(
-                    'flex min-w-0 flex-1 gap-3 px-3 py-3 text-left',
+                    'flex min-w-0 flex-1 gap-3 rounded-[var(--radius-buttons)] px-3 py-3 text-left',
                     !compact && 'px-0 py-0',
-                    compact && stage.state === 'current' && 'bg-[var(--electric-yellow)]',
-                    compact && stage.state === 'complete' && 'bg-[var(--mint-dim)]',
-                    compact && stage.state === 'error' && 'bg-[var(--action-red-dim)]',
+                    compact && stage.state === 'current' && 'bg-[var(--surface-soft)]',
+                    compact && stage.state === 'complete' && 'bg-[var(--surface-soft)]',
+                    compact && stage.state === 'error' && 'bg-[var(--surface-soft)]',
                   )}
                   title={stateLabel(stage.state, translatedStateLabel)}
                 >

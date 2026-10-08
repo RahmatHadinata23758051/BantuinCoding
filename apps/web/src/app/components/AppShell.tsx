@@ -29,7 +29,7 @@ export function PageFrame({
     <main className={cn('min-h-screen px-4 py-5 text-[var(--ink)] sm:px-6 lg:px-8', className)}>
       <div
         className={cn(
-          'mx-auto border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hero)]',
+          'mx-auto rounded-[var(--radius-cards)] border border-[var(--border-subtle)] bg-[var(--paper-raised)]',
           frameWidths[width],
           fullHeight && 'flex min-h-[calc(100vh-2.5rem)] flex-col',
           contentClassName,
@@ -50,7 +50,7 @@ export function TopBar({ children, className }: TopBarProps) {
   return (
     <header
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-4 py-3 sm:px-6',
+        'flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-soft)] px-4 py-3 sm:px-6',
         className,
       )}
     >
