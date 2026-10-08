@@ -131,6 +131,8 @@ export function ProviderSetupPanel() {
     if (signal.aborted || autoTestRequestRef.current !== requestId) return
 
     setAutoTestStatus('testing')
+    setAvailableModels([])
+    setModelsLoaded(false)
     setMessage(null)
 
     try {
@@ -200,12 +202,7 @@ export function ProviderSetupPanel() {
     }
     const requestId = ++autoTestRequestRef.current
 
-    if (apiKey.length < 8) {
-      setAvailableModels([])
-      setModelsLoaded(false)
-      setAutoTestStatus('idle')
-      return
-    }
+    if (apiKey.length < 8) return
 
     debounceRef.current = setTimeout(() => {
       const controller = new AbortController()
