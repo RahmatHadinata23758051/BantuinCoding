@@ -168,7 +168,7 @@ export default async function NewProjectPage() {
                 <summary className="flex cursor-pointer list-none items-center gap-4 p-5 outline-none transition-colors hover:bg-[#f6f5f4] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0075de] sm:p-7 [&::-webkit-details-marker]:hidden">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-black/[0.12] bg-white text-xs font-semibold text-black/55">02</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-xl font-semibold tracking-[-0.03em]">
+                    <span id="project-configuration-title" className="block text-xl font-semibold tracking-[-0.03em]">
                       {t('classification')}
                     </span>
                     <span className="mt-1 block text-sm leading-6 text-[#615d59]">{t('refineNote')}</span>
