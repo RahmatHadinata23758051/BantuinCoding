@@ -18,6 +18,14 @@ const NEXT_ACTION_KEY: Record<string, 'nextActionDraft' | 'nextActionConfigured'
   DRAFT: 'nextActionDraft', CONFIGURED: 'nextActionConfigured', ANALYZING: 'nextActionAnalyzing', CLARIFYING: 'nextActionClarifying',
   CONTEXT_READY: 'nextActionContextReady', GENERATING: 'nextActionGenerating', READY: 'nextActionReady', EXPORTABLE: 'nextActionExportable', GENERATION_FAILED: 'nextActionGenerationFailed',
 }
+const CLASSIFICATION_KEY: Record<string, 'classificationStaticSite' | 'classificationLandingPage' | 'classificationCrudApp' | 'classificationDashboard' | 'classificationSaas' | 'classificationApiService' | 'classificationMobileApp' | 'classificationAiApp' | 'classificationIotDashboard' | 'classificationFullstackComplex' | 'classificationOther'> = {
+  STATIC_SITE: 'classificationStaticSite', LANDING_PAGE: 'classificationLandingPage', CRUD_APP: 'classificationCrudApp', DASHBOARD: 'classificationDashboard',
+  SAAS: 'classificationSaas', API_SERVICE: 'classificationApiService', MOBILE_APP: 'classificationMobileApp', AI_APP: 'classificationAiApp',
+  IOT_DASHBOARD: 'classificationIotDashboard', FULLSTACK_COMPLEX: 'classificationFullstackComplex', OTHER: 'classificationOther',
+}
+const AGENT_KEY: Record<string, 'agentClaudeCode' | 'agentCodex' | 'agentOpencode' | 'agentAntigravity' | 'agentCursor' | 'agentOther'> = {
+  CLAUDE_CODE: 'agentClaudeCode', CODEX: 'agentCodex', OPENCODE: 'agentOpencode', ANTIGRAVITY: 'agentAntigravity', CURSOR: 'agentCursor', OTHER: 'agentOther',
+}
 
 function formatRelative(value: Date | string, t: Awaited<ReturnType<typeof getTranslations>>): string {
   const date = typeof value === 'string' ? new Date(value) : value
@@ -82,7 +90,7 @@ export default async function DashboardPage() {
                 <li key={project.id}><Link href={`/projects/${project.id}`} className="group grid gap-3 py-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de] md:grid-cols-[minmax(190px,1.4fr)_minmax(140px,1fr)_minmax(110px,.8fr)_90px_90px] md:items-center md:gap-5">
                   <div className="min-w-0"><p className="truncate text-base font-semibold tracking-[-0.02em] group-hover:text-[#0075de]">{project.name}</p><p className="mt-1 line-clamp-2 text-sm leading-5 text-[#757575]">{project.rawIdea.slice(0, 90)}</p><p className="mt-3 text-xs font-medium leading-5 text-[#615d59]">{t(NEXT_ACTION_KEY[project.status] ?? 'nextActionDraft')}</p></div>
                   <div><span className="mb-1 block text-xs text-[#757575] md:hidden">{t('state')}</span><StatusBadge tone={STATUS_TONE[project.status] ?? 'neutral'}>{tStatus(project.status as Parameters<typeof tStatus>[0]) ?? project.status}</StatusBadge></div>
-                  <div className="text-xs text-[#615d59]"><span className="md:hidden">{t('type')} / {t('agent')}: </span>{project.classification.toLowerCase().replace(/_/g, '-')}<span className="mx-1 text-[#b0aba6]">/</span>{project.targetAgent.toLowerCase().replace(/_/g, '-')}</div>
+                  <div className="text-xs text-[#615d59]"><span className="md:hidden">{t('type')} / {t('agent')}: </span>{t(CLASSIFICATION_KEY[project.classification] ?? 'classificationOther')}<span className="mx-1 text-[#b0aba6]">/</span>{t(AGENT_KEY[project.targetAgent] ?? 'agentOther')}</div>
                   <div className="text-xs text-[#615d59] md:text-right"><span className="md:hidden">{t('docs')}: </span>{project._count.artifacts}</div><div className="text-xs text-[#757575] md:text-right"><span className="md:hidden">{t('updated')}: </span>{formatRelative(project.updatedAt, t)}</div>
                 </Link></li>
               ))}</ul>
