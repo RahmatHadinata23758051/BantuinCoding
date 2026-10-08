@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 
 import { loginAction } from '@/lib/auth/actions'
-
 import { useTranslations } from 'next-intl'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
@@ -21,7 +20,6 @@ export default function LoginPage() {
 
 function RegisteredLoginPage() {
   const searchParams = useSearchParams()
-
   return <LoginPageContent registered={searchParams.get('registered') === '1'} />
 }
 
@@ -50,125 +48,47 @@ function LoginPageContent({ registered }: { registered: boolean }) {
   }
 
   return (
-    <main className="min-h-screen px-4 py-5 text-[var(--ink)] sm:px-6 lg:px-8">
-      <div className="mx-auto grid min-h-[calc(100vh-2.5rem)] max-w-6xl border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-hero)] lg:grid-cols-[0.9fr_1.1fr]">
-        <aside className="flex flex-col justify-between gap-8 border-b-2 border-[var(--ink)] bg-[var(--cobalt)] p-6 text-white sm:p-9 lg:border-b-0 lg:border-r-2">
+    <main className="min-h-screen bg-white px-4 py-6 font-sans text-[#303055] sm:px-6 sm:py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-5xl overflow-hidden rounded-lg border border-[#e8e8f2] bg-white lg:grid-cols-[0.9fr_1.1fr]">
+        <aside className="flex flex-col justify-between gap-12 bg-[#e8e8f2] p-6 sm:p-10 lg:p-12">
           <div className="flex items-center justify-between">
-            <Link href="/" className="font-mono text-xs font-bold underline underline-offset-4">
-              ← bantuin.dev
+            <Link href="/" className="font-mono text-sm font-semibold text-[#303055] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#303055]">
+              bantuin.dev
             </Link>
             <LanguageSwitcher />
           </div>
           <div>
-            <div className="mt-10">
-              <Caption className="bg-[var(--electric-yellow)] text-[var(--ink)]">
-                {t('loginCaption')}
-              </Caption>
-              <h1 className="mt-6 max-w-lg text-4xl font-black leading-[0.95] tracking-[-0.055em] sm:text-5xl">
-                {t('loginHeading')}
-              </h1>
-              <p className="mt-5 max-w-md text-sm leading-6 text-white/85">
-                {t('loginDesc')}
-              </p>
-            </div>
+            <Caption className="border-[#303055] bg-white text-[#303055]">{t('loginCaption')}</Caption>
+            <h1 className="mt-5 max-w-md text-4xl font-semibold leading-tight tracking-[-0.03em] text-[#303055] sm:text-5xl">{t('loginHeading')}</h1>
+            <p className="mt-5 max-w-md text-base leading-7 text-[#403f53]">{t('loginDesc')}</p>
           </div>
-
           <div className="grid gap-3">
-            <div className="flex items-start gap-3 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-4 text-[var(--ink)] shadow-[var(--shadow-sm)]">
-              <KeyRound className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
-              <div>
-                <p className="text-sm font-black">{t('yourModelKey')}</p>
-                <p className="mt-1 text-xs leading-5 text-[var(--paper-muted)]">
-                  {t('yourModelKeyDesc')}
-                </p>
-              </div>
+            <div className="flex items-start gap-3 rounded-lg border border-white bg-white p-4">
+              <KeyRound className="mt-0.5 shrink-0 text-[#303055]" size={19} aria-hidden="true" />
+              <div><p className="text-sm font-semibold">{t('yourModelKey')}</p><p className="mt-1 text-sm leading-6 text-[#767682]">{t('yourModelKeyDesc')}</p></div>
             </div>
-            <div className="flex items-start gap-3 border-2 border-[var(--ink)] bg-[var(--mint)] p-4 text-[var(--ink)] shadow-[var(--shadow-sm)]">
-              <ShieldCheck className="mt-0.5 shrink-0" size={20} aria-hidden="true" />
-              <div>
-                <p className="text-sm font-black">{t('safeExport')}</p>
-                <p className="mt-1 text-xs leading-5">
-                  {t('safeExportDesc')}
-                </p>
-              </div>
+            <div className="flex items-start gap-3 rounded-lg border border-[#303055] bg-[#303055] p-4 text-white">
+              <ShieldCheck className="mt-0.5 shrink-0" size={19} aria-hidden="true" />
+              <div><p className="text-sm font-semibold">{t('safeExport')}</p><p className="mt-1 text-sm leading-6 text-white/80">{t('safeExportDesc')}</p></div>
             </div>
           </div>
         </aside>
 
-        <section className="flex items-center justify-center bg-[var(--paper)] p-5 sm:p-9">
-          <Panel className="w-full max-w-md overflow-hidden">
-            <div className="border-b-2 border-[var(--ink)] bg-[var(--electric-yellow)] px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <StatusBadge tone="neutral">{t('memberAccess')}</StatusBadge>
-                  <h2 className="mt-3 text-3xl font-black tracking-[-0.04em]">{t('signInTitle')}</h2>
-                </div>
-                <span className="font-mono text-xs font-black">01 / 01</span>
-              </div>
+        <section className="flex items-center justify-center p-6 sm:p-12">
+          <Panel className="w-full max-w-md rounded-lg border border-[#e8e8f2] shadow-none">
+            <div className="border-b border-[#e8e8f2] bg-white px-5 py-5 sm:px-7">
+              <StatusBadge tone="neutral">{t('memberAccess')}</StatusBadge>
+              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] text-[#303055]">{t('signInTitle')}</h2>
             </div>
-
-            <div className="p-5 sm:p-6">
-              {registered && !error && (
-                <div
-                  role="status"
-                  className="mb-5 flex items-start gap-3 border-2 border-[var(--ink)] bg-[var(--mint-dim)] p-3 shadow-[var(--shadow-xs)]"
-                >
-                  <CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-                  <p className="text-sm font-bold">
-                    {t('accountCreated')}
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <div
-                  role="alert"
-                  className="mb-5 border-2 border-[var(--ink)] bg-[var(--action-red-dim)] p-3 text-sm font-bold text-[var(--ink)] shadow-[var(--shadow-xs)]"
-                >
-                  {error}
-                </div>
-              )}
-
+            <div className="p-5 sm:p-7">
+              {registered && !error && <div role="status" className="mb-5 flex items-start gap-3 rounded-lg border border-[#e8e8f2] bg-[#e8e8f2] p-3 text-sm text-[#303055]"><CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" /><p>{t('accountCreated')}</p></div>}
+              {error && <div role="alert" className="mb-5 rounded-lg border border-[#984e4d] bg-white p-3 text-sm text-[#984e4d]">{error}</div>}
               <form onSubmit={handleSubmit} className="flex flex-col gap-5" aria-busy={loading}>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="email" className="text-sm font-black">
-                    {t('emailLabel')}
-                  </label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="password" className="text-sm font-black">
-                    {t('passwordLabel')}
-                  </label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    placeholder="At least 8 characters"
-                  />
-                </div>
-
-                <Button type="submit" size="lg" disabled={loading} className="mt-1 w-full">
-                  {loading ? tCommon('loading') : t('submitLoginBtn')}
-                  {!loading && <ArrowRight size={18} aria-hidden="true" />}
-                </Button>
+                <div className="flex flex-col gap-2"><label htmlFor="email" className="text-sm font-medium">{t('emailLabel')}</label><Input id="email" name="email" type="email" required autoComplete="email" className="rounded border-[#e8e8f2]" /></div>
+                <div className="flex flex-col gap-2"><label htmlFor="password" className="text-sm font-medium">{t('passwordLabel')}</label><Input id="password" name="password" type="password" required autoComplete="current-password" className="rounded border-[#e8e8f2]" /></div>
+                <Button type="submit" size="lg" disabled={loading} className="mt-1 w-full rounded bg-[#303055] text-white hover:bg-[#403f53]">{loading ? tCommon('loading') : t('submitLoginBtn')}{!loading && <ArrowRight size={18} aria-hidden="true" />}</Button>
               </form>
-
-              <p className="mt-6 text-center text-sm text-[var(--paper-muted)]">
-                <Link href="/register" className="font-black text-[var(--ink)] underline decoration-2 underline-offset-4">
-                  {t('needAccount')}
-                </Link>
-              </p>
+              <p className="mt-6 text-center text-sm text-[#767682]"><Link href="/register" className="font-medium text-[#303055] underline underline-offset-4">{t('needAccount')}</Link></p>
             </div>
           </Panel>
         </section>
