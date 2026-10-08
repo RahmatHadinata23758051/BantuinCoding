@@ -29,27 +29,52 @@ async function handleCreateProject(formData: FormData) {
 }
 
 const CLASSIFICATIONS = [
-  { value: 'SAAS', label: 'SaaS app' },
-  { value: 'CRUD_APP', label: 'CRUD application' },
-  { value: 'DASHBOARD', label: 'Dashboard / admin' },
-  { value: 'API_SERVICE', label: 'API service' },
-  { value: 'STATIC_SITE', label: 'Static site' },
-  { value: 'LANDING_PAGE', label: 'Landing page' },
-  { value: 'MOBILE_APP', label: 'Mobile app' },
-  { value: 'AI_APP', label: 'AI application' },
-  { value: 'IOT_DASHBOARD', label: 'IoT dashboard' },
-  { value: 'FULLSTACK_COMPLEX', label: 'Fullstack complex' },
-  { value: 'OTHER', label: 'Other' },
+  { value: 'SAAS' },
+  { value: 'CRUD_APP' },
+  { value: 'DASHBOARD' },
+  { value: 'API_SERVICE' },
+  { value: 'STATIC_SITE' },
+  { value: 'LANDING_PAGE' },
+  { value: 'MOBILE_APP' },
+  { value: 'AI_APP' },
+  { value: 'IOT_DASHBOARD' },
+  { value: 'FULLSTACK_COMPLEX' },
+  { value: 'OTHER' },
 ]
 
 const AGENTS = [
-  { value: 'CLAUDE_CODE', label: 'Claude Code' },
-  { value: 'CURSOR', label: 'Cursor' },
-  { value: 'CODEX', label: 'OpenAI Codex' },
-  { value: 'OPENCODE', label: 'OpenCode' },
-  { value: 'ANTIGRAVITY', label: 'AntiGravity' },
-  { value: 'OTHER', label: 'Other agent' },
-]
+  { value: 'CLAUDE_CODE' },
+  { value: 'CURSOR' },
+  { value: 'CODEX' },
+  { value: 'OPENCODE' },
+  { value: 'ANTIGRAVITY' },
+  { value: 'OTHER' },
+] as const
+
+const CLASSIFICATION_KEYS = {
+  SAAS: 'classificationSaas',
+  CRUD_APP: 'classificationCrudApp',
+  DASHBOARD: 'classificationDashboard',
+  API_SERVICE: 'classificationApiService',
+  STATIC_SITE: 'classificationStaticSite',
+  LANDING_PAGE: 'classificationLandingPage',
+  MOBILE_APP: 'classificationMobileApp',
+  AI_APP: 'classificationAiApp',
+  IOT_DASHBOARD: 'classificationIotDashboard',
+  FULLSTACK_COMPLEX: 'classificationFullstackComplex',
+  OTHER: 'classificationOther',
+} as const
+
+const AGENT_KEYS = {
+  CLAUDE_CODE: 'agentClaudeCode',
+  CURSOR: 'agentCursor',
+  CODEX: 'agentCodex',
+  OPENCODE: 'agentOpencode',
+  ANTIGRAVITY: 'agentAntigravity',
+  OTHER: 'agentOther',
+} as const
+
+const PIPELINE_STEPS = ['workflowIdea', 'workflowClarify', 'workflowContext', 'workflowGenerate', 'workflowReview', 'workflowExport'] as const
 
 const NEXT_STEPS = ['nextStep1', 'nextStep2', 'nextStep3', 'nextStep4', 'nextStep5', 'nextStep6']
 
@@ -72,6 +97,28 @@ export default async function NewProjectPage() {
             {t('backDashboard')}
           </Link>
         </header>
+
+        <nav aria-label={t('workflowLabel')} className="mt-8 border-b border-black/[0.08] pb-5">
+          <ol className="grid grid-cols-3 gap-x-3 gap-y-4 sm:flex sm:items-center sm:justify-between sm:gap-3">
+            {PIPELINE_STEPS.map((step, index) => (
+              <li
+                key={step}
+                aria-current={index === 0 ? 'step' : undefined}
+                className="flex flex-1 items-center gap-2 text-xs font-medium text-black/40 last:flex-none"
+              >
+                <span
+                  className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                    index === 0 ? 'bg-[#0075de] text-white' : 'border border-black/[0.12] bg-white text-black/50'
+                  }`}
+                >
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className={index === 0 ? 'text-black' : undefined}>{t(step)}</span>
+                {index < PIPELINE_STEPS.length - 1 && <span className="mx-2 hidden h-px flex-1 bg-black/[0.08] sm:block" aria-hidden="true" />}
+              </li>
+            ))}
+          </ol>
+        </nav>
 
         <div className="grid gap-14 py-12 sm:py-16 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-20 lg:py-20">
           <section>
@@ -135,7 +182,7 @@ export default async function NewProjectPage() {
                     <select id="classification" name="classification" defaultValue="SAAS" className={`${fieldClassName} h-12 px-3 text-sm`}>
                       {CLASSIFICATIONS.map((classification) => (
                         <option key={classification.value} value={classification.value}>
-                          {classification.label}
+                          {t(CLASSIFICATION_KEYS[classification.value as keyof typeof CLASSIFICATION_KEYS] as Parameters<typeof t>[0])}
                         </option>
                       ))}
                     </select>
@@ -147,7 +194,7 @@ export default async function NewProjectPage() {
                     <select id="targetAgent" name="targetAgent" defaultValue="CLAUDE_CODE" className={`${fieldClassName} h-12 px-3 text-sm`}>
                       {AGENTS.map((agent) => (
                         <option key={agent.value} value={agent.value}>
-                          {agent.label}
+                          {t(AGENT_KEYS[agent.value as keyof typeof AGENT_KEYS] as Parameters<typeof t>[0])}
                         </option>
                       ))}
                     </select>
