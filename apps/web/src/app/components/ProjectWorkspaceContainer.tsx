@@ -155,9 +155,9 @@ const WORKSPACE_STYLE = {
 } as CSSProperties
 
 const PANEL_CLASS =
-  'rounded-xl border border-black/[0.08] bg-[var(--workspace-panel)]'
+  'border border-black/[0.08] bg-[var(--workspace-panel)]'
 const PANEL_SOFT_CLASS =
-  'rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)]'
+  'border border-black/[0.08] bg-[var(--workspace-paper)]'
 const BUTTON_FOCUS_CLASS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-canvas)]'
 
