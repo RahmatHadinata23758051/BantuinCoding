@@ -140,24 +140,23 @@ const SECTION_ITEMS: {
 const WORKSPACE_STYLE = {
   '--workspace-paper': '#ffffff',
   '--workspace-ink': '#111111',
-  '--workspace-canvas': '#f6f5f4',
+  '--workspace-canvas': '#f8f7f5',
   '--workspace-panel': '#ffffff',
   '--workspace-muted': '#615d59',
   '--workspace-faint': '#757575',
   '--workspace-primary': '#0075de',
-  '--workspace-sun': '#ffb110',
   '--workspace-mint': '#dff3e5',
   '--workspace-rose': '#c73524',
-  '--workspace-blue-soft': '#e6f3fe',
-  '--workspace-yellow-soft': '#fff4d6',
-  '--workspace-mint-soft': '#e8f5ec',
-  '--workspace-rose-soft': '#fde8e5',
+  '--workspace-blue-soft': '#f2f7fb',
+  '--workspace-yellow-soft': '#faf7ef',
+  '--workspace-mint-soft': '#f1f7f3',
+  '--workspace-rose-soft': '#fbf1ef',
 } as CSSProperties
 
 const PANEL_CLASS =
   'border border-black/[0.08] bg-[var(--workspace-panel)]'
 const PANEL_SOFT_CLASS =
-  'border border-black/[0.08] bg-[var(--workspace-paper)]'
+  'bg-[var(--workspace-paper)]'
 const BUTTON_FOCUS_CLASS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-canvas)]'
 
@@ -283,7 +282,7 @@ function EmptyState({
   return (
     <div className="flex min-h-72 items-center py-10">
       <div className={`${PANEL_CLASS} max-w-xl p-6`}>
-        <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-[var(--workspace-blue-soft)]">
+        <div className="mb-4 flex size-10 items-center justify-center bg-[var(--workspace-blue-soft)]">
           <Icon aria-hidden="true" className="size-5 text-[var(--workspace-primary)]" />
         </div>
         <h3 className="text-lg font-semibold tracking-tight text-[var(--workspace-ink)]">
@@ -315,7 +314,7 @@ function ReadinessLine({
     <li className="grid gap-2 border-t border-black/[0.08] py-3 first:border-t-0 sm:grid-cols-[minmax(10rem,0.75fr)_minmax(9rem,0.6fr)_1fr] sm:items-center">
       <div className="flex items-center gap-2.5 text-sm font-medium text-[var(--workspace-ink)]">
         <span
-          className={`flex size-6 shrink-0 items-center justify-center rounded-full ${
+          className={`flex size-6 shrink-0 items-center justify-center ${
             tone === 'ready'
               ? 'bg-[var(--workspace-mint-soft)] text-emerald-700'
               : tone === 'attention'
@@ -1264,11 +1263,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       style={WORKSPACE_STYLE}
     >
       <header className="border-b border-black/[0.08] bg-[var(--workspace-paper)]">
-        <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:px-12">
           <div className="flex items-center justify-between">
             <Link
               href="/dashboard"
-              className={`inline-flex items-center gap-2 border border-black/[0.08] bg-[var(--workspace-paper)] px-3 py-1.5 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-none ${BUTTON_FOCUS_CLASS}`}
+              className={`inline-flex items-center gap-2 text-sm font-medium text-[var(--workspace-muted)] transition-colors hover:text-[var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
             >
               <ArrowLeft aria-hidden="true" className="size-4" />
               {t('backProjects')}
