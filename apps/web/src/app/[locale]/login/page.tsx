@@ -1,27 +1,20 @@
 'use client'
 
-import { ArrowRight, CheckCircle2, KeyRound, ShieldCheck } from 'lucide-react'
+import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Link, useRouter } from '@/i18n/routing'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
-
 import { loginAction } from '@/lib/auth/actions'
-
 import { useTranslations } from 'next-intl'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
-import { Button, Caption, Input, Panel, StatusBadge } from '@/app/components/ui'
+import { Button, Input } from '@/app/components/ui'
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={<LoginPageContent registered={false} />}>
-      <RegisteredLoginPage />
-    </Suspense>
-  )
+  return <Suspense fallback={<LoginPageContent registered={false} />}><RegisteredLoginPage /></Suspense>
 }
 
 function RegisteredLoginPage() {
   const searchParams = useSearchParams()
-
   return <LoginPageContent registered={searchParams.get('registered') === '1'} />
 }
 
@@ -36,10 +29,8 @@ function LoginPageContent({ registered }: { registered: boolean }) {
     event.preventDefault()
     setError(null)
     setLoading(true)
-
     const formData = new FormData(event.currentTarget)
     const result = await loginAction(formData)
-
     if (!result.success) {
       setError(result.error ?? t('invalidCredentials'))
       setLoading(false)
@@ -50,104 +41,37 @@ function LoginPageContent({ registered }: { registered: boolean }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f5f4] px-5 py-6 text-[#111111] sm:px-8 sm:py-10">
-      <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-5xl flex-col">
-        <header className="flex items-center justify-between pb-12">
-          <Link href="/" className="text-sm font-semibold tracking-[-0.01em] text-[#111111]">
-            bantuin.dev
-          </Link>
-          <LanguageSwitcher />
-        </header>
-        <div className="grid flex-1 items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
-          <aside className="max-w-md">
-            <Caption>{t('loginCaption')}</Caption>
-            <h1 className="mt-4 text-4xl font-semibold leading-[1.04] tracking-[-0.048em] sm:text-5xl">{t('loginHeading')}</h1>
-            <p className="mt-5 font-[var(--font-lyon-text)] text-base leading-7 text-[#615d59]">{t('loginDesc')}</p>
-            <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-xl border border-black/[0.08] bg-white p-4">
-                <KeyRound className="mb-3 text-[#0075de]" size={20} aria-hidden="true" />
-                <p className="text-sm font-semibold">{t('yourModelKey')}</p>
-                <p className="mt-1 text-sm leading-6 text-[#757575]">{t('yourModelKeyDesc')}</p>
-              </div>
-              <div className="rounded-xl border border-black/[0.08] bg-[#e6f3fe] p-4">
-                <ShieldCheck className="mb-3 text-[#0075de]" size={20} aria-hidden="true" />
-                <p className="text-sm font-semibold">{t('safeExport')}</p>
-                <p className="mt-1 text-sm leading-6 text-[#615d59]">{t('safeExportDesc')}</p>
-              </div>
-            </div>
-          </aside>
-          <section className="flex justify-center lg:justify-end">
-            <Panel className="w-full max-w-md overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-none">
-              <div className="border-b border-black/[0.08] px-6 py-6">
-                <StatusBadge tone="neutral">{t('memberAccess')}</StatusBadge>
-                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em]">{t('signInTitle')}</h2>
-              </div>
-              <div className="p-6">
-              {registered && !error && (
-                <div
-                  role="status"
-                  className="mb-5 flex items-start gap-3 rounded-lg border border-black/[0.08] bg-[#e6f3fe] p-3 text-sm"
-                >
-                  <CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-                  <p className="text-sm font-medium">
-                    {t('accountCreated')}
-                  </p>
-                </div>
-              )}
-
-              {error && (
-                <div
-                  role="alert"
-                  className="mb-5 rounded-lg border border-[#f64932]/25 bg-[#fff1ee] p-3 text-sm font-medium text-[#8f2416]"
-                >
-                  {error}
-                </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="flex flex-col gap-5" aria-busy={loading}>
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="email" className="text-sm font-medium">
-                    {t('emailLabel')}
-                  </label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder={t('emailPlaceholder')}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="password" className="text-sm font-medium">
-                    {t('passwordLabel')}
-                  </label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    autoComplete="current-password"
-                    placeholder={t('passwordPlaceholder')}
-                  />
-                </div>
-
-                <Button type="submit" size="lg" disabled={loading} className="mt-1 w-full">
-                  {loading ? tCommon('loading') : t('submitLoginBtn')}
-                  {!loading && <ArrowRight size={18} aria-hidden="true" />}
-                </Button>
-              </form>
-
-              <p className="mt-6 text-center text-sm text-[#757575]">
-                <Link href="/register" className="font-medium text-[#0075de] hover:underline">
-                  {t('needAccount')}
-                </Link>
-              </p>
-            </div>
-          </Panel>
+    <main className="min-h-screen bg-[#f6f5f4] px-5 text-[#171715] sm:px-8">
+      <header className="mx-auto flex h-[76px] max-w-6xl items-center justify-between border-b border-black/10">
+        <Link href="/" className="text-[15px] font-semibold tracking-[-0.04em]">bantuin.dev</Link>
+        <LanguageSwitcher />
+      </header>
+      <div className="mx-auto grid min-h-[calc(100vh-77px)] max-w-6xl items-center gap-14 py-12 lg:grid-cols-[1.1fr_.9fr] lg:gap-24">
+        <aside className="max-w-xl">
+          <p className="text-xs font-semibold uppercase tracking-[.17em] text-[#77736e]">{t('loginCaption')}</p>
+          <h1 className="mt-6 max-w-lg text-5xl font-semibold leading-[.99] tracking-[-.065em] sm:text-7xl">{t('loginHeading')}</h1>
+          <p className="mt-7 max-w-md text-base leading-7 text-[#615d59]">{t('loginDesc')}</p>
+          <div className="mt-12 max-w-md border-l-2 border-[#edc6a4] pl-5">
+            <p className="text-sm font-semibold">{t('yourModelKey')}</p>
+            <p className="mt-1 text-sm leading-6 text-[#757575]">{t('yourModelKeyDesc')}</p>
+            <p className="mt-5 text-sm font-semibold">{t('safeExport')}</p>
+            <p className="mt-1 text-sm leading-6 text-[#757575]">{t('safeExportDesc')}</p>
+          </div>
+        </aside>
+        <section aria-labelledby="auth-title" className="w-full max-w-md lg:justify-self-end">
+          <div className="mb-8">
+            <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#77736e]">{t('memberAccess')}</p>
+            <h2 id="auth-title" className="mt-3 text-3xl font-semibold tracking-[-.05em]">{t('signInTitle')}</h2>
+          </div>
+          {registered && !error && <div role="status" className="mb-5 flex items-start gap-3 border-l-2 border-[#5c8b65] bg-[#eaf2e9] p-4 text-sm"><CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" /><p>{t('accountCreated')}</p></div>}
+          {error && <div role="alert" className="mb-5 border-l-2 border-[#bd4b3f] bg-[#fff1ee] p-4 text-sm font-medium text-[#8f2416]">{error}</div>}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5" aria-busy={loading}>
+            <div className="flex flex-col gap-2"><label htmlFor="email" className="text-sm font-medium">{t('emailLabel')}</label><Input id="email" name="email" type="email" required autoComplete="email" placeholder={t('emailPlaceholder')} className="rounded-md border-black/20 bg-white px-4 py-3" /></div>
+            <div className="flex flex-col gap-2"><label htmlFor="password" className="text-sm font-medium">{t('passwordLabel')}</label><Input id="password" name="password" type="password" required autoComplete="current-password" placeholder={t('passwordPlaceholder')} className="rounded-md border-black/20 bg-white px-4 py-3" /></div>
+            <Button type="submit" size="lg" disabled={loading} className="mt-2 w-full">{loading ? tCommon('loading') : t('submitLoginBtn')}{!loading && <ArrowRight size={18} aria-hidden="true" />}</Button>
+          </form>
+          <p className="mt-7 text-sm text-[#757575]"><Link href="/register" className="font-medium text-[#176fc0] underline-offset-4 hover:underline">{t('needAccount')}</Link></p>
         </section>
-        </div>
       </div>
     </main>
   )
