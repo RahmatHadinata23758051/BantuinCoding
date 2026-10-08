@@ -93,3 +93,7 @@ test_*.js
 scratch*.js
 *_HANDOFF.md
 CURRENT_CONTEXT.md
+
+# Internal redesign contracts and coordination notes
+DESIGN-REFERENCE.md
+UI-REDESIGN-CONTRACT.md
