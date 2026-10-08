@@ -19,7 +19,7 @@ export default async function Home() {
   const tCommon = await getTranslations('Common')
   return (
     <PageFrame width="7xl" fullHeight className="bg-[#f6f5f4] px-4 py-5 sm:px-8" contentClassName="flex flex-col">
-      <TopBar className="border-b border-black/10 bg-white/80 px-4 py-3 backdrop-blur-sm">
+      <TopBar className="border-b border-black/10 bg-white px-4 py-3">
         <Link href="/" className="flex items-center gap-3 text-sm font-semibold tracking-[-0.01em] text-black/80">
           <span className="inline-flex size-8 items-center justify-center rounded-lg bg-[#0075de] text-xs font-bold text-white">BC</span>
           <span>bantuin.dev / project-bootstrapper</span>
