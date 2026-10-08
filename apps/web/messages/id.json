@@ -67,6 +67,13 @@
     "leavePackDesc": "Markdown mudah dibaca, keputusan jelas, ekspor ZIP aman."
   },
   "Dashboard": {
+    "workspaceLabel": "bantuin.dev / dasbor",
+    "actionsLabel": "Aksi dasbor",
+    "loadingDashboard": "Memuat meja proyek Anda...",
+    "errorCaption": "Dasbor tidak tersedia",
+    "errorTitle": "Meja proyek tidak dapat dimuat.",
+    "errorDesc": "Proyek Anda tetap aman. Muat ulang dasbor, atau periksa koneksi provider dan database sebelum mencoba lagi.",
+    "retryDashboard": "Muat ulang dasbor",
     "controlDesk": "Meja kontrol",
     "title": "File proyek Anda.",
     "subtitle": "Atur penyedia layanan, buka proyek, dan lanjutkan penyusunan konteks menuju paket ekspor.",
@@ -126,6 +133,9 @@
     "saveProfiles": "Simpan beberapa profil model AI dan beralih kapan saja.",
     "savedKeys": "Kunci AI Tersimpan",
     "manageKeys": "Kelola kunci dari berbagai provider dan ganti sewaktu-waktu.",
+    "loadingKeys": "Memuat kunci provider yang tersimpan...",
+    "loadFailed": "Kunci provider tidak dapat dimuat. Coba lagi atau tambahkan kunci baru.",
+    "retryLoad": "Coba lagi",
     "addNewKey": "Tambah Kunci Baru",
     "cancel": "Batal",
     "active": "Aktif",

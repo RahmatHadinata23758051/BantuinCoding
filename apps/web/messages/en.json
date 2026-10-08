@@ -67,6 +67,13 @@
     "leavePackDesc": "Readable Markdown, explicit decisions, safe ZIP export."
   },
   "Dashboard": {
+    "workspaceLabel": "bantuin.dev / dashboard",
+    "actionsLabel": "Dashboard actions",
+    "loadingDashboard": "Loading your project desk...",
+    "errorCaption": "Dashboard unavailable",
+    "errorTitle": "The project desk could not load.",
+    "errorDesc": "Your projects are still safe. Retry the dashboard, or check the provider and database connection before trying again.",
+    "retryDashboard": "Retry dashboard",
     "controlDesk": "Control desk",
     "title": "Your project files.",
     "subtitle": "Configure a provider, open a project, and move its context toward an exportable pack.",
@@ -126,6 +133,9 @@
     "saveProfiles": "Save multiple provider profiles and switch seamlessly.",
     "savedKeys": "Saved Provider Keys",
     "manageKeys": "Manage multiple keys across providers and switch anytime.",
+    "loadingKeys": "Loading saved provider keys...",
+    "loadFailed": "Provider keys could not be loaded. Retry or add a new key.",
+    "retryLoad": "Retry",
     "addNewKey": "Add New Key",
     "cancel": "Cancel",
     "active": "Active",
