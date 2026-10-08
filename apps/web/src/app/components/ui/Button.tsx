@@ -1,29 +1,22 @@
 import type { ButtonHTMLAttributes } from 'react'
-
 import { cn } from '@/lib/ui'
 
-export type ButtonVariant =
-  | 'primary'
-  | 'secondary'
-  | 'neutral'
-  | 'danger'
-  | 'success'
-
+export type ButtonVariant = 'primary' | 'secondary' | 'neutral' | 'danger' | 'success'
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon'
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'border-[var(--ink)] bg-[var(--ink)] text-white hover:bg-[var(--ink-soft)]',
-  secondary: 'border-[var(--border-subtle)] bg-transparent text-[var(--ink)] hover:bg-[var(--surface-soft)]',
-  neutral: 'border-[var(--border-subtle)] bg-[var(--surface-soft)] text-[var(--ink)] hover:border-[var(--ink)]',
-  danger: 'border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--surface-soft)]',
-  success: 'border-[var(--ink)] bg-[var(--paper)] text-[var(--ink)] hover:bg-[var(--surface-soft)]',
+  primary: 'bg-[var(--color-notion-blue)] text-white hover:bg-[#0068c5]',
+  secondary: 'bg-[var(--color-sky-tint)] text-[var(--color-notion-blue)] hover:bg-[#d8eafc]',
+  neutral: 'border border-[var(--border-subtle)] bg-[var(--color-pure-white)] text-[var(--color-ink-black)] hover:bg-[#f2f1f0]',
+  danger: 'bg-[var(--action-red-dim)] text-[var(--color-vermillion)] hover:bg-[#fcd3ce]',
+  success: 'bg-[var(--mint-dim)] text-[#1b6a4e] hover:bg-[#d4ede3]',
 }
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'min-h-9 px-3 py-1.5 text-xs',
-  md: 'min-h-11 px-4 py-2 text-sm',
-  lg: 'min-h-12 px-5 py-3 text-base',
-  icon: 'size-11 p-0',
+  sm: 'min-h-8 px-3 py-1 text-xs',
+  md: 'min-h-9 px-3.5 py-1.5 text-sm',
+  lg: 'min-h-10 px-4 py-2 text-base',
+  icon: 'size-9 p-0',
 }
 
 export function buttonClassName({
@@ -36,8 +29,7 @@ export function buttonClassName({
   className?: string
 } = {}) {
   return cn(
-    'inline-flex items-center justify-center gap-2 rounded-[var(--radius-buttons)] border font-medium font-sans transition-colors',
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)]',
+    'inline-flex items-center justify-center gap-2 rounded-[var(--radius-buttons)] font-medium transition-colors duration-200',
     'disabled:pointer-events-none disabled:opacity-50',
     variantStyles[variant],
     sizeStyles[size],
