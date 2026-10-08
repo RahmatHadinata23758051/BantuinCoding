@@ -65,8 +65,7 @@ export function ProviderSetupPanel() {
   const t = useTranslations('ProviderSetup')
   const [meta, setMeta] = useState<ProviderMeta | null>(null)
   const [savedKeys, setSavedKeys] = useState<SavedKeyItem[]>([])
-  const [loadingKeys, setLoadingKeys] = useState(true)
-  const [loadError, setLoadError] = useState(false)
+  const [loadingKeys, setLoadingKeys] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
 
   // Form state
@@ -89,28 +88,20 @@ export function ProviderSetupPanel() {
     setLoadingKeys(true)
     try {
       const res = await fetch('/api/provider/keys')
-      if (!res.ok) {
-        setLoadError(true)
-        return
+      if (res.ok) {
+        const data = (await res.json()) as { keys?: SavedKeyItem[] }
+        setSavedKeys(data.keys || [])
+        const activeKey = data.keys?.find((k) => k.isActive)
+        if (activeKey) {
+          setMeta({
+            configured: true,
+            provider: activeKey.provider,
+            model: activeKey.model,
+            configuredAt: activeKey.lastValidated || undefined,
+          })
+        }
       }
-
-      const data = (await res.json()) as { keys?: SavedKeyItem[] }
-      setLoadError(false)
-      setSavedKeys(data.keys || [])
-      const activeKey = data.keys?.find((k) => k.isActive)
-      if (activeKey) {
-        setMeta({
-          configured: true,
-          provider: activeKey.provider,
-          model: activeKey.model,
-          configuredAt: activeKey.lastValidated || undefined,
-        })
-      } else {
-        setMeta(null)
-      }
-    } catch {
-      setLoadError(true)
-    } finally {
+    } catch {} finally {
       setLoadingKeys(false)
     }
   }
@@ -304,19 +295,19 @@ export function ProviderSetupPanel() {
   const showModelSelect = modelsLoaded && availableModels.length > 0
 
   return (
-    <Panel className="overflow-hidden">
+    <Panel className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-none">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className={cn(
-          'flex w-full items-center justify-between gap-4 border-b-2 border-[var(--ink)] px-4 py-4 text-left transition-colors sm:px-5',
-          isConfigured ? 'bg-[var(--mint)] hover:bg-[var(--mint-dim)]' : 'bg-[var(--electric-yellow)] hover:bg-[var(--electric-yellow-dim)]',
+          'flex w-full items-center justify-between gap-4 border-b border-black/10 px-4 py-4 text-left transition-colors sm:px-5',
+          isConfigured ? 'bg-[#e6f3fe] hover:bg-[#d9edfc]' : 'bg-[#ffb110] hover:bg-[#f5a900]',
         )}
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className={cn(
-            'flex size-10 shrink-0 items-center justify-center border-2 border-[var(--ink)] bg-[var(--paper-raised)] shadow-[var(--shadow-xs)]',
+            'flex size-10 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-white text-black',
             isConfigured ? 'text-[var(--ink)]' : 'text-[var(--ink)]',
           )}>
             {isConfigured ? <CheckCircle2 size={20} strokeWidth={2.5} /> : <KeyRound size={20} strokeWidth={2.5} />}
@@ -376,19 +367,7 @@ export function ProviderSetupPanel() {
           </div>
 
           {/* Saved Keys List */}
-          {loadingKeys ? (
-            <div role="status" className="flex items-center gap-2 rounded-[4px] border-2 border-dashed border-[var(--ink)] p-6 text-center text-xs font-bold text-[var(--paper-muted)]">
-              <LoaderCircle size={16} className="motion-safe:animate-spin" aria-hidden="true" />
-              {t('loadingKeys')}
-            </div>
-          ) : loadError ? (
-            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-[4px] border-2 border-dashed border-[var(--ink)] p-4 text-xs font-bold text-[var(--ink)]">
-              <span>{t('loadFailed')}</span>
-              <Button type="button" variant="neutral" size="sm" onClick={() => void loadSavedKeys()}>
-                {t('retryLoad')}
-              </Button>
-            </div>
-          ) : savedKeys.length > 0 ? (
+          {savedKeys.length > 0 ? (
             <div className="divide-y-2 divide-[var(--ink)] rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper)] shadow-[var(--shadow-sm)] overflow-hidden">
               {savedKeys.map((item) => (
                 <div
