@@ -426,7 +426,7 @@ export function MarkdownWorkspace({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 <article
-                  className="prose-doc rounded-xl border border-black/10 bg-white p-5"
+                  className="prose-doc max-w-none border border-black/10 bg-white p-5 sm:p-8"
                   dangerouslySetInnerHTML={{
                     __html: renderedPreview,
                   }}
