@@ -1,35 +1,38 @@
 'use client'
 
-import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useEffect } from 'react'
+import { Link } from '@/i18n/routing'
 
-import { Button, Caption, PageFrame, Panel, TopBar } from '@/app/components/ui'
-
-export default function DashboardError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function DashboardError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
   const t = useTranslations('Dashboard')
+  const tCommon = useTranslations('Common')
+
+  useEffect(() => {
+    console.error(error)
+  }, [error])
 
   return (
-    <PageFrame width="7xl" className="!border-[#e8e8f2] !bg-white !shadow-none py-4 text-[#303055]" contentClassName="overflow-hidden">
-      <TopBar className="!border-[#e8e8f2] !bg-white">
-        <div className="flex items-center gap-2 font-mono text-xs font-semibold text-[#303055] sm:text-sm">
-          <span className="inline-flex size-7 items-center justify-center rounded-[4px] border border-[#303055] bg-[#303055] text-xs text-white">
-            BC
-          </span>
-          <span>{t('workspaceLabel')}</span>
-        </div>
-      </TopBar>
-      <section className="bg-white p-5 sm:p-7 lg:p-8">
-        <Panel tone="yellow" raised={false} className="max-w-2xl rounded-lg !border-[#e8e8f2] !bg-[#e8e8f2] !p-6 !shadow-none sm:!p-8">
-          <Caption className="!border-[#303055] !bg-white !text-[#303055] !shadow-none">{t('errorCaption')}</Caption>
-          <AlertTriangle className="mt-6 text-[#984e4d]" size={32} aria-hidden="true" />
-          <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-[#303055]">{t('errorTitle')}</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#403f53]">{t('errorDesc')}</p>
-          <Button type="button" variant="primary" className="mt-6 !rounded-[4px] !border-[#303055] !bg-[#303055] !text-white !shadow-none" onClick={reset}>
-            <RefreshCw size={17} aria-hidden="true" />
+    <main className="min-h-screen bg-[var(--paper)] px-4 py-12 text-[var(--ink)] sm:px-6">
+      <section role="alert" className="mx-auto max-w-xl rounded-xl border border-[var(--ink)]/10 bg-white p-6 sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--paper-muted)]">{t('workspaceLabel')}</p>
+        <h1 className="mt-3 text-2xl font-semibold tracking-tight">{t('errorTitle')}</h1>
+        <p className="mt-2 text-sm leading-6 text-[var(--paper-muted)]">{t('errorDesc')}</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button type="button" onClick={reset} className="rounded-lg bg-[var(--ink)] px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cobalt)]">
             {t('retryDashboard')}
-          </Button>
-        </Panel>
+          </button>
+          <Link href="/" className="rounded-lg border border-[var(--ink)]/15 bg-white px-4 py-2.5 text-sm font-medium hover:bg-[var(--lavender)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cobalt)]">
+            {tCommon('backToHome')}
+          </Link>
+        </div>
       </section>
-    </PageFrame>
+    </main>
   )
 }

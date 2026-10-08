@@ -1,124 +1,97 @@
-import { KeyRound, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, KeyRound, ShieldCheck, SlidersHorizontal } from 'lucide-react'
 import { Link } from '@/i18n/routing'
 import { redirect } from 'next/navigation'
 
 import { ProviderSetupPanel } from '@/app/components/ProviderSetupPanel'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
-import { Caption, Panel, PageFrame, TopBar, buttonClassName } from '@/app/components/ui'
+import { PageFrame, TopBar } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { getTranslations } from 'next-intl/server'
 
 export default async function ProviderSettingsPage() {
   const t = await getTranslations('ProviderDesk')
   const tNew = await getTranslations('NewProject')
+  const tSetup = await getTranslations('ProviderSetup')
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
   return (
-    <PageFrame
-      width="6xl"
-      className="!border-[#e8e8f2] !bg-white !shadow-none py-4 text-[#303055]"
-      contentClassName="overflow-hidden"
-    >
-      <TopBar className="!border-[#e8e8f2] !bg-white">
-        <div className="flex min-w-0 items-center gap-2 font-mono text-xs font-semibold text-[#303055] sm:text-sm">
-          <Link href="/dashboard" className="shrink-0 underline decoration-2 underline-offset-4">
+    <PageFrame width="5xl" contentClassName="!border-0 !bg-transparent !shadow-none">
+      <TopBar className="border-b border-slate-200 bg-white/90 shadow-none">
+        <div className="flex min-w-0 items-center gap-2 text-sm text-slate-500">
+          <Link href="/dashboard" className="rounded-sm hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600">
             {tNew('backDashboard')}
           </Link>
-          <span className="truncate text-[#767682]">{t('breadcrumb')}</span>
+          <span aria-hidden="true">/</span>
+          <span className="truncate font-medium text-slate-900">{t('breadcrumb').replace(/^\/\s*/, '')}</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden max-w-56 truncate font-mono text-xs font-bold text-[#767682] sm:inline">
-            {session.user.email}
-          </span>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="hidden max-w-56 truncate text-sm text-slate-500 sm:inline">{session.user.email}</span>
           <LanguageSwitcher />
         </div>
       </TopBar>
 
-      <div className="grid lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="border-b border-[#e8e8f2] bg-[#e8e8f2] p-5 sm:p-7 lg:border-b-0 lg:border-r lg:p-8">
-          <Caption className="!border-[#303055] !bg-white !text-[#303055] !shadow-none">
-            {t('caption')}
-          </Caption>
-          <h1 className="mt-5 max-w-xs text-4xl font-semibold leading-tight tracking-[-0.05em] text-[#303055]">
-            {t('title')}
-          </h1>
-          <p className="mt-4 max-w-xs text-sm leading-6 text-[#403f53]">{t('subtitle')}</p>
-
-          <Link
-            href="/projects/new"
-            className={buttonClassName({
-              variant: 'primary',
-              size: 'lg',
-              className:
-                'mt-8 w-full !rounded-[4px] !border-[#303055] !bg-[#303055] !text-white !shadow-none',
-            })}
-          >
-            {t('captureIdea')}
-          </Link>
-
-          <div className="mt-8 border-t border-[#303055] pt-5">
-            <p className="font-mono text-xs font-semibold tracking-[0.08em] text-[#303055]">
-              {t('setupSequence')}
-            </p>
-            <ol className="mt-4 grid gap-3">
-              <li className="flex gap-3 text-sm leading-5 text-[#403f53]">
-                <span className="font-mono font-semibold text-[#303055]">01</span>
-                <span>{t('setupProvider')}</span>
-              </li>
-              <li className="flex gap-3 text-sm leading-5 text-[#403f53]">
-                <span className="font-mono font-semibold text-[#303055]">02</span>
-                <span>{t('setupTest')}</span>
-              </li>
-              <li className="flex gap-3 text-sm leading-5 text-[#403f53]">
-                <span className="font-mono font-semibold text-[#303055]">03</span>
-                <span>{t('setupSave')}</span>
-              </li>
+      <div className="mx-auto w-full max-w-5xl px-4 pb-12 pt-7 sm:px-6 sm:pt-10">
+        <header className="overflow-hidden rounded-3xl border border-violet-100 bg-gradient-to-br from-white via-white to-violet-50 px-5 py-6 shadow-sm sm:px-8 sm:py-8">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-violet-700">
+            <span className="inline-flex size-7 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+              <KeyRound size={15} aria-hidden="true" />
+            </span>
+            <span>{t('caption')}</span>
+          </div>
+          <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-end">
+            <div className="max-w-2xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">{t('title')}</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">{t('subtitle')}</p>
+              <Link
+                href="/projects/new"
+                className="mt-5 inline-flex min-h-10 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+              >
+                {t('captureIdea')}
+                <ArrowUpRight size={15} aria-hidden="true" />
+              </Link>
+            </div>
+            <ol aria-label={t('aiProvider')} className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-3">
+              {[
+                { number: '01', label: tSetup('provider') },
+                { number: '02', label: `${tSetup('apiKey')} + ${tSetup('model')}` },
+                { number: '03', label: tSetup('testConnection') },
+              ].map((step) => (
+                <li key={step.number} className="flex min-w-0 items-start gap-2 rounded-xl border border-slate-200/80 bg-white/80 px-2.5 py-2.5 text-xs text-slate-600 sm:gap-3 sm:px-3">
+                  <span className="font-mono text-[11px] font-semibold text-violet-600">{step.number}</span>
+                  <span className="leading-4">{step.label}</span>
+                </li>
+              ))}
             </ol>
           </div>
-        </aside>
+        </header>
 
-        <main className="min-w-0 bg-white p-5 sm:p-7 lg:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e8e8f2] pb-5">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-[4px] border border-[#303055] bg-[#e8e8f2] text-[#303055]">
-                <KeyRound size={21} strokeWidth={2} aria-hidden="true" />
+        <section aria-labelledby="provider-settings-title" className="mt-7 grid gap-5 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start">
+          <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 [&>div]:!rounded-2xl [&>div]:!border-slate-200 [&>div]:!shadow-none [&>div>button]:!rounded-t-2xl [&>div>button]:!border-b [&>div>button]:!border-slate-200 [&>div>button]:!bg-white [&>div>button:hover]:!bg-slate-50 [&>div>div]:!border-slate-200 [&>div>div]:!bg-white">
+            <div className="mb-5 flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-700">
+                <SlidersHorizontal size={19} aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="font-mono text-xs font-semibold tracking-[0.08em] text-[#767682]">
-                  {t('deskLabel')}
-                </p>
-                <h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-[#303055]">
-                  {t('aiProvider')}
-                </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#403f53]">
-                  {t('aiProviderDesc')}
-                </p>
+                <h2 id="provider-settings-title" className="text-lg font-semibold tracking-tight text-slate-900">{t('aiProvider')}</h2>
+                <p className="mt-1 text-sm leading-5 text-slate-500">{t('aiProviderDesc')}</p>
               </div>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-[4px] border border-[#e8e8f2] bg-[#e8e8f2] px-3 py-2 font-mono text-[11px] font-semibold text-[#303055]">
-              <ShieldCheck size={15} aria-hidden="true" />
-              {t('sessionOnly')}
-            </span>
-          </div>
-
-          <div className="mt-6 rounded-lg border border-[#e8e8f2] bg-[#e8e8f2] p-2 sm:p-3">
             <ProviderSetupPanel />
           </div>
 
-          <Panel
-            raised={false}
-            className="mt-6 !rounded-lg !border-[#e8e8f2] !bg-white !p-4 !shadow-none sm:!p-5"
-          >
+          <aside className="rounded-2xl border border-violet-100 bg-violet-50/70 p-4 sm:p-5">
             <div className="flex items-start gap-3">
-              <ShieldCheck className="mt-0.5 shrink-0 text-[#303055]" size={20} aria-hidden="true" />
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-violet-700 shadow-sm">
+                <ShieldCheck size={18} aria-hidden="true" />
+              </span>
               <div>
-                <p className="font-mono text-xs font-semibold text-[#303055]">{t('securityNote')}</p>
-                <p className="mt-2 text-sm leading-6 text-[#403f53]">{t('securityNoteDesc')}</p>
+                <h2 className="text-sm font-semibold text-slate-900">{t('securityNote')}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{t('securityNoteDesc')}</p>
               </div>
             </div>
-          </Panel>
-        </main>
+          </aside>
+        </section>
       </div>
     </PageFrame>
   )

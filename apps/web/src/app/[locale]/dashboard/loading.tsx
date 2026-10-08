@@ -1,35 +1,33 @@
-import { LoaderCircle } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 
-import { Caption, PageFrame, Panel, TopBar } from '@/app/components/ui'
-
 export default async function DashboardLoading() {
-  const t = await getTranslations('Dashboard')
+  const t = await getTranslations('Common')
 
   return (
-    <PageFrame width="7xl" className="!border-[#e8e8f2] !bg-white !shadow-none py-4 text-[#303055]" contentClassName="overflow-hidden">
-      <TopBar className="!border-[#e8e8f2] !bg-white">
-        <div className="flex items-center gap-2 font-mono text-xs font-semibold text-[#303055] sm:text-sm">
-          <span className="inline-flex size-7 items-center justify-center rounded-[4px] border border-[#303055] bg-[#303055] text-xs text-white">
-            BC
-          </span>
-          <span>{t('workspaceLabel')}</span>
+    <main aria-busy="true" aria-describedby="dashboard-loading-label" className="min-h-screen bg-[var(--paper)] px-4 py-5 text-[var(--ink)] sm:px-6 lg:px-10">
+      <p id="dashboard-loading-label" role="status" className="sr-only">{t('loading')}</p>
+      <div aria-hidden="true" className="mx-auto max-w-7xl">
+        <div className="flex items-center justify-between border-b border-[var(--ink)]/15 pb-5">
+          <div className="h-9 w-40 rounded-lg bg-[var(--lavender)] motion-safe:animate-pulse" />
+          <div className="h-9 w-44 rounded-lg bg-[var(--lavender)] motion-safe:animate-pulse" />
         </div>
-      </TopBar>
-      <div className="grid lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="border-b border-[#e8e8f2] bg-[#e8e8f2] p-5 sm:p-7 lg:border-b-0 lg:border-r lg:p-8">
-          <Caption className="!border-[#303055] !bg-white !text-[#303055] !shadow-none">{t('controlDesk')}</Caption>
-          <div className="mt-5 h-12 w-48 motion-safe:animate-pulse rounded bg-white/70" />
-          <div className="mt-4 h-16 max-w-xs motion-safe:animate-pulse rounded bg-white/70" />
-        </aside>
-        <section className="min-w-0 bg-white p-5 sm:p-7 lg:p-8" aria-busy="true" aria-live="polite">
-          <div className="flex items-center gap-3 border-b border-[#e8e8f2] pb-5">
-            <LoaderCircle size={18} className="motion-safe:animate-spin" aria-hidden="true" />
-            <p className="font-mono text-xs font-semibold text-[#767682]">{t('loadingDashboard')}</p>
+        <div className="grid gap-6 border-b border-[var(--ink)]/10 py-10 md:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="space-y-3">
+            <div className="h-3 w-24 rounded bg-[var(--lavender)] motion-safe:animate-pulse" />
+            <div className="h-10 w-64 max-w-full rounded bg-[var(--lavender)] motion-safe:animate-pulse" />
+            <div className="h-4 w-full max-w-lg rounded bg-[var(--lavender)] motion-safe:animate-pulse" />
           </div>
-          <Panel raised={false} className="mt-6 h-40 motion-safe:animate-pulse rounded-lg !border-[#e8e8f2] !bg-[#e8e8f2] !shadow-none" />
-        </section>
+          <div className="h-10 w-56 max-w-full rounded-lg bg-[var(--lavender)] motion-safe:animate-pulse" />
+        </div>
+        <div className="my-6 h-20 rounded-xl border border-[var(--ink)]/10 bg-white" />
+        <div className="h-8 w-44 rounded bg-[var(--lavender)] motion-safe:animate-pulse" />
+        <div className="mt-5 divide-y divide-[var(--ink)]/10 border-y border-[var(--ink)]/10">
+          {[0, 1, 2].map((item) => <div key={item} className="space-y-3 py-5">
+            <div className="h-5 w-52 max-w-full rounded bg-[var(--lavender)] motion-safe:animate-pulse" />
+            <div className="h-4 w-full max-w-xl rounded bg-[var(--lavender)] motion-safe:animate-pulse" />
+          </div>)}
+        </div>
       </div>
-    </PageFrame>
+    </main>
   )
 }
