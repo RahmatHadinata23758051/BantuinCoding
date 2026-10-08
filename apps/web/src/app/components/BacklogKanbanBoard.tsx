@@ -490,10 +490,15 @@ export function BacklogKanbanBoard({
                         role="article"
                         aria-label={`${task.taskKey}: ${task.title}`}
                         onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
-                            setExpandedTaskId(expandedTaskId === task.id ? null : task.id)
+                          if (
+                            event.currentTarget !== event.target ||
+                            (event.key !== 'Enter' && event.key !== ' ')
+                          ) {
+                            return
                           }
+
+                          event.preventDefault()
+                          setExpandedTaskId(expandedTaskId === task.id ? null : task.id)
                         }}
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={cn(
@@ -542,7 +547,7 @@ export function BacklogKanbanBoard({
                         {/* Tags / Metadata Pills */}
                         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                           <span className="border border-[var(--ink)] bg-[var(--paper-raised)] px-1.5 py-0.5 font-mono text-[0.62rem] font-bold">
-                            P{task.phaseOrder}
+                            {t('backlogPhase', { order: task.phaseOrder })}
                           </span>
 
                           {dependencyLabels.length > 0 && (
