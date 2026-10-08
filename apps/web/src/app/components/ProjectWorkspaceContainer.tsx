@@ -161,7 +161,29 @@ const BUTTON_FOCUS_CLASS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-canvas)]'
 
 const SENSITIVE_CONTEXT_KEY =
-  /(api.?key|access.?token|authorization|credential|password|private.?key|secret)/i
+  /(api.?key|access.?token|authorization|credential|password|private.?key|secret|token)/i
+const SENSITIVE_CONTEXT_VALUE =
+  /^(?:bearer\s+|sk-[a-z0-9_-]{12,}|AIza[a-z0-9_-]{20,}|gh[pousr]_[a-z0-9_]{20,}|eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$)/i
+
+function isSensitiveContextValue(value: unknown): boolean {
+  if (typeof value === 'string') return SENSITIVE_CONTEXT_VALUE.test(value.trim())
+  if (Array.isArray(value)) return value.some(isSensitiveContextValue)
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).some(([key, nestedValue]) =>
+      SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(nestedValue),
+    )
+  }
+  return false
+}
+
+function SensitiveContextValue({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-2 text-[var(--workspace-muted)]">
+      <ShieldCheck aria-hidden="true" className="size-4" />
+      {label}
+    </span>
+  )
+}
 
 function getSectionPanelId(section: WorkspaceSection) {
   return `workspace-panel-${section}`
@@ -313,6 +335,7 @@ function ReadinessLine({
 function ContextValue({
   value,
   depth = 0,
+  locale,
   emptyLabel,
   yesLabel,
   noLabel,
@@ -322,6 +345,7 @@ function ContextValue({
 }: {
   value: unknown
   depth?: number
+  locale: string
   emptyLabel: string
   yesLabel: string
   noLabel: string
@@ -369,7 +393,7 @@ function ContextValue({
   }
 
   if (typeof value === 'number') {
-    return <span>{value.toLocaleString('en')}</span>
+    return <span>{value.toLocaleString(locale)}</span>
   }
 
   if (Array.isArray(value)) {
@@ -391,6 +415,7 @@ function ContextValue({
               <ContextValue
                 value={item}
                 depth={depth + 1}
+                locale={locale}
                 emptyLabel={emptyLabel}
                 yesLabel={yesLabel}
                 noLabel={noLabel}
@@ -414,6 +439,7 @@ function ContextValue({
             <ContextValue
               value={item}
               depth={depth + 1}
+              locale={locale}
               emptyLabel={emptyLabel}
               yesLabel={yesLabel}
               noLabel={noLabel}
@@ -449,15 +475,13 @@ function ContextValue({
               {formatLabel(key)}
             </dt>
             <dd className="min-w-0 text-sm font-medium leading-6 text-[var(--workspace-ink)]">
-              {SENSITIVE_CONTEXT_KEY.test(key) ? (
-                <span className="inline-flex items-center gap-2 text-[var(--workspace-muted)]">
-                  <ShieldCheck aria-hidden="true" className="size-4" />
-                  {sensitiveLabel}
-                </span>
+              {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(nestedValue) ? (
+                <SensitiveContextValue label={sensitiveLabel} />
               ) : (
                 <ContextValue
                   value={nestedValue}
                   depth={depth + 1}
+                  locale={locale}
                   emptyLabel={emptyLabel}
                   yesLabel={yesLabel}
                   noLabel={noLabel}
@@ -595,14 +619,14 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     try {
       const validation = await fetch(`/api/projects/${initialData.id}/validate`, { method: 'POST' })
       const validationData = (await validation.json().catch(() => null)) as { error?: string; report?: { isConsistent?: boolean } } | null
-      if (!validation.ok) throw new Error(validationData?.error ?? 'Export validation failed. Please retry.')
+      if (!validation.ok) throw new Error(validationData?.error ?? t('exportValidationFailed'))
       if (validationData?.report && !validationData.report.isConsistent) {
-        throw new Error('Consistency checks found document issues. Review the report before exporting.')
+        throw new Error(t('consistencyIssues'))
       }
       const download = await fetch(`/api/projects/${initialData.id}/export`)
       if (!download.ok) {
         const exportData = (await download.json().catch(() => null)) as { error?: string } | null
-        throw new Error(exportData?.error ?? 'Export failed. Review eligible documents and retry.')
+        throw new Error(exportData?.error ?? t('exportFailed'))
       }
 
       const blob = await download.blob()
@@ -623,7 +647,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     } catch (error) {
       setGenMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Export validation failed. Please retry.',
+        text: error instanceof Error ? error.message : t('exportValidationFailed'),
       })
     } finally {
       setIsExporting(false)
@@ -746,21 +770,21 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
   const buildCanonicalContext = async () => {
     setIsAnalyzing(true)
-    setDiscoveryMessage({ type: 'status', text: 'Normalizing the canonical context…' })
+    setDiscoveryMessage({ type: 'status', text: t('normalizingContext') })
     try {
       await requestProjectStage(
         'context',
         { method: 'POST' },
-        'Canonical context generation failed.',
+        t('contextGenerationFailed'),
       )
 
       setProjectStatus('CONTEXT_READY')
-      setDiscoveryMessage({ type: 'status', text: 'Canonical context ready. Refreshing workspace…' })
+      setDiscoveryMessage({ type: 'status', text: t('contextReadyMessage') })
       window.location.reload()
     } catch (error) {
       setDiscoveryMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Canonical context generation failed. Please retry.',
+        text: error instanceof Error ? error.message : `${t('contextGenerationFailed')} Please retry.`,
       })
     } finally {
       setIsAnalyzing(false)
@@ -769,16 +793,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
   const handleStartDiscovery = async () => {
     setIsAnalyzing(true)
-    setDiscoveryMessage({ type: 'status', text: 'Analyzing requirements…' })
+    setDiscoveryMessage({ type: 'status', text: t('analyzingProject') })
 
     try {
       await requestProjectStage(
         'analyze',
         { method: 'POST' },
-        'Requirement analysis failed.',
+        t('requirementAnalysisFailed'),
       )
       setProjectStatus('ANALYZING')
-      setDiscoveryMessage({ type: 'status', text: 'Preparing focused clarification questions…' })
+      setDiscoveryMessage({ type: 'status', text: t('preparingClarifications') })
 
       const roundResult = await requestProjectStage<{
         questions: Array<{ question: string; impact?: string }>
@@ -786,7 +810,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       }>(
         'clarifications?action=generate',
         { method: 'POST' },
-        'Clarification planning failed.',
+        t('clarificationPlanningFailed'),
       )
 
       if (roundResult.is_context_sufficient) {
@@ -803,19 +827,22 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           answer: string | null
           status: string
         }>
-      }>('clarifications', { method: 'GET' }, 'Unable to load clarification questions.')
+      }>('clarifications', { method: 'GET' }, t('clarificationQuestionsLoadFailed'))
 
       setClarifications(stored.questions)
       setProjectStatus('CLARIFYING')
       selectTab('context')
       setDiscoveryMessage({
         type: 'status',
-        text: `Answer ${roundResult.questions.length} clarification question${roundResult.questions.length === 1 ? '' : 's'} to continue.`,
+        text:
+          roundResult.questions.length === 1
+            ? t('clarificationWaitingSingular', { count: roundResult.questions.length })
+            : t('clarificationWaitingPlural', { count: roundResult.questions.length }),
       })
     } catch (error) {
       setDiscoveryMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Project discovery failed. Please retry.',
+        text: error instanceof Error ? error.message : `${t('requirementAnalysisFailed')} Please retry.`
       })
     } finally {
       setIsAnalyzing(false)
@@ -837,12 +864,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     })
 
     if (answers.some((item) => !item.answer)) {
-      setDiscoveryMessage({ type: 'error', text: 'Answer every pending question before continuing.' })
+      setDiscoveryMessage({ type: 'error', text: t('answerEveryPending') })
       return
     }
 
     setIsSubmittingAnswers(true)
-    setDiscoveryMessage({ type: 'status', text: 'Saving confirmed answers…' })
+    setDiscoveryMessage({ type: 'status', text: t('savingAnswers') })
 
     try {
       await requestProjectStage(
@@ -852,7 +879,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ answers }),
         },
-        'Clarification answers could not be saved.',
+        t('clarificationAnswersSaveFailed'),
       )
 
       // Immediately reflect answered status in client state so pending questions form clears
@@ -865,14 +892,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         ),
       )
 
-      setDiscoveryMessage({ type: 'status', text: 'Checking whether more decisions are needed…' })
+      setDiscoveryMessage({ type: 'status', text: t('checkingDecisions') })
       const nextRound = await requestProjectStage<{
         questions: Array<{ question: string; impact?: string }>
         is_context_sufficient: boolean
       }>(
         'clarifications?action=generate',
         { method: 'POST' },
-        'The next clarification round could not be prepared.',
+        t('nextClarificationRoundFailed'),
       )
 
       if (nextRound.is_context_sufficient) {
@@ -889,12 +916,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           answer: string | null
           status: string
         }>
-      }>('clarifications', { method: 'GET' }, 'Unable to load clarification questions.')
+      }>('clarifications', { method: 'GET' }, t('clarificationQuestionsLoadFailed'))
 
       setClarifications(stored.questions)
       setDiscoveryMessage({
         type: 'status',
-        text: `Round ${stored.questions.at(-1)?.round ?? 1} is ready. Resolve the remaining decisions.`,
+        text: t('clarificationRoundReady', { round: stored.questions.at(-1)?.round ?? 1 }),
       })
     } catch (error) {
       // Synchronize latest questions from server so UI reflects any saved answers
@@ -916,7 +943,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
       setDiscoveryMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Clarification submission failed. Please retry.',
+        text: error instanceof Error ? error.message : t('clarificationSubmissionFailed'),
       })
     } finally {
       setIsSubmittingAnswers(false)
@@ -937,7 +964,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         await requestProjectStage<{ plan?: { artifacts?: Array<{ type: string; isRequired?: boolean }> } }>(
           'planner',
           { method: 'POST' },
-          'Artifact planning failed.',
+          t('artifactPlanningFailed'),
         )
         return
       case 'documents': {
@@ -946,13 +973,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         }>(
           'generate',
           { method: 'POST' },
-          'Document generation failed.',
+          t('documentGenerationFailed'),
         )
         const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
         if (failedArtifact) {
           throw new Error(failedArtifact.error ?? `${failedArtifact.type}.md generation failed.`)
         }
-        if (!result.artifacts?.length) throw new Error('Document generation returned no artifacts.')
+        if (!result.artifacts?.length) throw new Error(t('documentGenerationEmpty'))
         return
       }
       case 'agentRules': {
@@ -965,23 +992,23 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             body: JSON.stringify({ type: 'AGENT_RULES' }),
             headers: { 'Content-Type': 'application/json' },
           },
-          'Agent and rules generation failed.',
+          t('agentRulesGenerationFailed'),
         )
         const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
-        if (failedArtifact) throw new Error(failedArtifact.error ?? 'Agent.md generation failed.')
-        if (!result.artifacts?.length) throw new Error('Agent instructions returned no artifact.')
+        if (failedArtifact) throw new Error(failedArtifact.error ?? t('agentGenerationFailed'))
+        if (!result.artifacts?.length) throw new Error(t('agentInstructionsEmpty'))
         return
       }
       case 'skills':
-        await requestProjectStage('skills', { method: 'POST' }, 'Skill resolution failed.')
+        await requestProjectStage('skills', { method: 'POST' }, t('skillResolutionFailed'))
         return
       case 'backlog':
-        await requestProjectStage('backlog', { method: 'POST' }, 'Backlog generation failed.')
+        await requestProjectStage('backlog', { method: 'POST' }, t('backlogGenerationFailed'))
         return
       case 'validation': {
         const result = await requestProjectStage<{
           report?: { isConsistent?: boolean }
-        }>('validate', { method: 'POST' }, 'Readiness validation failed.')
+        }>('validate', { method: 'POST' }, t('readinessValidationFailed'))
         if (result.report && result.report.isConsistent === false) {
           throw new Error(t('generationValidationFailed'))
         }
@@ -1044,7 +1071,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       selectTab('context')
       setDiscoveryMessage({
         type: 'error',
-        text: 'Complete project discovery before generating documents.',
+        text: t('completeDiscoveryFirst'),
       })
       return
     }
@@ -1248,7 +1275,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             
           </div>
 
-          <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] xl:gap-6">
+          <div className="mt-8 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem] xl:gap-10">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span
@@ -1256,7 +1283,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 >
                   {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
                 </span>
-                <span className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
+                <span className="text-xs text-[var(--workspace-faint)]">
                   {t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}
                 </span>
                 <Button size="sm" variant="neutral" onClick={() => setIsSettingsOpen(true)} className="h-7 px-2 text-[10px] ml-2 font-semibold uppercase tracking-wider">
@@ -1266,14 +1293,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                 {initialData.name}
               </h1>
-              <p className="mt-4 max-w-3xl border-l-2 border-black/[0.12] pl-3 text-sm leading-6 text-[var(--workspace-muted)]">
+              <p className="mt-4 max-w-3xl border-l border-[var(--workspace-primary)] pl-4 text-sm leading-6 text-[var(--workspace-muted)]">
                 {initialData.description ||
                   t('noBrief')}
               </p>
             </div>
 
-            <div className={`${PANEL_CLASS} bg-[var(--workspace-yellow-soft)] p-5`}>
-              <p className="font-mono text-xs font-semibold text-[var(--workspace-ink)]">
+            <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5`}>
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
                 {t('controlRoomAction')}
               </p>
               <div className="mt-4">{generateButton}</div>
@@ -1289,17 +1316,19 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               >
                 {(genMessage ?? discoveryMessage)?.text ??
                   (contextReady
-                    ? 'Plans documents, generates the pack, resolves skills, then builds the backlog.'
+                    ? t('generatePlanMessage')
                     : pendingClarifications.length > 0
-                      ? `${pendingClarifications.length} clarification question${pendingClarifications.length === 1 ? '' : 's'} waiting for your decision.`
-                      : 'Analyze the idea before document generation so critical decisions are not invented.')}
+                      ? pendingClarifications.length === 1
+                        ? t('clarificationWaitingSingular', { count: pendingClarifications.length })
+                        : t('clarificationWaitingPlural', { count: pendingClarifications.length })
+                      : t('analyzeIdeaMessage'))}
               </p>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="border-b border-black/[0.08] bg-[var(--workspace-paper)] lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r lg:border-black/[0.08]">
           <div className="px-4 py-5 sm:px-6 lg:px-5 lg:py-8">
             <PipelineSpine
@@ -1348,10 +1377,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     onClick={() => selectTab(section.id)}
                     onKeyDown={(event) => handleSectionKeyDown(event, section.id)}
                     title={t(section.descriptionKey as Parameters<typeof t>[0])}
-                    className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors sm:px-3.5 ${BUTTON_FOCUS_CLASS} ${
+                    className={`flex shrink-0 items-center gap-2 rounded-lg border-b-2 border-transparent px-3 py-2 text-xs font-medium transition-colors sm:px-3.5 ${BUTTON_FOCUS_CLASS} ${
                       isActive
-                        ? 'bg-black/[0.06] text-[var(--workspace-ink)]'
-                        : 'text-[var(--workspace-muted)] hover:bg-black/[0.03] hover:text-[var(--workspace-ink)]'
+                        ? 'border-[var(--workspace-primary)] bg-[var(--workspace-blue-soft)] text-[var(--workspace-ink)]'
+                        : 'text-[var(--workspace-muted)] hover:bg-[var(--workspace-blue-soft)] hover:text-[var(--workspace-ink)]'
                     }`}
                   >
                     <Icon aria-hidden="true" className="size-4" />
@@ -1377,7 +1406,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                 <section className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.8fr)]">
                   <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
-                    <div className="border-l-2 border-[var(--workspace-primary)] pl-4">
+                    <div className="border-l border-[var(--workspace-primary)] pl-4">
                       <p className="font-mono text-xs font-semibold text-[var(--workspace-ink)]">
                         {t('nextCheckpoint')}
                       </p>
@@ -1443,7 +1472,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                   <section
                     aria-labelledby="readiness-title"
-                    className={`${PANEL_CLASS} bg-[var(--workspace-yellow-soft)] p-5`}
+                    className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5`}
                   >
                     <div className="flex items-center justify-between border-b border-black/[0.08] pb-4">
                       <h3 id="readiness-title" className="text-xl font-semibold tracking-tight">
@@ -1532,7 +1561,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         <p className="font-mono text-xs font-medium text-[var(--workspace-faint)]">
                           {t('discoveryInterview')}
                         </p>
-                        <h3 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.05em]">
+                        <h3 className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">
                           {pendingClarifications.length > 0
                             ? t('answerOpenDecisions')
                             : t('contextNotAssembled')}
@@ -1563,7 +1592,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {pendingClarifications.map((question, index) => (
                             <div
                               key={question.id}
-                              className="rounded-xl border border-black/[0.08] bg-[var(--workspace-yellow-soft)]/60 p-4"
+                              className="rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-4"
                             >
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="rounded-md border border-black/[0.08] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-medium">
@@ -1586,12 +1615,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               )}
                               <div className="mt-4 space-y-3">
                                 {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
-                                  <label key={i} className={`flex cursor-pointer items-start gap-3 border border-black/[0.08] bg-[var(--workspace-paper)] p-3 shadow-none hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
+                                  <label key={i} className={`flex cursor-pointer items-start gap-3 rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-3 transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>
                                     <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" />
                                     <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
                                   </label>
                                 ))}
-                                <label className={`flex cursor-pointer items-start gap-3 border border-black/[0.08] bg-[var(--workspace-blue-soft)] p-3 shadow-none hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
+                                <label className={`flex cursor-pointer items-start gap-3 rounded-lg border border-black/[0.08] bg-[var(--workspace-blue-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
                                   <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" />
                                   <span className="text-sm font-semibold text-[var(--workspace-ink)]">{t('autoPick')}</span>
                                 </label>
@@ -1613,7 +1642,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                       }
                                     }}
                                     placeholder={t('writeDecision')}
-                                    className={`w-full resize-y border border-black/[0.08] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-semibold leading-6 text-[var(--workspace-ink)] shadow-none placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
+                                    className={`w-full resize-y rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-medium leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
                                   />
                                 </div>
                               </div>
@@ -1639,7 +1668,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     </div>
 
                     <aside className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-5`}>
-                      <h3 className="text-2xl font-semibold tracking-[-0.04em]">{t('decisionLedger')}</h3>
+                      <h3 className="text-xl font-semibold tracking-[-0.03em]">{t('decisionLedger')}</h3>
                       <p className="mt-2 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
                         {t('decisionLedgerDesc')}
                       </p>
@@ -1719,13 +1748,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             </h3>
                           </div>
                           <div className="min-w-0 text-sm font-medium leading-6">
-                            {SENSITIVE_CONTEXT_KEY.test(key) ? (
-                              <span className="inline-flex items-center gap-2 text-[var(--workspace-muted)]">
-                                <ShieldCheck aria-hidden="true" className="size-4" />
-                                {contextLabels.sensitiveLabel}
-                              </span>
+                            {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(value) ? (
+                              <SensitiveContextValue label={contextLabels.sensitiveLabel} />
                             ) : (
-                              <ContextValue value={value} {...contextLabels} />
+                              <ContextValue value={value} locale={locale} {...contextLabels} />
                             )}
                           </div>
                         </section>
@@ -1951,7 +1977,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               type="button"
                               onClick={() => setSelectedAgentTarget(agent)}
                               aria-pressed={selectedAgentTarget === agent}
-                              className={`border border-black/[0.08] px-2.5 py-1 font-mono text-xs font-semibold transition-colors ${
+                              className={`border border-black/[0.08] px-2.5 py-1 font-mono text-xs font-semibold transition-colors ${BUTTON_FOCUS_CLASS} ${
                                 selectedAgentTarget === agent
                                   ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)] shadow-none'
                                   : 'bg-[var(--workspace-paper)] text-[var(--workspace-muted)] hover:bg-white hover:text-[var(--workspace-ink)]'
@@ -2111,8 +2137,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               {t('language')}
             </label>
             <Select id="projectLang" value={projectLang} onChange={(e) => setProjectLang(e.target.value)}>
-              <option value="id">Bahasa Indonesia</option>
-              <option value="en">English</option>
+              <option value="id">{t('settingsLanguageId')}</option>
+              <option value="en">{t('settingsLanguageEn')}</option>
             </Select>
           </div>
           <div className="flex justify-end pt-4">
