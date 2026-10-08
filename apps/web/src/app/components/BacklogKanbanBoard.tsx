@@ -74,7 +74,7 @@ const COLUMNS: Array<{
     id: 'PENDING',
     label: 'Backlog',
     sublabel: 'Waiting on prerequisites',
-    color: 'var(--paper-muted)',
+    color: '#757575',
     badgeTone: 'neutral',
     icon: Clock,
   },
@@ -82,7 +82,7 @@ const COLUMNS: Array<{
     id: 'READY',
     label: 'To Do',
     sublabel: 'Ready for execution',
-    color: 'var(--electric-yellow)',
+    color: '#ffb110',
     badgeTone: 'pending',
     icon: Flame,
   },
@@ -90,7 +90,7 @@ const COLUMNS: Array<{
     id: 'IN_PROGRESS',
     label: 'In Process',
     sublabel: 'Agent / dev working',
-    color: 'var(--cobalt)',
+    color: '#0075de',
     badgeTone: 'accent',
     icon: Code,
   },
@@ -98,7 +98,7 @@ const COLUMNS: Array<{
     id: 'BLOCKED',
     label: 'Blocked',
     sublabel: 'Waiting on a dependency',
-    color: 'var(--action-red)',
+    color: '#e32d14',
     badgeTone: 'current',
     icon: Ban,
   },
@@ -106,7 +106,7 @@ const COLUMNS: Array<{
     id: 'REVIEW',
     label: 'Review',
     sublabel: 'Verification & tests',
-    color: 'var(--lavender)',
+    color: '#8176d9',
     badgeTone: 'current',
     icon: Shield,
   },
@@ -114,7 +114,7 @@ const COLUMNS: Array<{
     id: 'DONE',
     label: 'Done',
     sublabel: 'Completed & verified',
-    color: 'var(--mint)',
+    color: '#62b894',
     badgeTone: 'success',
     icon: CheckCircle2,
   },
@@ -329,23 +329,23 @@ export function BacklogKanbanBoard({
   return (
     <div className="space-y-6">
       {/* Board Controls: Filters & Agent Live Gateway */}
-      <div className="flex flex-col gap-4 border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-4 shadow-[var(--shadow-sm)] lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-xl border border-black/10 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 border-2 border-[var(--ink)] bg-[var(--paper)] px-2.5 py-1 font-mono text-xs font-black shadow-[var(--shadow-xs)]">
-            <Bot size={14} className="text-[var(--cobalt)]" aria-hidden="true" />
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-[#f6f5f4] px-3 py-1.5 font-mono text-xs font-medium text-[var(--ink)]">
+            <Bot size={14} className="text-[#0075de]" aria-hidden="true" />
             <span>{t('agentLabel', { agent: targetAgent })}</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <Layers size={16} className="text-[var(--paper-muted)]" aria-hidden="true" />
-            <label htmlFor="phase-filter" className="text-xs font-black">
+            <Layers size={16} className="text-[#757575]" aria-hidden="true" />
+            <label htmlFor="phase-filter" className="text-xs font-medium">
               {t('phaseLabel')}
             </label>
             <select
               id="phase-filter"
               value={selectedPhase}
               onChange={(e) => setSelectedPhase(e.target.value)}
-              className="border-2 border-[var(--ink)] bg-[var(--paper)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--ink)] shadow-[var(--shadow-xs)]"
+              className="rounded-md border border-black/10 bg-white px-2.5 py-1.5 font-mono text-xs font-medium text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
             >
               <option value="ALL">{t('allPhases', { count: phases.length })}</option>
               {phases.map((p) => (
@@ -363,20 +363,20 @@ export function BacklogKanbanBoard({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t('backlogSearch')}
               aria-label={t('backlogSearch')}
-              className="w-48 border-2 border-[var(--ink)] bg-[var(--paper)] px-3 py-1 font-mono text-xs font-bold text-[var(--ink)] shadow-[var(--shadow-xs)] placeholder:text-[var(--paper-muted)] focus:w-64 focus:outline-none"
+              className="w-48 rounded-md border border-black/10 bg-white px-3 py-1.5 font-mono text-xs font-medium text-[var(--ink)] placeholder:text-[#757575] focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
             />
           </div>
         </div>
 
         {nextReadyTask && (
-          <div className="flex items-center gap-2 border-2 border-[var(--ink)] bg-[var(--electric-yellow-dim)] px-3 py-1.5 shadow-[var(--shadow-xs)]">
-            <span className="font-mono text-[0.68rem] font-black uppercase text-[var(--ink)]">
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-black/10 bg-[#fff4d6] px-3 py-2">
+            <span className="font-mono text-[0.68rem] font-medium uppercase text-[#8a5b00]">
               {t('backlogNextAction')}:
             </span>
-            <span className="font-mono text-xs font-black text-[var(--cobalt)]">
+            <span className="font-mono text-xs font-semibold text-[#0075de]">
               {nextReadyTask.taskKey}
             </span>
-            <span className="max-w-[200px] truncate text-xs font-bold text-[var(--ink)]">
+            <span className="max-w-[200px] truncate text-xs font-medium text-[var(--ink)]">
               {nextReadyTask.title}
             </span>
             <Button
@@ -412,17 +412,17 @@ export function BacklogKanbanBoard({
           role={boardMessage.type === 'err' ? 'alert' : 'status'}
           aria-live="polite"
           className={cn(
-            'flex items-center justify-between border-2 border-[var(--ink)] px-4 py-2.5 font-mono text-xs font-bold shadow-[var(--shadow-xs)]',
+            'flex items-center justify-between rounded-lg border border-black/10 px-4 py-2.5 text-xs font-medium',
             boardMessage.type === 'ok'
-              ? 'bg-[var(--mint-dim)] text-[var(--ink)]'
-              : 'bg-[var(--action-red-dim)] text-[var(--ink)]',
+              ? 'bg-[#e9f8f0] text-[#28734b]'
+              : 'bg-[#fff0ed] text-[#b21f0b]',
           )}
         >
           <span>{boardMessage.text}</span>
           <button
             type="button"
             onClick={() => setBoardMessage(null)}
-            className="ml-4 text-xs font-black underline hover:no-underline"
+            className="ml-4 text-xs font-medium underline underline-offset-2 hover:no-underline"
           >
             {t('backlogDismiss')}
           </button>
@@ -445,17 +445,17 @@ export function BacklogKanbanBoard({
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, col.id)}
               className={cn(
-                'flex flex-col border-2 border-[var(--ink)] bg-[var(--paper-raised)] p-3 shadow-[var(--shadow-sm)] transition-colors',
-                isOver && 'bg-[var(--electric-yellow-dim)] ring-2 ring-[var(--cobalt)]',
+                'flex flex-col rounded-xl border border-black/10 bg-white p-3 transition-colors',
+                isOver && 'bg-[#e6f3fe] ring-1 ring-[#0075de]/30',
               )}
             >
               {/* Column Header */}
-              <div className="mb-3 flex items-center justify-between border-b-2 border-[var(--ink)] pb-2.5">
+              <div className="mb-3 flex items-center justify-between border-b border-black/10 pb-2.5">
                 <div className="flex items-center gap-2">
                   <Icon size={16} className="text-[var(--ink)]" aria-hidden="true" />
                   <h3
                     id={`backlog-column-${col.id}`}
-                    className="font-mono text-sm font-black tracking-tight"
+                    className="font-mono text-sm font-semibold tracking-tight text-[var(--ink)]"
                   >
                     {getColumnLabel(col.id)}
                   </h3>
@@ -466,11 +466,11 @@ export function BacklogKanbanBoard({
               {/* Task Cards List */}
               <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
                 {colTasks.length === 0 ? (
-                  <div className="flex h-28 flex-col items-center justify-center border-2 border-dashed border-[var(--paper-muted)] p-3 text-center">
-                    <p className="font-mono text-xs font-bold text-[var(--paper-muted)]">
+                  <div className="flex h-28 flex-col items-center justify-center rounded-lg border border-dashed border-black/10 bg-[#f6f5f4] p-3 text-center">
+                    <p className="font-mono text-xs font-medium text-[#757575]">
                       {t('backlogNoTasks', { column: getColumnLabel(col.id) })}
                     </p>
-                    <p className="mt-1 text-[0.68rem] text-[var(--paper-muted)]">
+                    <p className="mt-1 text-[0.68rem] text-[#757575]">
                       {t('backlogDragHint')}
                     </p>
                   </div>
@@ -502,15 +502,15 @@ export function BacklogKanbanBoard({
                         }}
                         onDragStart={(e) => handleDragStart(e, task.id)}
                         className={cn(
-                          'group relative flex flex-col border-2 border-[var(--ink)] bg-[var(--paper)] p-3 shadow-[var(--shadow-xs)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-sm)]',
+                          'group relative flex flex-col rounded-lg border border-black/10 bg-white p-3 transition-opacity',
                           isMoving && 'pointer-events-none opacity-50',
-                          col.id === 'DONE' && 'bg-[var(--mint-dim)]/40',
-                          col.id === 'IN_PROGRESS' && 'border-[var(--cobalt)]',
+                          col.id === 'DONE' && 'bg-[#f6fbf8]',
+                          col.id === 'IN_PROGRESS' && 'border-[#0075de]/30',
                         )}
                       >
                         {/* Task Card Header: ID, Title, Quick Move Dropdown */}
                         <div className="flex items-start justify-between gap-2">
-                          <span className="font-mono text-xs font-black text-[var(--cobalt)]">
+                          <span className="font-mono text-xs font-semibold text-[#0075de]">
                             {task.taskKey}
                           </span>
                           <div className="flex items-center gap-1">
@@ -521,7 +521,7 @@ export function BacklogKanbanBoard({
                               onChange={(e) =>
                                 handleUpdateTaskStatus(task.id, e.target.value as TaskStatus)
                               }
-                              className="border border-[var(--ink)] bg-[var(--paper-raised)] px-1 py-0.5 font-mono text-[0.65rem] font-bold text-[var(--ink)]"
+                              className="rounded-md border border-black/10 bg-[#f6f5f4] px-1.5 py-1 font-mono text-[0.65rem] font-medium text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
                               aria-label={t('backlogMoveTask', { task: task.taskKey })}
                               title={t('backlogMoveTaskTitle')}
                             >
@@ -535,24 +535,24 @@ export function BacklogKanbanBoard({
                         </div>
 
                         {/* Task Title */}
-                        <h4 className="mt-1.5 text-xs font-black leading-snug tracking-tight text-[var(--ink)]">
+                        <h4 className="mt-1.5 text-xs font-semibold leading-snug tracking-tight text-[var(--ink)]">
                           {task.title}
                         </h4>
 
                         {/* Task Description Snippet */}
-                        <p className="mt-1 line-clamp-2 text-[0.72rem] font-medium leading-4 text-[var(--paper-muted)]">
+                        <p className="mt-1 line-clamp-2 text-[0.72rem] font-medium leading-4 text-[#757575]">
                           {task.description}
                         </p>
 
                         {/* Tags / Metadata Pills */}
                         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                          <span className="border border-[var(--ink)] bg-[var(--paper-raised)] px-1.5 py-0.5 font-mono text-[0.62rem] font-bold">
+                          <span className="rounded-full border border-black/10 bg-[#f6f5f4] px-2 py-0.5 font-mono text-[0.62rem] font-medium text-[#615d59]">
                             {t('backlogPhase', { order: task.phaseOrder })}
                           </span>
 
                           {dependencyLabels.length > 0 && (
                             <span
-                              className="border border-[var(--ink)] bg-[var(--electric-yellow-dim)] px-1.5 py-0.5 font-mono text-[0.62rem] font-bold text-[var(--ink)]"
+                              className="rounded-full border border-black/10 bg-[#fff4d6] px-2 py-0.5 font-mono text-[0.62rem] font-medium text-[#8a5b00]"
                               title={t('backlogDependsOn', { tasks: dependencyLabels.join(', ') })}
                             >
                               {t('backlogDependsShort', { tasks: dependencyLabels.join(',') })}
@@ -561,7 +561,7 @@ export function BacklogKanbanBoard({
 
                           {task.recommendedSkills.length > 0 && (
                             <span
-                              className="border border-[var(--ink)] bg-[var(--mint-dim)] px-1.5 py-0.5 font-mono text-[0.62rem] font-bold text-[var(--ink)]"
+                              className="rounded-full border border-black/10 bg-[#e9f8f0] px-2 py-0.5 font-mono text-[0.62rem] font-medium text-[#28734b]"
                               title={t('backlogSkill', {
                                 skills: task.recommendedSkills.join(', '),
                               })}
@@ -575,11 +575,11 @@ export function BacklogKanbanBoard({
                         {isExpanded && (
                           <div
                             id={`task-details-${task.id}`}
-                            className="mt-3 space-y-2 border-t-2 border-[var(--ink)] pt-2.5 text-[0.7rem]"
+                            className="mt-3 space-y-2 border-t border-black/10 pt-2.5 text-[0.7rem]"
                           >
                             {task.acceptanceCriteria.length > 0 && (
                               <div>
-                                <span className="block font-mono text-[0.65rem] font-black uppercase text-[var(--paper-muted)]">
+                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#757575]">
                                   {t('backlogAcceptanceCriteria')}
                                 </span>
                                 <ul className="mt-1 list-disc space-y-0.5 pl-3.5">
@@ -594,7 +594,7 @@ export function BacklogKanbanBoard({
 
                             {task.definitionOfDone && (
                               <div>
-                                <span className="block font-mono text-[0.65rem] font-black uppercase text-[var(--paper-muted)]">
+                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#757575]">
                                   {t('backlogDefinitionOfDone')}
                                 </span>
                                 <p className="mt-0.5 font-medium text-[var(--ink)]">
@@ -605,10 +605,10 @@ export function BacklogKanbanBoard({
 
                             {task.relevantDocs.length > 0 && (
                               <div>
-                                <span className="block font-mono text-[0.65rem] font-black uppercase text-[var(--paper-muted)]">
+                                <span className="block font-mono text-[0.65rem] font-medium uppercase text-[#757575]">
                                   {t('backlogRelevantDocs')}
                                 </span>
-                                <p className="mt-0.5 font-mono text-[0.65rem] font-bold text-[var(--cobalt)]">
+                                <p className="mt-0.5 font-mono text-[0.65rem] font-medium text-[#0075de]">
                                   {task.relevantDocs.join(', ')}
                                 </p>
                               </div>
@@ -644,7 +644,7 @@ export function BacklogKanbanBoard({
                           aria-expanded={isExpanded}
                           aria-controls={`task-details-${task.id}`}
                           onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                          className="border-[var(--ink)]/20 mt-2.5 flex items-center justify-between border-t pt-1.5 font-mono text-[0.65rem] font-bold text-[var(--paper-muted)] hover:text-[var(--ink)]"
+                          className="mt-2.5 flex items-center justify-between border-t border-black/10 pt-1.5 font-mono text-[0.65rem] font-medium text-[#757575] hover:text-[var(--ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]"
                         >
                           <span>{isExpanded ? t('backlogHideSpecs') : t('backlogViewSpecs')}</span>
                           <ChevronDown
