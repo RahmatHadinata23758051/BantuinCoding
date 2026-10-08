@@ -137,28 +137,28 @@ const SECTION_ITEMS: {
 ]
 
 const WORKSPACE_STYLE = {
-  '--workspace-paper': 'var(--paper-raised)',
-  '--workspace-ink': 'var(--ink)',
-  '--workspace-canvas': 'var(--paper)',
-  '--workspace-panel': 'var(--paper-raised)',
-  '--workspace-muted': 'var(--paper-muted)',
-  '--workspace-faint': 'var(--paper-faint)',
-  '--workspace-primary': 'var(--cobalt)',
-  '--workspace-sun': 'var(--electric-yellow)',
-  '--workspace-mint': 'var(--mint)',
-  '--workspace-rose': 'var(--action-red)',
-  '--workspace-blue-soft': 'var(--cobalt-dim)',
-  '--workspace-yellow-soft': 'var(--electric-yellow-dim)',
-  '--workspace-mint-soft': 'var(--mint-dim)',
-  '--workspace-rose-soft': 'var(--action-red-dim)',
+  '--workspace-paper': '#ffffff',
+  '--workspace-ink': '#111111',
+  '--workspace-canvas': '#f6f5f4',
+  '--workspace-panel': '#ffffff',
+  '--workspace-muted': '#615d59',
+  '--workspace-faint': '#757575',
+  '--workspace-primary': '#0075de',
+  '--workspace-sun': '#ffb110',
+  '--workspace-mint': '#dff3e5',
+  '--workspace-rose': '#c73524',
+  '--workspace-blue-soft': '#e6f3fe',
+  '--workspace-yellow-soft': '#fff4d6',
+  '--workspace-mint-soft': '#e8f5ec',
+  '--workspace-rose-soft': '#fde8e5',
 } as CSSProperties
 
 const PANEL_CLASS =
-  'border-2 border-[var(--workspace-ink)] bg-[var(--workspace-panel)] shadow-[6px_6px_0_var(--workspace-ink)]'
+  'rounded-xl border border-black/[0.08] bg-[var(--workspace-panel)]'
 const PANEL_SOFT_CLASS =
-  'border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] shadow-[4px_4px_0_var(--workspace-ink)]'
+  'rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)]'
 const BUTTON_FOCUS_CLASS =
-  'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--workspace-sun)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-paper)]'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-canvas)]'
 
 const SENSITIVE_CONTEXT_KEY =
   /(api.?key|access.?token|authorization|credential|password|private.?key|secret)/i
@@ -201,20 +201,20 @@ function statusTone(status: string) {
     case 'READY':
     case 'DONE':
     case 'EXPORTABLE':
-      return 'border-[var(--workspace-ink)] bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
+      return 'bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
     case 'MODIFIED':
     case 'IN_PROGRESS':
     case 'GENERATING':
-      return 'border-[var(--workspace-ink)] bg-[var(--workspace-blue-soft)] text-[var(--workspace-ink)]'
+      return 'bg-[var(--workspace-blue-soft)] text-[var(--workspace-ink)]'
     case 'OUTDATED':
     case 'BLOCKED':
     case 'REVIEW':
-      return 'border-[var(--workspace-ink)] bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
+      return 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
     case 'FAILED':
     case 'GENERATION_FAILED':
-      return 'border-[var(--workspace-ink)] bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
+      return 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
     default:
-      return 'border-[var(--workspace-ink)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)]'
+      return 'bg-black/[0.04] text-[var(--workspace-ink)]'
   }
 }
 
@@ -232,12 +232,12 @@ function SectionHeading({
   action?: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-4 border-b-4 border-[var(--workspace-ink)] pb-6 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-3 border-b border-black/[0.08] pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h2 className="max-w-3xl text-3xl font-black tracking-[-0.04em] text-[var(--workspace-ink)] sm:text-4xl">
+        <h2 className="max-w-3xl text-2xl font-semibold tracking-tight text-[var(--workspace-ink)] sm:text-3xl">
           {title}
         </h2>
-        <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-[var(--workspace-muted)]">
+        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
           {description}
         </p>
       </div>
@@ -258,24 +258,18 @@ function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="flex min-h-72 items-center py-12">
-      <div className={`${PANEL_CLASS} relative max-w-xl p-7`}>
-        <span
-          aria-hidden="true"
-          className="absolute -right-4 -top-4 hidden border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-3 py-1 font-mono text-xs font-bold shadow-[3px_3px_0_var(--workspace-ink)] sm:block"
-        >
-          note
-        </span>
-        <div className="mb-5 flex size-11 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-yellow-soft)] shadow-[3px_3px_0_var(--workspace-ink)]">
-          <Icon aria-hidden="true" className="size-5 text-[var(--workspace-ink)]" />
+    <div className="flex min-h-72 items-center py-10">
+      <div className={`${PANEL_CLASS} max-w-xl p-6`}>
+        <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-[var(--workspace-blue-soft)]">
+          <Icon aria-hidden="true" className="size-5 text-[var(--workspace-primary)]" />
         </div>
-        <h3 className="text-xl font-black tracking-[-0.03em] text-[var(--workspace-ink)]">
+        <h3 className="text-lg font-semibold tracking-tight text-[var(--workspace-ink)]">
           {title}
         </h3>
-        <p className="mt-3 text-sm font-medium leading-6 text-[var(--workspace-muted)]">
+        <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
           {description}
         </p>
-        {action && <div className="mt-6">{action}</div>}
+        {action && <div className="mt-5">{action}</div>}
       </div>
     </div>
   )
@@ -295,23 +289,23 @@ function ReadinessLine({
   const Icon = tone === 'ready' ? CheckCircle2 : tone === 'attention' ? AlertTriangle : CircleDashed
 
   return (
-    <li className="grid gap-3 border-t-2 border-[var(--workspace-ink)] py-4 first:border-t-0 sm:grid-cols-[minmax(10rem,0.75fr)_minmax(9rem,0.6fr)_1fr] sm:items-center">
-      <div className="flex items-center gap-3 text-sm font-black text-[var(--workspace-ink)]">
+    <li className="grid gap-2 border-t border-black/[0.08] py-3 first:border-t-0 sm:grid-cols-[minmax(10rem,0.75fr)_minmax(9rem,0.6fr)_1fr] sm:items-center">
+      <div className="flex items-center gap-2.5 text-sm font-medium text-[var(--workspace-ink)]">
         <span
-          className={`flex size-7 shrink-0 items-center justify-center border-2 border-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)] ${
+          className={`flex size-6 shrink-0 items-center justify-center rounded-full ${
             tone === 'ready'
-              ? 'bg-[var(--workspace-mint-soft)]'
+              ? 'bg-[var(--workspace-mint-soft)] text-emerald-700'
               : tone === 'attention'
-                ? 'bg-[var(--workspace-yellow-soft)]'
-                : 'bg-[var(--workspace-paper)]'
+                ? 'bg-[var(--workspace-yellow-soft)] text-amber-700'
+                : 'bg-black/[0.04] text-[var(--workspace-faint)]'
           }`}
         >
-          <Icon aria-hidden="true" className="size-4" />
+          <Icon aria-hidden="true" className="size-3.5" />
         </span>
         {label}
       </div>
-      <span className="font-mono text-sm font-bold text-[var(--workspace-ink)]">{value}</span>
-      <span className="text-sm font-medium leading-5 text-[var(--workspace-muted)]">{detail}</span>
+      <span className="font-mono text-xs text-[var(--workspace-ink)]">{value}</span>
+      <span className="text-xs leading-5 text-[var(--workspace-muted)]">{detail}</span>
     </li>
   )
 }
@@ -1098,7 +1092,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   const generationProgress = (
     <section
       aria-labelledby="generation-progress-title"
-      className="mt-5 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-4 shadow-[3px_3px_0_var(--workspace-ink)]"
+      className="mt-5 rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-4"
       aria-busy={isGenerating}
     >
       <div className="flex items-start justify-between gap-3 border-b-2 border-[var(--workspace-ink)] pb-3">
@@ -1119,7 +1113,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         <span>{t('generationProgressStep', { current: generationStep, total: GENERATION_STAGES.length })}</span>
       </div>
       <div
-        className="mt-2 h-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]"
+        className="mt-2 h-3 border border-black/[0.08] bg-[var(--workspace-paper)]"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -1168,7 +1162,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     <button
       type="button"
       onClick={() => selectTab('context')}
-      className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--workspace-primary)] px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 ${BUTTON_FOCUS_CLASS}`}
     >
       <MessageSquareText aria-hidden="true" className="size-4" />
       {t('actionClarify')}
@@ -1178,7 +1172,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       type="button"
       onClick={buildCanonicalContext}
       disabled={isAnalyzing || isSubmittingAnswers}
-      className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--workspace-primary)] px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
     >
       {isAnalyzing ? (
         <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
@@ -1192,7 +1186,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       type="button"
       onClick={handleStartDiscovery}
       disabled={isAnalyzing || isSubmittingAnswers}
-      className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--workspace-primary)] px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
     >
       {isAnalyzing ? (
         <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
@@ -1209,7 +1203,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         type="button"
         onClick={handleGenerateAll}
         disabled={isGenerating}
-        className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-black text-white shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+        className={`inline-flex items-center justify-center gap-2 border border-black/[0.08] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-black text-white shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
       >
         {isGenerating ? (
           <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
@@ -1225,7 +1219,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           type="button"
           onClick={handleRegenerateFailed}
           disabled={isGenerating}
-          className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--electric-yellow)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+          className={`inline-flex items-center justify-center gap-2 border border-black/[0.08] bg-[var(--electric-yellow)] px-4 py-2.5 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
         >
           <RefreshCw aria-hidden="true" className="size-4" />
           {t('retryFailed', { count: attentionArtifacts.length })}
@@ -1241,12 +1235,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]"
       style={WORKSPACE_STYLE}
     >
-      <header className="border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]">
+      <header className="border-b border-black/[0.08] bg-[var(--workspace-paper)]">
         <div className="mx-auto max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Link
               href="/dashboard"
-              className={`inline-flex items-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-3 py-1.5 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-[3px_3px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 ${BUTTON_FOCUS_CLASS}`}
+              className={`inline-flex items-center gap-2 border border-black/[0.08] bg-[var(--workspace-paper)] px-3 py-1.5 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-none ${BUTTON_FOCUS_CLASS}`}
             >
               <ArrowLeft aria-hidden="true" className="size-4" />
               {t('backProjects')}
@@ -1258,7 +1252,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`border-2 px-2.5 py-1 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${statusTone(projectStatus)}`}
+                  className={`border-2 px-2.5 py-1 font-mono text-xs font-black shadow-none ${statusTone(projectStatus)}`}
                 >
                   {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
                 </span>
@@ -1269,7 +1263,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   <Wrench className="size-3" /> {t('settings')}
                 </Button>
               </div>
-              <h1 className="mt-4 max-w-5xl text-4xl font-black leading-[0.95] tracking-[-0.06em] sm:text-6xl lg:text-7xl">
+              <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                 {initialData.name}
               </h1>
               <p className="mt-5 max-w-3xl border-l-4 border-[var(--workspace-ink)] pl-4 text-base font-semibold leading-7 text-[var(--workspace-muted)]">
@@ -1305,8 +1299,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r-4">
+      <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <aside className="border-b border-black/[0.08] bg-[var(--workspace-paper)] lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r lg:border-black/[0.08]">
           <div className="px-4 py-5 sm:px-6 lg:px-5 lg:py-8">
             <PipelineSpine
               current={resolvedPipeline.current.key}
@@ -1327,12 +1321,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         <div className="min-w-0">
           <nav
             aria-label={t('workspaceSections')}
-            className="border-b-4 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]"
+            className="border-b border-black/[0.08] bg-[var(--workspace-paper)]"
           >
             <div
               role="tablist"
               aria-label={t('workspaceSections')}
-              className="flex gap-2 overflow-x-auto px-4 py-3 sm:px-6 lg:px-8"
+              className="flex gap-1 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8"
             >
               {SECTION_ITEMS.map((section) => {
                 const Icon = section.icon
@@ -1354,10 +1348,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     onClick={() => selectTab(section.id)}
                     onKeyDown={(event) => handleSectionKeyDown(event, section.id)}
                     title={t(section.descriptionKey as Parameters<typeof t>[0])}
-                    className={`flex shrink-0 items-center gap-2 border-2 border-[var(--workspace-ink)] px-3 py-2 font-mono text-xs font-black shadow-[3px_3px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 sm:px-4 ${BUTTON_FOCUS_CLASS} ${
+                    className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors sm:px-3.5 ${BUTTON_FOCUS_CLASS} ${
                       isActive
-                        ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)]'
-                        : 'bg-[var(--workspace-paper)] text-[var(--workspace-ink)]'
+                        ? 'bg-black/[0.06] text-[var(--workspace-ink)]'
+                        : 'text-[var(--workspace-muted)] hover:bg-black/[0.03] hover:text-[var(--workspace-ink)]'
                     }`}
                   >
                     <Icon aria-hidden="true" className="size-4" />
@@ -1382,7 +1376,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 />
 
                 <section className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.8fr)]">
-                  <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6 lg:-rotate-1`}>
+                  <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
                     <div className="border-l-8 border-[var(--workspace-primary)] pl-5">
                       <p className="font-mono text-xs font-black text-[var(--workspace-ink)]">
                         {t('nextCheckpoint')}
@@ -1449,7 +1443,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                   <section
                     aria-labelledby="readiness-title"
-                    className={`${PANEL_CLASS} bg-[var(--workspace-yellow-soft)] p-5 lg:rotate-1`}
+                    className={`${PANEL_CLASS} bg-[var(--workspace-yellow-soft)] p-5`}
                   >
                     <div className="flex items-center justify-between border-b-4 border-[var(--workspace-ink)] pb-4">
                       <h3 id="readiness-title" className="text-2xl font-black tracking-[-0.04em]">
@@ -1554,7 +1548,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         <p
                           role={discoveryMessage.type === 'error' ? 'alert' : 'status'}
                           aria-live={discoveryMessage.type === 'error' ? 'assertive' : 'polite'}
-                          className={`mt-5 border-2 border-[var(--workspace-ink)] p-4 text-sm font-bold leading-5 shadow-[3px_3px_0_var(--workspace-ink)] ${
+                          className={`mt-5 border border-black/[0.08] p-4 text-sm font-bold leading-5 shadow-none ${
                             discoveryMessage.type === 'error'
                               ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
                               : 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
@@ -1569,10 +1563,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {pendingClarifications.map((question, index) => (
                             <div
                               key={question.id}
-                              className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-yellow-soft)] p-4 shadow-[4px_4px_0_var(--workspace-ink)]"
+                              className="border border-black/[0.08] bg-[var(--workspace-yellow-soft)] p-4 shadow-none"
                             >
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)]">
+                                <span className="border border-black/[0.08] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-black shadow-none">
                                   {t('roundLabel', { round: question.round })}
                                 </span>
                                 <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
@@ -1592,18 +1586,18 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               )}
                               <div className="mt-4 space-y-3">
                                 {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
-                                  <label key={i} className={`flex cursor-pointer items-start gap-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-3 shadow-[2px_2px_0_var(--workspace-ink)] hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
-                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
+                                  <label key={i} className={`flex cursor-pointer items-start gap-3 border border-black/[0.08] bg-[var(--workspace-paper)] p-3 shadow-none hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
+                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" />
                                     <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
                                   </label>
                                 ))}
-                                <label className={`flex cursor-pointer items-start gap-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-blue-soft)] p-3 shadow-[2px_2px_0_var(--workspace-ink)] hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
-                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" />
+                                <label className={`flex cursor-pointer items-start gap-3 border border-black/[0.08] bg-[var(--workspace-blue-soft)] p-3 shadow-none hover:bg-[var(--workspace-mint-soft)] transition-colors ${BUTTON_FOCUS_CLASS}`}>
+                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" />
                                   <span className="text-sm font-black text-[var(--workspace-ink)]">{t('autoPick')}</span>
                                 </label>
                                 <div className="pt-2">
                                   <label className="text-sm font-black flex items-center gap-2 mb-2">
-                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border-2 border-[var(--workspace-ink)] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
+                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
                                     {t('otherCustom')}
                                   </label>
                                   <textarea
@@ -1619,7 +1613,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                       }
                                     }}
                                     placeholder={t('writeDecision')}
-                                    className={`w-full resize-y border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-semibold leading-6 text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
+                                    className={`w-full resize-y border border-black/[0.08] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-semibold leading-6 text-[var(--workspace-ink)] shadow-none placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
                                   />
                                 </div>
                               </div>
@@ -1629,7 +1623,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           <button
                             type="submit"
                             disabled={isSubmittingAnswers || isAnalyzing}
-                            className={`inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-black text-white shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                            className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--workspace-primary)] px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
                           >
                             {isSubmittingAnswers ? (
                               <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
@@ -1644,7 +1638,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       )}
                     </div>
 
-                    <aside className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-5 xl:rotate-1`}>
+                    <aside className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-5`}>
                       <h3 className="text-2xl font-black tracking-[-0.04em]">{t('decisionLedger')}</h3>
                       <p className="mt-2 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
                         {t('decisionLedgerDesc')}
@@ -1678,7 +1672,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {answeredClarifications.slice(-4).map((question) => (
                             <div
                               key={question.id}
-                              className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] p-3 shadow-[3px_3px_0_var(--workspace-ink)]"
+                              className="border border-black/[0.08] bg-[var(--workspace-paper)] p-3 shadow-none"
                             >
                               <p className="font-mono text-[0.68rem] font-black text-[var(--workspace-faint)]">
                                 {t('answerRound', { round: question.round })}
@@ -1699,15 +1693,15 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       className={`${PANEL_SOFT_CLASS} mb-7 flex flex-wrap items-center gap-x-5 gap-y-2 bg-[var(--workspace-paper)] p-4 font-mono text-xs font-bold text-[var(--workspace-muted)]`}
                     >
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-mint)]" />
+                        <span className="size-3 border border-black/[0.08] bg-[var(--workspace-mint)]" />
                         {t('confirmedByOwner')}
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)]" />
+                        <span className="size-3 border border-black/[0.08] bg-[var(--workspace-sun)]" />
                         {t('assumedBySystem')}
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)]" />
+                        <span className="size-3 border border-black/[0.08] bg-[var(--workspace-paper)]" />
                         {t('stillUnknown')}
                       </span>
                     </div>
@@ -1766,7 +1760,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     action={generateButton}
                   />
                 ) : (
-                  <div className="[&>div]:rounded-none [&>div]:border-4 [&>div]:border-[var(--workspace-ink)] [&>div]:shadow-[8px_8px_0_var(--workspace-ink)]">
+                  <div className="[&>div]:rounded-xl [&>div]:border [&>div]:border-black/[0.08] [&>div]:shadow-none">
                     <MarkdownWorkspace
                       projectId={initialData.id}
                       artifacts={artifacts}
@@ -1809,7 +1803,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       >
                         <div className="flex items-start justify-between gap-4 border-b-4 border-[var(--workspace-ink)] pb-4">
                           <div className="flex items-center gap-3">
-                            <span className="flex size-9 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] shadow-[3px_3px_0_var(--workspace-ink)]">
+                            <span className="flex size-9 items-center justify-center border border-black/[0.08] bg-[var(--workspace-sun)] shadow-none">
                               <Wrench aria-hidden="true" className="size-4" />
                             </span>
                             <h3 className="text-xl font-black tracking-[-0.04em]">{skill.name}</h3>
@@ -1841,7 +1835,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               {skill.metadata?.applicable_phases?.map((phase) => (
                                 <span
                                   key={`phase-${phase}`}
-                                  className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)]"
+                                  className="border border-black/[0.08] bg-[var(--workspace-paper)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-none"
                                 >
                                   {phase}
                                 </span>
@@ -1849,7 +1843,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               {skill.metadata?.applicable_task_types?.map((taskType) => (
                                 <span
                                   key={`type-${taskType}`}
-                                  className="border-2 border-[var(--workspace-ink)] bg-[var(--workspace-mint-soft)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)]"
+                                  className="border border-black/[0.08] bg-[var(--workspace-mint-soft)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--workspace-ink)] shadow-none"
                                 >
                                   {formatLabel(taskType)}
                                 </span>
@@ -1914,7 +1908,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   description={t('exportAgentPromptDesc')}
                   action={
                     <span
-                      className={`border-2 px-2.5 py-1 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${
+                      className={`border-2 px-2.5 py-1 font-mono text-xs font-black shadow-none ${
                         canExport
                           ? 'border-[var(--workspace-ink)] bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
                           : 'border-[var(--workspace-ink)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)]'
@@ -1938,7 +1932,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     <section aria-label={t('oneShotAgentPrompt')} className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
                       <div className="flex flex-col gap-4 border-b-2 border-[var(--workspace-ink)] pb-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="flex size-10 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] shadow-[3px_3px_0_var(--workspace-ink)]">
+                          <span className="flex size-10 items-center justify-center border border-black/[0.08] bg-[var(--workspace-sun)] shadow-none">
                             <Bot aria-hidden="true" className="size-5" />
                           </span>
                           <div>
@@ -1957,9 +1951,9 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               type="button"
                               onClick={() => setSelectedAgentTarget(agent)}
                               aria-pressed={selectedAgentTarget === agent}
-                              className={`border-2 border-[var(--workspace-ink)] px-2.5 py-1 font-mono text-xs font-black transition-colors ${
+                              className={`border border-black/[0.08] px-2.5 py-1 font-mono text-xs font-black transition-colors ${
                                 selectedAgentTarget === agent
-                                  ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)] shadow-[2px_2px_0_var(--workspace-ink)]'
+                                  ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)] shadow-none'
                                   : 'bg-[var(--workspace-paper)] text-[var(--workspace-muted)] hover:bg-white hover:text-[var(--workspace-ink)]'
                               }`}
                             >
@@ -1971,14 +1965,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                       {/* Prompt Output Box */}
                       <div className="mt-5 relative">
-                        <pre className="max-h-80 overflow-y-auto border-2 border-[var(--workspace-ink)] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-[4px_4px_0_var(--workspace-ink)] whitespace-pre-wrap">
+                        <pre className="max-h-80 overflow-y-auto border border-black/[0.08] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-none whitespace-pre-wrap">
                           {generateOneShotKickoffPrompt(selectedAgentTarget)}
                         </pre>
 
                         <button
                           type="button"
                           onClick={handleCopyOneShotPrompt}
-                          className={`mt-4 inline-flex items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-[4px_4px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
+                          className={`mt-4 inline-flex items-center justify-center gap-2 border border-black/[0.08] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-black text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
                         >
                           {copiedPrompt ? (
                             <>
@@ -2022,7 +2016,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                 </span>
                               </div>
                               <span
-                                className={`w-fit border-2 px-2 py-0.5 font-mono text-xs font-black shadow-[2px_2px_0_var(--workspace-ink)] ${statusTone(artifact.status)}`}
+                                className={`w-fit border-2 px-2 py-0.5 font-mono text-xs font-black shadow-none ${statusTone(artifact.status)}`}
                               >
                                 {tStatus(artifact.status as Parameters<typeof tStatus>[0]) ?? formatStatus(artifact.status)}
                               </span>
@@ -2048,10 +2042,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       </section>
 
                       <aside
-                        className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-6 xl:-rotate-1 flex flex-col justify-between`}
+                        className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-6 flex flex-col justify-between`}
                       >
                         <div>
-                          <span className="flex size-12 items-center justify-center border-2 border-[var(--workspace-ink)] bg-[var(--workspace-paper)] shadow-[4px_4px_0_var(--workspace-ink)]">
+                          <span className="flex size-12 items-center justify-center border border-black/[0.08] bg-[var(--workspace-paper)] shadow-none">
                             <Package aria-hidden="true" className="size-6" />
                           </span>
                           <h3 className="mt-6 text-3xl font-black leading-none tracking-[-0.05em]">
@@ -2078,7 +2072,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           onClick={handleDownloadZip}
                           disabled={isExporting}
                           aria-busy={isExporting}
-                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border-2 border-[var(--workspace-ink)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-black text-white shadow-[5px_5px_0_var(--workspace-ink)] transition-transform hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_var(--workspace-ink)] disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border border-black/[0.08] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-black text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
                         >
                           {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
                           {isExporting ? t('validatingPack') : t('downloadZipPack')}
