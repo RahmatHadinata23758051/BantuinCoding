@@ -24,7 +24,7 @@ export default async function ProviderSettingsPage() {
           <span>{t('breadcrumb')}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="max-w-56 truncate font-mono text-xs font-bold">{session.user.email}</span>
+          <span className="hidden max-w-56 truncate font-mono text-xs font-bold sm:inline">{session.user.email}</span>
           <LanguageSwitcher />
         </div>
       </TopBar>
@@ -42,7 +42,7 @@ export default async function ProviderSettingsPage() {
               href="/projects/new"
               className={buttonClassName({ variant: 'secondary', size: 'lg', className: 'mt-8' })}
             >
-              Capture a project idea
+              {t('captureIdea')}
             </Link>
           </aside>
 
