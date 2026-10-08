@@ -147,6 +147,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
             </div>
           </Panel>
         </section>
+        </div>
       </div>
     </main>
   )

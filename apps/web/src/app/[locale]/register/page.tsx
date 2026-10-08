@@ -134,6 +134,7 @@ export default function RegisterPage() {
             </div>
           </div>
         </aside>
+        </div>
       </div>
     </main>
   )
