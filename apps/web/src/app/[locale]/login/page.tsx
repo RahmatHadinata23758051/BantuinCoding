@@ -41,7 +41,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
     const result = await loginAction(formData)
 
     if (!result.success) {
-      setError(result.error ?? 'Invalid email or password')
+      setError(result.error ?? t('invalidCredentials'))
       setLoading(false)
     } else {
       router.push('/dashboard')
@@ -115,7 +115,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
                     type="email"
                     required
                     autoComplete="email"
-                    placeholder="you@example.com"
+                    placeholder={t('emailPlaceholder')}
                   />
                 </div>
 
@@ -129,7 +129,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
                     type="password"
                     required
                     autoComplete="current-password"
-                    placeholder="At least 8 characters"
+                    placeholder={t('passwordPlaceholder')}
                   />
                 </div>
 

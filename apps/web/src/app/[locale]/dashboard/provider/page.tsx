@@ -38,7 +38,7 @@ export default async function ProviderSettingsPage() {
             </h1>
             <p className="mt-4 max-w-md text-base leading-7 text-[#615d59]">{t('subtitle')}</p>
             <Link href="/projects/new" className={buttonClassName({ variant: 'primary', size: 'md', className: 'mt-6 rounded-lg' })}>
-              Capture a project idea
+              {t('captureIdea')}
             </Link>
           </aside>
 

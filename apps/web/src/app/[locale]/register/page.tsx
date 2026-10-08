@@ -26,7 +26,7 @@ export default function RegisterPage() {
     const result = await registerAction(formData)
 
     if (!result.success) {
-      setError(result.error ?? 'Registration failed')
+      setError(result.error ?? t('registrationFailed'))
       setLoading(false)
     } else {
       router.push('/login?registered=1')
@@ -44,8 +44,8 @@ export default function RegisterPage() {
           <section className="order-2 flex justify-center lg:order-1 lg:justify-start">
             <Panel className="w-full max-w-md overflow-hidden rounded-xl border border-black/[0.08] bg-white shadow-none">
               <div className="border-b border-black/[0.08] px-6 py-6">
-                <StatusBadge tone="neutral">new builder</StatusBadge>
-                <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em]">Create account</h1>
+                <StatusBadge tone="neutral">{t('newMember')}</StatusBadge>
+                <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em]">{t('createAccountTitle')}</h1>
               </div>
               <div className="p-6">
               {error && (
@@ -81,7 +81,7 @@ export default function RegisterPage() {
                     type="email"
                     required
                     autoComplete="email"
-                    placeholder="you@example.com"
+                    placeholder={t('emailPlaceholder')}
                   />
                 </div>
 
@@ -96,7 +96,7 @@ export default function RegisterPage() {
                     required
                     minLength={8}
                     autoComplete="new-password"
-                    placeholder="At least 8 characters"
+                    placeholder={t('passwordPlaceholder')}
                   />
                 </div>
 
