@@ -3,7 +3,7 @@
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Link, useRouter } from '@/i18n/routing'
 import { useSearchParams } from 'next/navigation'
-import { Suspense, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import { loginAction } from '@/lib/auth/actions'
 import { useTranslations } from 'next-intl'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
@@ -24,19 +24,29 @@ function LoginPageContent({ registered }: { registered: boolean }) {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const errorRef = useRef<HTMLDivElement>(null)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
     setLoading(true)
-    const formData = new FormData(event.currentTarget)
-    const result = await loginAction(formData)
-    if (!result.success) {
-      setError(result.error ?? t('invalidCredentials'))
-      setLoading(false)
-    } else {
+
+    try {
+      const formData = new FormData(event.currentTarget)
+      const result = await loginAction(formData)
+      if (!result.success) {
+        setError(result.error ?? t('invalidCredentials'))
+        requestAnimationFrame(() => errorRef.current?.focus())
+        return
+      }
+
       router.push('/dashboard')
       router.refresh()
+    } catch {
+      setError(t('invalidCredentials'))
+      requestAnimationFrame(() => errorRef.current?.focus())
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -64,7 +74,7 @@ function LoginPageContent({ registered }: { registered: boolean }) {
             <h2 id="auth-title" className="mt-3 text-3xl font-semibold tracking-[-.05em]">{t('signInTitle')}</h2>
           </div>
           {registered && !error && <div role="status" className="mb-5 flex items-start gap-3 border-l-2 border-[#5c8b65] bg-[#eaf2e9] p-4 text-sm"><CheckCircle2 className="mt-0.5 shrink-0" size={18} aria-hidden="true" /><p>{t('accountCreated')}</p></div>}
-          {error && <div role="alert" className="mb-5 border-l-2 border-[#bd4b3f] bg-[#fff1ee] p-4 text-sm font-medium text-[#8f2416]">{error}</div>}
+          {error && <div ref={errorRef} role="alert" tabIndex={-1} className="mb-5 border-l-2 border-[#bd4b3f] bg-[#fff1ee] p-4 text-sm font-medium text-[#8f2416]">{error}</div>}
           <form onSubmit={handleSubmit} className="flex flex-col gap-5" aria-busy={loading}>
             <div className="flex flex-col gap-2"><label htmlFor="email" className="text-sm font-medium">{t('emailLabel')}</label><Input id="email" name="email" type="email" required autoComplete="email" placeholder={t('emailPlaceholder')} className="rounded-md border-black/20 bg-white px-4 py-3" /></div>
             <div className="flex flex-col gap-2"><label htmlFor="password" className="text-sm font-medium">{t('passwordLabel')}</label><Input id="password" name="password" type="password" required autoComplete="current-password" placeholder={t('passwordPlaceholder')} className="rounded-md border-black/20 bg-white px-4 py-3" /></div>

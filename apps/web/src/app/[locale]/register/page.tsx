@@ -2,7 +2,7 @@
 
 import { ArrowRight } from 'lucide-react'
 import { Link, useRouter } from '@/i18n/routing'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { registerAction } from '@/lib/auth/actions'
 import { useTranslations } from 'next-intl'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
@@ -14,18 +14,28 @@ export default function RegisterPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const errorRef = useRef<HTMLDivElement>(null)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
     setLoading(true)
-    const formData = new FormData(event.currentTarget)
-    const result = await registerAction(formData)
-    if (!result.success) {
-      setError(result.error ?? t('registrationFailed'))
-      setLoading(false)
-    } else {
+
+    try {
+      const formData = new FormData(event.currentTarget)
+      const result = await registerAction(formData)
+      if (!result.success) {
+        setError(result.error ?? t('registrationFailed'))
+        requestAnimationFrame(() => errorRef.current?.focus())
+        return
+      }
+
       router.push('/login?registered=1')
+    } catch {
+      setError(t('registrationFailed'))
+      requestAnimationFrame(() => errorRef.current?.focus())
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -41,7 +51,7 @@ export default function RegisterPage() {
             <p className="text-xs font-semibold uppercase tracking-[.16em] text-[#77736e]">{t('newMember')}</p>
             <h1 id="auth-title" className="mt-3 text-3xl font-semibold tracking-[-.05em]">{t('createAccountTitle')}</h1>
           </div>
-          {error && <div role="alert" className="mb-5 border-l-2 border-[#bd4b3f] bg-[#fff1ee] p-4 text-sm font-medium text-[#8f2416]">{error}</div>}
+          {error && <div ref={errorRef} role="alert" tabIndex={-1} className="mb-5 border-l-2 border-[#bd4b3f] bg-[#fff1ee] p-4 text-sm font-medium text-[#8f2416]">{error}</div>}
           <form onSubmit={handleSubmit} className="flex flex-col gap-5" aria-busy={loading}>
             <div className="flex flex-col gap-2"><label htmlFor="name" className="text-sm font-medium">{t('nameOptional')}</label><Input id="name" name="name" type="text" autoComplete="name" placeholder={t('namePlaceholder')} className="rounded-md border-black/20 bg-white px-4 py-3" /></div>
             <div className="flex flex-col gap-2"><label htmlFor="email" className="text-sm font-medium">{t('emailLabel')}</label><Input id="email" name="email" type="email" required autoComplete="email" placeholder={t('emailPlaceholder')} className="rounded-md border-black/20 bg-white px-4 py-3" /></div>
