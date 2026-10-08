@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 
 interface PackHandoffWebGLProps {
   className?: string
+  ariaLabel: string
+  description: string
 }
 
 const vertexShaderSource = `
@@ -38,9 +40,9 @@ const fragmentShaderSource = `
   }
 `
 
-function StaticFallback() {
+function StaticFallback({ ariaLabel }: { ariaLabel: string }) {
   return (
-    <div className="pack-webgl__fallback" role="img" aria-label="Specification documents move into a coding agent">
+    <div className="pack-webgl__fallback" role="img" aria-label={ariaLabel}>
       <span className="pack-webgl__fallback-stack" aria-hidden="true">
         <i />
         <i />
@@ -64,7 +66,69 @@ function compileShader(gl: WebGLRenderingContext, type: number, source: string) 
   return shader
 }
 
-export function PackHandoffWebGL({ className }: PackHandoffWebGLProps) {
+interface RendererResources {
+  buffer: WebGLBuffer
+  program: WebGLProgram
+  position: number
+  time: WebGLUniformLocation
+  index: WebGLUniformLocation
+}
+
+function createRenderer(gl: WebGLRenderingContext): RendererResources | null {
+  const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexShaderSource)
+  const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource)
+  if (!vertexShader || !fragmentShader) {
+    if (vertexShader) gl.deleteShader(vertexShader)
+    if (fragmentShader) gl.deleteShader(fragmentShader)
+    return null
+  }
+
+  const program = gl.createProgram()
+  if (!program) {
+    gl.deleteShader(vertexShader)
+    gl.deleteShader(fragmentShader)
+    return null
+  }
+
+  gl.attachShader(program, vertexShader)
+  gl.attachShader(program, fragmentShader)
+  gl.linkProgram(program)
+  gl.deleteShader(vertexShader)
+  gl.deleteShader(fragmentShader)
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    gl.deleteProgram(program)
+    return null
+  }
+
+  const buffer = gl.createBuffer()
+  const position = gl.getAttribLocation(program, 'a_position')
+  const time = gl.getUniformLocation(program, 'u_time')
+  const index = gl.getUniformLocation(program, 'u_index')
+  if (!buffer || position < 0 || !time || !index) {
+    if (buffer) gl.deleteBuffer(buffer)
+    gl.deleteProgram(program)
+    return null
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW)
+  if (gl.getError() !== gl.NO_ERROR) {
+    gl.deleteBuffer(buffer)
+    gl.deleteProgram(program)
+    return null
+  }
+
+  return { buffer, program, position, time, index }
+}
+
+function deleteRenderer(gl: WebGLRenderingContext, renderer: RendererResources | null) {
+  if (!renderer) return
+  gl.deleteBuffer(renderer.buffer)
+  gl.deleteProgram(renderer.program)
+}
+
+export function PackHandoffWebGL({ className, ariaLabel, description }: PackHandoffWebGLProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [supported, setSupported] = useState(false)
 
@@ -80,36 +144,30 @@ export function PackHandoffWebGL({ className }: PackHandoffWebGLProps) {
 
     const gl = canvas.getContext('webgl', { antialias: false, alpha: true })
     if (!gl) return
-    setSupported(true)
 
-    const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexShaderSource)
-    const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource)
-    if (!vertexShader || !fragmentShader) return
-    const program = gl.createProgram()
-    if (!program) return
-    gl.attachShader(program, vertexShader)
-    gl.attachShader(program, fragmentShader)
-    gl.linkProgram(program)
-    gl.deleteShader(vertexShader)
-    gl.deleteShader(fragmentShader)
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      gl.deleteProgram(program)
-      return
-    }
-
-    const buffer = gl.createBuffer()
-    if (!buffer) {
-      gl.deleteProgram(program)
-      return
-    }
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW)
-    const position = gl.getAttribLocation(program, 'a_position')
-    const time = gl.getUniformLocation(program, 'u_time')
-    const index = gl.getUniformLocation(program, 'u_index')
+    let renderer: RendererResources | null = null
     let frame = 0
     let running = true
     let lastFrame = 0
+
+    const stopRenderer = () => {
+      running = false
+      window.cancelAnimationFrame(frame)
+      setSupported(false)
+    }
+
+    const startRenderer = () => {
+      renderer = createRenderer(gl)
+      if (!renderer) {
+        setSupported(false)
+        return false
+      }
+      running = true
+      setSupported(true)
+      resize()
+      frame = window.requestAnimationFrame(render)
+      return true
+    }
 
     const resize = () => {
       const ratio = Math.min(window.devicePixelRatio || 1, 1.5)
@@ -118,53 +176,52 @@ export function PackHandoffWebGL({ className }: PackHandoffWebGLProps) {
       gl.viewport(0, 0, canvas.width, canvas.height)
     }
     const render = (timestamp: number) => {
-      if (!running) return
+      if (!running || !renderer) return
       frame = window.requestAnimationFrame(render)
       if (timestamp - lastFrame < 50) return
       lastFrame = timestamp
       gl.clearColor(0, 0, 0, 0)
       gl.clear(gl.COLOR_BUFFER_BIT)
-      gl.useProgram(program)
-      gl.enableVertexAttribArray(position)
-      gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
+      gl.useProgram(renderer.program)
+      gl.bindBuffer(gl.ARRAY_BUFFER, renderer.buffer)
+      gl.enableVertexAttribArray(renderer.position)
+      gl.vertexAttribPointer(renderer.position, 2, gl.FLOAT, false, 0, 0)
       for (let documentIndex = 0; documentIndex < 3; documentIndex += 1) {
-        gl.uniform1f(time, timestamp / 1000)
-        gl.uniform1f(index, documentIndex)
+        gl.uniform1f(renderer.time, timestamp / 1000)
+        gl.uniform1f(renderer.index, documentIndex)
         gl.drawArrays(gl.TRIANGLE_FAN, 0, 4)
       }
     }
     const handleContextLost = (event: Event) => {
       event.preventDefault()
-      running = false
-      window.cancelAnimationFrame(frame)
-      setSupported(false)
+      stopRenderer()
+      deleteRenderer(gl, renderer)
+      renderer = null
     }
-    const handleContextRestored = () => setSupported(false)
+    const handleContextRestored = () => {
+      if (!startRenderer()) setSupported(false)
+    }
 
-    resize()
     window.addEventListener('resize', resize)
     canvas.addEventListener('webglcontextlost', handleContextLost)
     canvas.addEventListener('webglcontextrestored', handleContextRestored)
-    frame = window.requestAnimationFrame(render)
+    startRenderer()
 
     return () => {
-      running = false
-      window.cancelAnimationFrame(frame)
+      stopRenderer()
       window.removeEventListener('resize', resize)
       canvas.removeEventListener('webglcontextlost', handleContextLost)
       canvas.removeEventListener('webglcontextrestored', handleContextRestored)
-      gl.deleteBuffer(buffer)
-      gl.deleteProgram(program)
+      deleteRenderer(gl, renderer)
+      renderer = null
     }
   }, [])
 
   return (
     <div className={`pack-webgl${className ? ` ${className}` : ''}`}>
       <canvas ref={canvasRef} className="pack-webgl__canvas" aria-hidden="true" />
-      {!supported && <StaticFallback />}
-      <p className="pack-webgl__description">
-        Specification documents move from the generated pack toward a coding-agent node, ready for the next build step.
-      </p>
+      {!supported && <StaticFallback ariaLabel={ariaLabel} />}
+      <p className="pack-webgl__description">{description}</p>
       <style>{`
         .pack-webgl { position: relative; min-height: 8rem; overflow: hidden; border: 1px solid rgba(0,0,0,.12); background: var(--workspace-paper, #f6f5f4); }
         .pack-webgl__canvas { display: block; width: 100%; height: 8rem; }
