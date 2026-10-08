@@ -65,7 +65,8 @@ export function ProviderSetupPanel() {
   const t = useTranslations('ProviderSetup')
   const [meta, setMeta] = useState<ProviderMeta | null>(null)
   const [savedKeys, setSavedKeys] = useState<SavedKeyItem[]>([])
-  const [loadingKeys, setLoadingKeys] = useState(false)
+  const [loadingKeys, setLoadingKeys] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
 
   // Form state
@@ -88,20 +89,28 @@ export function ProviderSetupPanel() {
     setLoadingKeys(true)
     try {
       const res = await fetch('/api/provider/keys')
-      if (res.ok) {
-        const data = (await res.json()) as { keys?: SavedKeyItem[] }
-        setSavedKeys(data.keys || [])
-        const activeKey = data.keys?.find((k) => k.isActive)
-        if (activeKey) {
-          setMeta({
-            configured: true,
-            provider: activeKey.provider,
-            model: activeKey.model,
-            configuredAt: activeKey.lastValidated || undefined,
-          })
-        }
+      if (!res.ok) {
+        setLoadError(true)
+        return
       }
-    } catch {} finally {
+
+      const data = (await res.json()) as { keys?: SavedKeyItem[] }
+      setLoadError(false)
+      setSavedKeys(data.keys || [])
+      const activeKey = data.keys?.find((k) => k.isActive)
+      if (activeKey) {
+        setMeta({
+          configured: true,
+          provider: activeKey.provider,
+          model: activeKey.model,
+          configuredAt: activeKey.lastValidated || undefined,
+        })
+      } else {
+        setMeta(null)
+      }
+    } catch {
+      setLoadError(true)
+    } finally {
       setLoadingKeys(false)
     }
   }
@@ -367,7 +376,19 @@ export function ProviderSetupPanel() {
           </div>
 
           {/* Saved Keys List */}
-          {savedKeys.length > 0 ? (
+          {loadingKeys ? (
+            <div role="status" className="flex items-center gap-2 rounded-[4px] border-2 border-dashed border-[var(--ink)] p-6 text-center text-xs font-bold text-[var(--paper-muted)]">
+              <LoaderCircle size={16} className="motion-safe:animate-spin" aria-hidden="true" />
+              {t('loadingKeys')}
+            </div>
+          ) : loadError ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-[4px] border-2 border-dashed border-[var(--ink)] p-4 text-xs font-bold text-[var(--ink)]">
+              <span>{t('loadFailed')}</span>
+              <Button type="button" variant="neutral" size="sm" onClick={() => void loadSavedKeys()}>
+                {t('retryLoad')}
+              </Button>
+            </div>
+          ) : savedKeys.length > 0 ? (
             <div className="divide-y-2 divide-[var(--ink)] rounded-[4px] border-2 border-[var(--ink)] bg-[var(--paper)] shadow-[var(--shadow-sm)] overflow-hidden">
               {savedKeys.map((item) => (
                 <div
