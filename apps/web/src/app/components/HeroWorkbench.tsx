@@ -1,6 +1,6 @@
 'use client'
 
-import { Boxes, Bot, Check, FileCheck2, FileCode2, FileText, FolderOpen, GitBranch, LockKeyhole, TerminalSquare } from 'lucide-react'
+import { Boxes, Bot, FileCheck2, FileCode2, FileText, FolderOpen, GitBranch, LockKeyhole, TerminalSquare } from 'lucide-react'
 import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react'
 import { useState } from 'react'
 
@@ -22,7 +22,6 @@ export interface HeroWorkbenchFloatingFile {
 
 interface HeroWorkbenchProps {
   ariaLabel: string
-  statusLabel: string
   packMeta: string
   workspaceLabel: string
   promptLabel: string
@@ -30,10 +29,7 @@ interface HeroWorkbenchProps {
   note: string
   filesLabel: string
   artifactsAriaLabel: string
-  validatedLabel: string
-  contextReadyLabel: string
-  artifactsLabel: string
-  handoffReadyLabel: string
+  previewBadge: string
   previewOnlyLabel: string
   previews: HeroWorkbenchPreview[]
   floatingFiles: HeroWorkbenchFloatingFile[]
@@ -91,16 +87,12 @@ function FloatingArtifact({ file, index, reducedMotion }: { file: HeroWorkbenchF
 
 function StaticWorkbench({
   ariaLabel,
-  statusLabel,
   packMeta,
   workspaceLabel,
   activePrompt,
   filesLabel,
   artifactsAriaLabel,
-  validatedLabel,
-  contextReadyLabel,
-  artifactsLabel,
-  handoffReadyLabel,
+  previewBadge,
   previews,
   floatingFiles,
   reducedMotion,
@@ -159,28 +151,15 @@ function StaticWorkbench({
           <div className="min-w-0 bg-[#11120f] p-3.5 sm:p-5">
             <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] pb-3 font-mono text-[8px] uppercase tracking-[0.12em] text-white/35 sm:text-[9px] sm:tracking-[0.15em]">
               <span className="truncate">{preview.eyebrow}</span>
-              <motion.span
-                animate={reducedMotion ? undefined : { opacity: [0.7, 1, 0.7] }}
-                transition={reducedMotion ? undefined : { duration: 2, repeat: Infinity }}
-                className="shrink-0 rounded border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-1 font-mono text-[7px] uppercase tracking-widest text-emerald-300 sm:px-2 sm:text-[8px]"
-              >
-                {validatedLabel}
-              </motion.span>
+              <span className="shrink-0 rounded border border-white/15 bg-white/[0.05] px-1.5 py-1 font-mono text-[7px] uppercase tracking-[0.12em] text-white/55 sm:px-2 sm:text-[8px]">
+                {previewBadge}
+              </span>
             </div>
             <h3 className="mt-6 max-w-md text-[1.1rem] font-semibold leading-[1.08] tracking-[-.04em] text-white sm:mt-7 sm:text-2xl">{preview.title}</h3>
             <div className="mt-5 space-y-3 font-mono text-[8px] sm:mt-6 sm:text-[9px]">
               {preview.lines.map(([label, value]) => <div key={label} className="grid grid-cols-[62px_1fr] gap-2 border-b border-white/[0.07] pb-2 sm:grid-cols-[76px_1fr]"><span className="text-[#f4a261]">{label}</span><span className="text-white/45">{value}</span></div>)}
             </div>
-            <div className="mt-6 flex flex-wrap gap-2 sm:mt-7">
-              <span className="rounded border border-emerald-300/25 bg-emerald-400/[0.07] px-2 py-1.5 font-mono text-[7px] uppercase tracking-[0.13em] text-emerald-200 sm:px-2.5 sm:text-[8px]">{contextReadyLabel}</span>
-              <span className="rounded border border-blue-300/20 bg-blue-300/[0.06] px-2 py-1.5 font-mono text-[7px] uppercase tracking-[0.13em] text-blue-200/70 sm:px-2.5 sm:text-[8px]">{artifactsLabel}</span>
-            </div>
           </div>
-        </div>
-
-        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] bg-white/[0.015] px-3 py-2 sm:h-9 sm:px-4 sm:py-0">
-          <div className="flex items-center gap-1.5 font-mono text-[7px] uppercase tracking-[0.12em] text-emerald-300/70 sm:gap-2 sm:text-[8px] sm:tracking-[0.14em]"><Check size={11} /> {handoffReadyLabel}</div>
-          <span className="font-mono text-[7px] uppercase tracking-[0.12em] text-white/25 sm:text-[8px] sm:tracking-[0.14em]">{statusLabel}</span>
         </div>
       </motion.div>
     </div>
@@ -189,7 +168,6 @@ function StaticWorkbench({
 
 export function HeroWorkbench({
   ariaLabel,
-  statusLabel,
   packMeta,
   workspaceLabel,
   promptLabel,
@@ -197,10 +175,7 @@ export function HeroWorkbench({
   note,
   filesLabel,
   artifactsAriaLabel,
-  validatedLabel,
-  contextReadyLabel,
-  artifactsLabel,
-  handoffReadyLabel,
+  previewBadge,
   previewOnlyLabel,
   previews,
   floatingFiles,
@@ -233,15 +208,11 @@ export function HeroWorkbench({
         <motion.div className="pointer-events-none absolute -inset-5 opacity-80 blur-2xl" style={reducedMotion ? undefined : { background: glow }} aria-hidden="true" />
         <StaticWorkbench
           ariaLabel={ariaLabel}
-          statusLabel={statusLabel}
           packMeta={packMeta}
           workspaceLabel={workspaceLabel}
           filesLabel={filesLabel}
           artifactsAriaLabel={artifactsAriaLabel}
-          validatedLabel={validatedLabel}
-          contextReadyLabel={contextReadyLabel}
-          artifactsLabel={artifactsLabel}
-          handoffReadyLabel={handoffReadyLabel}
+          previewBadge={previewBadge}
           previews={previews}
           floatingFiles={floatingFiles}
           activePrompt={activePrompt}
