@@ -1,16 +1,20 @@
 'use client'
 
-import { Check, Copy, FileArchive, FileText, TerminalSquare } from 'lucide-react'
+import { Check, ClipboardList, Copy, FileArchive, FileText, PackageCheck, TerminalSquare } from 'lucide-react'
 import { useState } from 'react'
 
 interface AgentHandoffConsoleProps {
   ariaLabel: string
   title: string
   status: string
-  packLabel: string
-  packMeta: string
+  briefLabel: string
+  briefMeta: string
   contextLabel: string
   contextMeta: string
+  packLabel: string
+  packMeta: string
+  exportLabel: string
+  exportMeta: string
   agentLabel: string
   agentMeta: string
   connectorLabel: string
@@ -22,7 +26,7 @@ interface AgentHandoffConsoleProps {
   copyFailedLabel: string
 }
 
-const stageIcons = [FileArchive, FileText, TerminalSquare]
+const stageIcons = [ClipboardList, FileText, FileArchive, PackageCheck, TerminalSquare]
 
 async function copyText(value: string) {
   if (navigator.clipboard?.writeText) {
@@ -49,10 +53,14 @@ export function AgentHandoffConsole({
   ariaLabel,
   title,
   status,
-  packLabel,
-  packMeta,
+  briefLabel,
+  briefMeta,
   contextLabel,
   contextMeta,
+  packLabel,
+  packMeta,
+  exportLabel,
+  exportMeta,
   agentLabel,
   agentMeta,
   connectorLabel,
@@ -65,10 +73,14 @@ export function AgentHandoffConsole({
 }: AgentHandoffConsoleProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const stages = [
-    { label: packLabel, meta: packMeta },
+    { label: briefLabel, meta: briefMeta },
     { label: contextLabel, meta: contextMeta },
+    { label: packLabel, meta: packMeta },
+    { label: exportLabel, meta: exportMeta },
     { label: agentLabel, meta: agentMeta },
   ]
+
+  const rows = [stages.slice(0, 3), stages.slice(3).reverse()]
   const handleCopy = async () => {
     setCopyState('idle')
     try {
@@ -95,32 +107,48 @@ export function AgentHandoffConsole({
       </figcaption>
 
       <div className="px-4 py-5 sm:px-6 sm:py-7">
-        <div className="grid gap-2 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-center" role="list" aria-label={title}>
-          {stages.map((stage, index) => {
-            const Icon = stageIcons[index] ?? TerminalSquare
-            return (
-              <div key={stage.label} className="contents">
-                <div className="min-w-0 border border-white/12 bg-[#22221e] p-4" role="listitem">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="flex size-9 shrink-0 items-center justify-center border border-white/10 bg-[#2b2a25] text-[#f4a261]" aria-hidden="true">
-                      <Icon size={16} strokeWidth={1.7} />
-                    </span>
-                    <span className="font-mono text-[10px] text-white/30">0{index + 1}</span>
-                  </div>
-                  <strong className="mt-5 block break-normal font-mono text-[10px] leading-4 tracking-[0.08em] text-white/90">{stage.label}</strong>
-                  <span className="mt-2 block break-normal font-mono text-[9px] leading-4 text-white/45">{stage.meta}</span>
-                </div>
-                {index < stages.length - 1 && (
-                  <div className="flex items-center justify-center gap-2 py-1 text-[#f4a261] md:px-1 md:py-0" aria-hidden="true">
-                    <span className="hidden h-px w-5 bg-[#f4a261]/45 md:block" />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-white/40 md:hidden">↓ {connectorLabel}</span>
-                    <span className="hidden font-mono text-lg leading-none md:block">→</span>
-                    <span className="hidden font-mono text-[9px] uppercase tracking-[0.08em] text-white/35 md:block">{connectorLabel}</span>
-                  </div>
-                )}
+        <div className="relative" role="list" aria-label={title}>
+          <div className="hidden md:block">
+            {rows.map((row, rowIndex) => (
+              <div key={rowIndex} className="relative grid grid-cols-3 gap-3">
+                {row.map((stage, stageIndex) => {
+                  const originalIndex = rowIndex === 0 ? stageIndex : stages.length - 1 - stageIndex
+                  const Icon = stageIcons[originalIndex] ?? TerminalSquare
+                  return (
+                    <div key={stage.label} className="relative flex min-h-[108px] min-w-0 items-start gap-3 border border-white/12 bg-[#22221e] p-3.5" role="listitem">
+                      <span className="flex size-9 shrink-0 items-center justify-center border border-[#f4a261]/35 bg-[#2b2a25] text-[#f4a261]" aria-hidden="true">
+                        <Icon size={16} strokeWidth={1.7} />
+                      </span>
+                      <div className="min-w-0">
+                        <span className="font-mono text-[10px] text-[#f4a261]/70">0{originalIndex + 1}</span>
+                        <strong className="mt-1 block break-normal font-mono text-[10px] leading-4 tracking-[0.08em] text-white/90">{stage.label}</strong>
+                        <span className="mt-2 block break-normal font-mono text-[9px] leading-4 text-white/45">{stage.meta}</span>
+                      </div>
+                      {((rowIndex === 0 && stageIndex < 2) || (rowIndex === 1 && stageIndex < 1)) && (
+                        <span className="absolute -right-3 top-1/2 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]" aria-hidden="true">{rowIndex === 0 ? `→ ${connectorLabel}` : `← ${connectorLabel}`}</span>
+                      )}
+                      {rowIndex === 0 && stageIndex === 2 && (
+                        <span className="absolute -bottom-3 left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]" aria-hidden="true">↓</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })}
+            ))}
+          </div>
+
+          <div className="space-y-2 md:hidden">
+            {stages.map((stage, index) => {
+              const Icon = stageIcons[index] ?? TerminalSquare
+              return (
+                <div key={stage.label} className="relative flex min-w-0 items-start gap-3 border border-white/12 bg-[#22221e] p-3.5" role="listitem">
+                  <span className="flex size-9 shrink-0 items-center justify-center border border-[#f4a261]/35 bg-[#2b2a25] text-[#f4a261]" aria-hidden="true"><Icon size={16} strokeWidth={1.7} /></span>
+                  <div className="min-w-0"><span className="font-mono text-[10px] text-[#f4a261]/70">0{index + 1}</span><strong className="mt-1 block font-mono text-[10px] leading-4 tracking-[0.08em] text-white/90">{stage.label}</strong><span className="mt-2 block font-mono text-[9px] leading-4 text-white/45">{stage.meta}</span></div>
+                  {index < stages.length - 1 && <span className="absolute -bottom-3 left-5 z-10 flex size-6 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]" aria-hidden="true">↓</span>}
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         <div className="mt-7 border border-white/10 bg-[#10110f]">
