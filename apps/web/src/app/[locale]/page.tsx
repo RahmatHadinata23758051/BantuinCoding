@@ -125,37 +125,115 @@ export default async function Home() {
         </div>
       </section>
 
-      <section id="security" className="mx-auto max-w-[1120px] px-5 py-20 sm:px-8 sm:py-28">
-        <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a66142]">{t('securityEyebrow')}</p>
-            <h2 className="mt-5 text-4xl font-semibold leading-[.97] tracking-[-.07em] sm:text-6xl">{t('securityHeading')}</h2>
-            <p className="mt-6 max-w-md text-base leading-7 text-[#706b64]">{t('securityCopy')}</p>
+      <section id="security" className="border-y border-[#dedbd5] bg-[#f0ece6]/55 px-5 py-20 sm:px-8 sm:py-28">
+        <div className="mx-auto max-w-[1120px]">
+          <div className="grid gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:items-end">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a66142]">{t('securityEyebrow')}</p>
+              <h2 className="mt-5 max-w-3xl text-4xl font-semibold leading-[.97] tracking-[-.07em] sm:text-6xl">{t('securityHeading')}</h2>
+            </div>
+            <div className="lg:pb-1">
+              <p className="max-w-md text-base leading-7 text-[#706b64]">{t('securityCopy')}</p>
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#d8d1c7] bg-[#f7f6f3] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[#8b5b43]">
+                <span className="size-1.5 rounded-full bg-[#a85e3c]" aria-hidden="true" />
+                <span>BYOK / DOCS ONLY</span>
+              </div>
+            </div>
           </div>
-          <RevealOnScroll className="grid gap-3 sm:grid-cols-3" delay={0.08}>
-            {[[KeyRound, t('securityCard1Title'), t('securityCard1Copy')], [ShieldCheck, t('securityCard2Title'), t('securityCard2Copy')], [PackageCheck, t('securityCard3Title'), t('securityCard3Copy')]].map(([Icon, title, copy]) => {
-              const Component = Icon as typeof ShieldCheck
-              return (
-                <article key={title as string} className="border border-[#d8d1c7] bg-white p-5 transition-transform hover:-translate-y-1 sm:p-6">
-                  <Component aria-hidden="true" className="text-[#a85e3c]" size={21} />
-                  <h3 className="mt-7 text-lg font-semibold tracking-[-.03em]">{title as string}</h3>
-                  <p className="mt-3 text-sm leading-6 text-[#706b64]">{copy as string}</p>
-                </article>
-              )
-            })}
+
+          <RevealOnScroll className="mt-12 grid gap-4 md:grid-cols-12" delay={0.08}>
+            <article className="group relative min-h-[330px] overflow-hidden rounded-2xl border border-[#d8d1c7] bg-white p-6 shadow-[0_4px_20px_rgba(36,35,31,0.04)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-[#c9c4bc] hover:shadow-[0_10px_30px_rgba(36,35,31,0.08)] md:col-span-7 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <span className="flex size-11 items-center justify-center rounded-xl bg-[#f4a261]/15 text-[#a85e3c] ring-1 ring-inset ring-[#f4a261]/25">
+                  <KeyRound size={21} strokeWidth={1.8} aria-hidden="true" />
+                </span>
+                <span className="rounded-full border border-[#dedbd5] bg-[#f7f6f3] px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8b5b43]">01 / CUSTODY</span>
+              </div>
+              <h3 className="mt-8 max-w-sm text-2xl font-semibold tracking-[-.05em] sm:text-3xl">{t('securityCard1Title')}</h3>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-[#706b64]">{t('securityCard1Copy')}</p>
+
+              <div className="mt-8 rounded-xl border border-[#dedbd5] bg-[#f7f6f3] p-3.5" aria-hidden="true">
+                <div className="flex flex-wrap gap-2">
+                  {['Anthropic', 'OpenAI', 'Gemini', 'OpenRouter'].map((provider) => (
+                    <span key={provider} className="rounded-full border border-[#d8d1c7] bg-white px-2.5 py-1.5 font-mono text-[9px] text-[#706b64]">{provider}</span>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[#f4a261]/25 bg-white px-3 py-2.5">
+                  <span className="font-mono text-[10px] tracking-[0.08em] text-[#8b5b43]">key_••••••••••••</span>
+                  <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-[#a85e3c]">masked</span>
+                </div>
+              </div>
+              <span className="pointer-events-none absolute -bottom-16 -right-12 size-44 rounded-full border border-[#f4a261]/20 transition-transform duration-500 group-hover:scale-110" aria-hidden="true" />
+            </article>
+
+            <article className="group relative min-h-[330px] overflow-hidden rounded-2xl border border-[#d8d1c7] bg-[#25241f] p-6 text-white shadow-[0_4px_20px_rgba(36,35,31,0.08)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-[#f4a261]/45 hover:shadow-[0_10px_30px_rgba(36,35,31,0.14)] md:col-span-5 md:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <span className="relative flex size-11 items-center justify-center rounded-xl bg-[#f4a261]/15 text-[#f4a261] ring-1 ring-inset ring-[#f4a261]/30">
+                  <span className="absolute inset-1 rounded-lg border border-[#f4a261]/25" aria-hidden="true" />
+                  <ShieldCheck size={21} strokeWidth={1.8} aria-hidden="true" />
+                </span>
+                <span className="rounded-full border border-white/15 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-white/45">02 / BOUNDARY</span>
+              </div>
+              <h3 className="mt-8 max-w-sm text-2xl font-semibold tracking-[-.05em] sm:text-3xl">{t('securityCard2Title')}</h3>
+              <p className="mt-3 text-sm leading-6 text-white/60">{t('securityCard2Copy')}</p>
+              <div className="mt-8 rounded-xl border border-dashed border-[#f4a261]/35 bg-white/[0.04] p-4" aria-hidden="true">
+                <div className="flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[0.12em] text-[#f4a261]">
+                  <span>credential boundary</span>
+                  <span className="size-2 rounded-full bg-[#f4a261] shadow-[0_0_0_5px_rgba(244,162,97,.12)]" />
+                </div>
+                <div className="mt-4 grid grid-cols-3 gap-1.5 opacity-55">
+                  <span className="h-1 rounded-full bg-white/30" />
+                  <span className="h-1 rounded-full bg-white/15" />
+                  <span className="h-1 rounded-full bg-white/10" />
+                  <span className="col-span-2 h-1 rounded-full bg-white/15" />
+                  <span className="h-1 rounded-full bg-[#f4a261]/45" />
+                </div>
+                <p className="mt-4 font-mono text-[8px] uppercase leading-4 tracking-[0.1em] text-white/35">not in export / telemetry</p>
+              </div>
+              <span className="pointer-events-none absolute -bottom-20 -right-16 size-52 rounded-full border border-white/10" aria-hidden="true" />
+            </article>
+
+            <article className="group relative overflow-hidden rounded-2xl border border-[#d8d1c7] bg-white p-6 shadow-[0_4px_20px_rgba(36,35,31,0.04)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-[#c9c4bc] hover:shadow-[0_10px_30px_rgba(36,35,31,0.08)] md:col-span-12 md:flex md:items-center md:justify-between md:gap-10 md:p-8">
+              <div className="max-w-xl">
+                <div className="flex items-start justify-between gap-4 md:justify-start">
+                  <span className="flex size-11 items-center justify-center rounded-xl bg-[#f0ece6] text-[#a85e3c] ring-1 ring-inset ring-[#d8d1c7]">
+                    <PackageCheck size={21} strokeWidth={1.8} aria-hidden="true" />
+                  </span>
+                  <span className="rounded-full border border-[#dedbd5] bg-[#f7f6f3] px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8b5b43] md:hidden">03 / OUTPUT</span>
+                </div>
+                <div className="mt-6 flex items-center gap-3">
+                  <h3 className="text-2xl font-semibold tracking-[-.05em] sm:text-3xl">{t('securityCard3Title')}</h3>
+                  <span className="hidden rounded-full border border-[#dedbd5] bg-[#f7f6f3] px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8b5b43] md:inline-flex">03 / OUTPUT</span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[#706b64]">{t('securityCard3Copy')}</p>
+              </div>
+              <div className="mt-8 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-[#dedbd5] bg-[#f7f6f3] p-3 md:mt-0" aria-hidden="true">
+                <span className="rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 font-mono text-[10px] text-[#706b64]">PRD.md</span>
+                <span className="rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 font-mono text-[10px] text-[#706b64]">AGENT.md</span>
+                <span className="rounded-lg bg-[#a85e3c] px-3 py-2 font-mono text-[10px] font-semibold text-white">ZIP</span>
+                <span className="w-full px-1 pt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#8b5b43]">standalone UTF-8 / run anywhere</span>
+              </div>
+            </article>
           </RevealOnScroll>
-        </div>
-        <div className="mx-auto mt-20 max-w-[760px]">
-          <h2 className="mb-7 text-center text-3xl font-semibold tracking-[-.05em]">{t('faqTitle')}</h2>
-          {[1, 2, 3].map((n) => (
-            <details key={n} className="group border-t border-[#dedbd5] py-5 last:border-b">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#a66142]">
-                {t(`faq${n}Question`)}
-                <span className="text-xl font-normal text-[#8b5b43] transition-transform group-open:rotate-45">+</span>
-              </summary>
-              <p className="mt-3 max-w-[650px] text-sm leading-6 text-[#706b64]">{t(`faq${n}Answer`)}</p>
-            </details>
-          ))}
+
+          <div className="mx-auto mt-24 max-w-[840px] border-t border-[#d8d1c7] pt-14">
+            <div className="mb-7 flex items-end justify-between gap-5">
+              <h2 className="text-3xl font-semibold tracking-[-.05em] sm:text-4xl">{t('faqTitle')}</h2>
+              <span className="hidden font-mono text-[9px] uppercase tracking-[0.14em] text-[#a66142] sm:inline">03 / answers</span>
+            </div>
+            <div className="space-y-3.5">
+              {[1, 2, 3].map((n) => (
+                <details key={n} className="group rounded-2xl border border-[#dedbd5] bg-white/70 p-5 shadow-[0_3px_14px_rgba(36,35,31,0.025)] transition-[background-color,border-color,box-shadow] duration-300 hover:border-[#c9c4bc] hover:bg-white open:border-[#a66142]/40 open:bg-white open:shadow-[0_8px_24px_rgba(36,35,31,0.06)] sm:p-6">
+                  <summary className="flex cursor-pointer list-none items-center gap-4 select-none marker:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a66142] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f0ece6]">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#f0ece6] font-mono text-[10px] tracking-[0.08em] text-[#8b5b43] transition-colors group-open:bg-[#f4a261]/15 group-open:text-[#a85e3c]">0{n}</span>
+                    <span className="min-w-0 flex-1 text-sm font-semibold leading-6 tracking-[-.01em]">{t(`faq${n}Question`)}</span>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#f0ece6] text-lg font-normal leading-none text-[#8b5b43] transition-[transform,background-color,color] duration-300 group-open:rotate-45 group-open:bg-[#a85e3c] group-open:text-white" aria-hidden="true">+</span>
+                  </summary>
+                  <p className="ml-[3.25rem] mt-4 max-w-2xl text-sm leading-6 text-[#706b64]">{t(`faq${n}Answer`)}</p>
+                </details>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
