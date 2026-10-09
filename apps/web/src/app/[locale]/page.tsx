@@ -2,11 +2,11 @@ import { ArrowRight, ArrowUpRight, KeyRound, PackageCheck, ShieldCheck } from 'l
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/routing'
 
+import { AgentHandoffConsole } from '@/app/components/AgentHandoffConsole'
 import { ArtifactCardDeck, type ArtifactCard } from '@/app/components/ArtifactCardDeck'
 import { Hero3DScene, type HeroPrompt } from '@/app/components/Hero3DScene'
 import { InteractiveTransformation, type TransformationStage } from '@/app/components/InteractiveTransformation'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
-import { PackHandoffVisual } from '@/app/components/PackHandoffVisual'
 
 export default async function Home() {
   const t = await getTranslations('Home')
@@ -55,10 +55,10 @@ export default async function Home() {
       </header>
 
       <section className="mx-auto max-w-[1240px] px-5 pb-20 pt-14 sm:px-8 sm:pb-28 sm:pt-20 lg:pt-24">
-        <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.94fr_1.06fr] lg:gap-14">
           <div>
             <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.18em] text-[#a66142]">{t('caption')}</p>
-            <h1 className="max-w-[720px] text-[clamp(3.4rem,7.8vw,7.6rem)] font-semibold leading-[.88] tracking-[-.085em]"><span>{t('heroTitleLead')}</span> <span className="relative inline-block"><span className="absolute -inset-x-[.08em] bottom-[.06em] -z-0 h-[.55em] rotate-[-2deg] bg-[#f4a261]" /><span className="relative">{t('heroTitleHighlight')}</span></span> <span>{t('heroTitleTrail')}</span></h1>
+            <h1 className="max-w-[660px] text-[clamp(2.7rem,5.2vw,5.3rem)] font-semibold leading-[1.01] tracking-[-.05em]"><span>{t('heroTitleLead')}</span>{' '}<span className="relative inline-block underline decoration-[#f4a261] decoration-[0.14em] underline-offset-[0.08em]">{t('heroTitleHighlight')}</span>{' '}<span>{t('heroTitleTrail')}</span></h1>
             <p className="mt-8 max-w-[590px] text-base leading-7 text-[#66615b] sm:text-lg sm:leading-8">{t('heroSubtitle')}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link href="/register" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#a85e3c] px-6 py-3 text-sm font-semibold text-white shadow-[5px_5px_0_#24231f] transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 hover:bg-[#8e4e32] hover:shadow-[7px_7px_0_#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24231f]">{t('buildFirst')}<ArrowRight size={17} /></Link>
@@ -88,7 +88,7 @@ export default async function Home() {
         <div className="mx-auto max-w-[1120px]">
           <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div><p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#f4a261]">{t('handoffEyebrow')}</p><h2 className="mt-5 text-4xl font-semibold leading-[.97] tracking-[-.07em] sm:text-6xl">{t('handoffHeading')}</h2><p className="mt-6 max-w-lg text-base leading-7 text-white/65">{t('handoffCopy')}</p><div className="mt-8 flex flex-wrap gap-2"><span className="border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-white/65">Claude Code</span><span className="border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-white/65">Cursor</span><span className="border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-white/65">Codex</span></div></div>
-            <div className="space-y-6"><PackHandoffVisual labels={{ ariaLabel: t('packHandoffVisualLabel'), packageLabel: t('packHandoffPackageLabel'), packageMeta: t('packHandoffPackageMeta'), documentLabel: t('packHandoffDocumentLabel'), documentMeta: t('packHandoffDocumentMeta'), handoffLabel: t('packHandoffAgentLabel'), handoffMeta: t('packHandoffAgentMeta'), connectorLabel: t('packHandoffConnectorLabel') }} className="rounded-xl bg-[#f7f6f3] p-4 sm:p-7" /><div className="border border-white/15 bg-[#171714] p-5 font-mono text-xs leading-7 text-white/65 sm:p-7"><p className="text-[#f4a261]">$ {t('handoffCommand')}</p><p className="mt-3">{t('handoffPrompt')}</p><p className="mt-4 border-t border-white/10 pt-4 text-white/35">{t('handoffNotice')}</p></div></div>
+            <AgentHandoffConsole ariaLabel={t('handoffConsoleAria')} title={t('handoffConsoleTitle')} status={t('handoffConsoleStatus')} packLabel={t('handoffStagePack')} packMeta={t('handoffStagePackMeta')} contextLabel={t('handoffStageContext')} contextMeta={t('handoffStageContextMeta')} agentLabel={t('handoffStageAgent')} agentMeta={t('handoffStageAgentMeta')} connectorLabel={t('handoffConnector')} command={t('handoffCommand')} prompt={t('handoffPrompt')} notice={t('handoffNotice')} copyLabel={t('handoffCopyButton')} copiedLabel={t('handoffCopied')} copyFailedLabel={t('handoffCopyFailed')} />
           </div>
         </div>
       </section>
