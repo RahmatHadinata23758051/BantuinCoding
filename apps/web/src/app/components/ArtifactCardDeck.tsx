@@ -34,6 +34,14 @@ export function ArtifactCardDeck({ ariaLabel, cards, deckLabel, deckCopy, stageL
     tabRefs.current[nextIndex]?.focus()
   }
 
+  const fallbackCount = `0${activeIndex + 1} / 0${cards.length}`
+  const displayCount =
+    stageCount.includes('{current}') && stageCount.includes('{total}')
+      ? stageCount.replace('{current}', `0${activeIndex + 1}`).replace('{total}', `0${cards.length}`)
+      : stageCount.toLowerCase().includes('artifactdeckstagecount')
+        ? fallbackCount
+        : stageCount
+
   return (
     <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-start" aria-label={ariaLabel}>
       <div className="pt-1">
@@ -76,16 +84,16 @@ export function ArtifactCardDeck({ ariaLabel, cards, deckLabel, deckCopy, stageL
           ))}
         </div>
       </div>
-      <div className="relative min-h-[385px] overflow-hidden border border-[#ded4c8] bg-[#f0e9e1] p-4 [perspective:1200px] sm:min-h-[425px] sm:p-6" aria-label={`${active.name} ${active.type}`}>
+      <div className="relative min-h-[405px] overflow-hidden border border-[#ded4c8] bg-[#f0e9e1] p-4 [perspective:1200px] sm:min-h-[455px] sm:p-6" aria-label={`${active.name} ${active.type}`}>
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(168,94,60,.07)_1px,transparent_1px),linear-gradient(90deg,rgba(168,94,60,.07)_1px,transparent_1px)] bg-[size:28px_28px] opacity-60" aria-hidden="true" />
-        <div className="relative mb-4 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.14em] text-[#967f6f]"><span>{stageLabel}</span><span>{stageCount.replace('{current}', `0${activeIndex + 1}`).replace('{total}', `0${cards.length}`)}</span></div>
-        <div id="artifact-panel" role="tabpanel" aria-labelledby={`artifact-tab-${activeIndex}`} tabIndex={0} className="relative min-h-[300px] outline-none">
+        <div className="relative mb-4 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.14em] text-[#967f6f]"><span>{stageLabel}</span><span>{displayCount}</span></div>
+        <div id="artifact-panel" role="tabpanel" aria-labelledby={`artifact-tab-${activeIndex}`} tabIndex={0} className="relative min-h-[320px] outline-none sm:min-h-[345px]">
           {cards.map((card, index) => {
             const distance = index - activeIndex
             const visible = Math.abs(distance) <= 2
-            const offsetX = distance === 0 ? 0 : distance > 0 ? Math.min(distance * 15, 34) : Math.max(distance * 10, -22)
-            const offsetY = distance === 0 ? 12 : Math.abs(distance) * 20 + 18
-            const rotate = distance === 0 ? 0 : distance * 2.5
+            const offsetX = distance === 0 ? 0 : distance > 0 ? Math.min(distance * 12, 28) : Math.max(distance * 8, -18)
+            const offsetY = distance === 0 ? 0 : Math.min(Math.abs(distance) * 12, 24)
+            const rotate = distance === 0 ? 0 : distance * 2
             return (
               <button
                 key={card.name}
