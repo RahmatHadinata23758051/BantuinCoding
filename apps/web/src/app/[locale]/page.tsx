@@ -4,7 +4,7 @@ import { Link } from '@/i18n/routing'
 
 import { AgentHandoffConsole } from '@/app/components/AgentHandoffConsole'
 import { ArtifactCardDeck, type ArtifactCard } from '@/app/components/ArtifactCardDeck'
-import { HeroWorkbench, type HeroWorkbenchPrompt } from '@/app/components/HeroWorkbench'
+import { HeroWorkbench, type HeroWorkbenchFloatingFile, type HeroWorkbenchPreview, type HeroWorkbenchPrompt } from '@/app/components/HeroWorkbench'
 import { InteractiveTransformation, type TransformationStage } from '@/app/components/InteractiveTransformation'
 import { RevealOnScroll } from '@/app/components/RevealOnScroll'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
@@ -17,6 +17,33 @@ export default async function Home() {
     { label: t('heroPromptOne'), accent: '#f4a261' },
     { label: t('heroPromptTwo'), accent: '#b9d7ff' },
     { label: t('heroPromptThree'), accent: '#b8d8bd' },
+  ]
+
+  const heroPreviews: HeroWorkbenchPreview[] = [
+    {
+      eyebrow: t('heroWorkbenchPreviewOneEyebrow'),
+      title: t('heroWorkbenchPreviewOneTitle'),
+      lines: [[t('heroWorkbenchPreviewOneAudience'), t('heroWorkbenchPreviewOneAudienceValue')], [t('heroWorkbenchPreviewOneOutcome'), t('heroWorkbenchPreviewOneOutcomeValue')], [t('heroWorkbenchPreviewOneBoundary'), t('heroWorkbenchPreviewOneBoundaryValue')]],
+    },
+    {
+      eyebrow: t('heroWorkbenchPreviewTwoEyebrow'),
+      title: t('heroWorkbenchPreviewTwoTitle'),
+      lines: [[t('heroWorkbenchPreviewTwoConsumer'), t('heroWorkbenchPreviewTwoConsumerValue')], [t('heroWorkbenchPreviewTwoContract'), t('heroWorkbenchPreviewTwoContractValue')], [t('heroWorkbenchPreviewTwoBoundary'), t('heroWorkbenchPreviewTwoBoundaryValue')]],
+    },
+    {
+      eyebrow: t('heroWorkbenchPreviewThreeEyebrow'),
+      title: t('heroWorkbenchPreviewThreeTitle'),
+      lines: [[t('heroWorkbenchPreviewThreeAudience'), t('heroWorkbenchPreviewThreeAudienceValue')], [t('heroWorkbenchPreviewThreeOutcome'), t('heroWorkbenchPreviewThreeOutcomeValue')], [t('heroWorkbenchPreviewThreeBoundary'), t('heroWorkbenchPreviewThreeBoundaryValue')]],
+    },
+  ]
+
+  const heroFloatingFiles: HeroWorkbenchFloatingFile[] = [
+    { name: 'PRD.md', subtitle: t('heroWorkbenchFilePrdSubtitle') },
+    { name: 'ARCHITECTURE.md', subtitle: t('heroWorkbenchFileArchitectureSubtitle') },
+    { name: 'SRS.md', subtitle: t('heroWorkbenchFileSrsSubtitle') },
+    { name: 'AGENT.md', subtitle: t('heroWorkbenchFileAgentSubtitle') },
+    { name: 'RULES.md', subtitle: t('heroWorkbenchFileRulesSubtitle') },
+    { name: 'BACKLOG.md', subtitle: t('heroWorkbenchFileBacklogSubtitle') },
   ]
 
   const transformationStages: TransformationStage[] = [
@@ -67,7 +94,7 @@ export default async function Home() {
             </div>
             <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[#8a8178]"><span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-[#6f9474]" />{t('heroNote')}</span><span>{t('heroAsideEyebrow')}</span></div>
           </div>
-          <HeroWorkbench ariaLabel={t('heroSceneAria')} statusLabel={t('heroSceneStatus')} packMeta={t('heroSceneMeta')} promptLabel={t('heroPromptLabel')} prompts={prompts} note={t('heroSceneNote')} filesLabel={t('heroWorkbenchFiles')} validatedLabel={t('heroWorkbenchValidated')} contextReadyLabel={t('heroWorkbenchContextReady')} artifactsLabel={t('heroWorkbenchArtifacts')} handoffReadyLabel={t('heroWorkbenchHandoffReady')} previewOnlyLabel={t('heroWorkbenchPreviewOnly')} />
+          <HeroWorkbench ariaLabel={t('heroSceneAria')} statusLabel={t('heroSceneStatus')} packMeta={t('heroSceneMeta')} workspaceLabel={t('heroWorkbenchWorkspace')} promptLabel={t('heroPromptLabel')} prompts={prompts} note={t('heroSceneNote')} filesLabel={t('heroWorkbenchFiles')} artifactsAriaLabel={t('heroWorkbenchArtifactsAria')} validatedLabel={t('heroWorkbenchValidated')} contextReadyLabel={t('heroWorkbenchContextReady')} artifactsLabel={t('heroWorkbenchArtifacts')} handoffReadyLabel={t('heroWorkbenchHandoffReady')} previewOnlyLabel={t('heroWorkbenchPreviewOnly')} previews={heroPreviews} floatingFiles={heroFloatingFiles} />
         </div>
       </section>
 
@@ -85,7 +112,7 @@ export default async function Home() {
 
       <section id="artifacts" className="mx-auto max-w-[1120px] px-5 py-20 sm:px-8 sm:py-32">
         <RevealOnScroll>
-          <ArtifactCardDeck ariaLabel={t('artifactDeckAria')} cards={artifactCards} deckLabel={t('artifactDeckLabel')} deckCopy={t('artifactDeckCopy')} />
+          <ArtifactCardDeck ariaLabel={t('artifactDeckAria')} cards={artifactCards} deckLabel={t('artifactDeckLabel')} deckCopy={t('artifactDeckCopy')} stageLabel={t('artifactDeckStageLabel')} stageCount={t('artifactDeckStageCount')} />
         </RevealOnScroll>
       </section>
 
