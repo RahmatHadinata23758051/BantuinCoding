@@ -21,7 +21,7 @@ export function LandingScrollShowcase({ ariaLabel, stages, staticNote }: Landing
 
   useEffect(() => {
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reducedMotion) return
+    if (reducedMotion || !('IntersectionObserver' in window)) return
 
     const stageElements = Array.from(document.querySelectorAll<HTMLElement>('[data-showcase-stage]'))
     if (!stageElements.length) return
@@ -42,12 +42,33 @@ export function LandingScrollShowcase({ ariaLabel, stages, staticNote }: Landing
     return () => observer.disconnect()
   }, [stages])
 
+  useEffect(() => {
+    const handleScroll = () => {
+      const viewportCenter = window.innerHeight * 0.42
+      let closestIndex = 0
+      let closestDistance = Number.POSITIVE_INFINITY
+      document.querySelectorAll<HTMLElement>('[data-showcase-stage]').forEach((element, index) => {
+        const distance = Math.abs(element.getBoundingClientRect().top - viewportCenter)
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestIndex = index
+        }
+      })
+      setActiveIndex((currentIndex) => currentIndex === closestIndex ? currentIndex : closestIndex)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+
   const activeStage = stages[activeIndex] ?? stages[0]
 
   return (
     <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
       <div className="lg:sticky lg:top-24">
-        <div className="overflow-hidden rounded-[18px] border border-[#d8d1c7] bg-[#25241f] text-white shadow-[12px_12px_0_#e7c3ad]" aria-label={ariaLabel}>
+        <div className="overflow-hidden rounded-[18px] border border-[#d8d1c7] bg-[#25241f] text-white shadow-[12px_12px_0_#f4a261]" aria-label={ariaLabel}>
           <div className="flex items-center justify-between border-b border-white/15 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.16em] text-white/55">
             <span>pack-assembly / live view</span>
             <span className="flex items-center gap-2 text-[#f0b493]"><span className="size-1.5 rounded-full bg-[#e9a27b]" />{activeStage?.number ?? '01'} / {String(stages.length).padStart(2, '0')}</span>
@@ -82,7 +103,7 @@ export function LandingScrollShowcase({ ariaLabel, stages, staticNote }: Landing
           <li
             key={stage.id}
             data-showcase-stage={stage.id}
-            className={`rounded-[14px] border p-5 transition-[border-color,background-color,transform] duration-300 sm:p-7 ${index === activeIndex ? 'border-[#a85e3c] bg-white shadow-[6px_6px_0_#f0d6c6] lg:translate-x-1' : 'border-[#ded8cf] bg-[#fbfaf8]'}`}
+            className={`rounded-[14px] border p-5 transition-[border-color,background-color,transform] duration-300 sm:p-7 ${index === activeIndex ? 'border-[#a85e3c] bg-white shadow-[6px_6px_0_#f4a261] lg:translate-x-1' : 'border-[#ded8cf] bg-[#fbfaf8]'}`}
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-4">
