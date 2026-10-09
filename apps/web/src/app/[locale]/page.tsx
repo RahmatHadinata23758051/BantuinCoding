@@ -39,11 +39,9 @@ export default async function Home() {
 
   const heroFloatingFiles: HeroWorkbenchFloatingFile[] = [
     { name: 'PRD.md', subtitle: t('heroWorkbenchFilePrdSubtitle') },
-    { name: 'ARCHITECTURE.md', subtitle: t('heroWorkbenchFileArchitectureSubtitle') },
-    { name: 'SRS.md', subtitle: t('heroWorkbenchFileSrsSubtitle') },
     { name: 'AGENT.md', subtitle: t('heroWorkbenchFileAgentSubtitle') },
+    { name: 'ARCHITECTURE.md', subtitle: t('heroWorkbenchFileArchitectureSubtitle') },
     { name: 'RULES.md', subtitle: t('heroWorkbenchFileRulesSubtitle') },
-    { name: 'BACKLOG.md', subtitle: t('heroWorkbenchFileBacklogSubtitle') },
   ]
 
   const transformationStages: TransformationStage[] = [
@@ -112,7 +110,7 @@ export default async function Home() {
 
       <section id="artifacts" className="mx-auto max-w-[1120px] px-5 py-20 sm:px-8 sm:py-32">
         <RevealOnScroll>
-          <ArtifactCardDeck ariaLabel={t('artifactDeckAria')} cards={artifactCards} deckLabel={t('artifactDeckLabel')} deckCopy={t('artifactDeckCopy')} stageLabel={t('artifactDeckStageLabel')} stageCount={t('artifactDeckStageCount')} />
+          <ArtifactCardDeck ariaLabel={t('artifactDeckAria')} cards={artifactCards} deckLabel={t('artifactDeckLabel')} deckCopy={t('artifactDeckCopy')} stageLabel={t('artifactDeckStageLabel')} stageCount={t('artifactDeckStageCount', { current: '{current}', total: '{total}' })} />
         </RevealOnScroll>
       </section>
 
