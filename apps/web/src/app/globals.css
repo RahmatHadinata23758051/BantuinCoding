@@ -69,7 +69,39 @@
   --font-sans: var(--font-notioninter); --font-mono: var(--font-geist-mono);
 }
 
-html { color-scheme: light; scroll-behavior: smooth; scroll-padding-top: 4rem; }
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+  scroll-padding-top: 4rem;
+  scrollbar-color: #a8a19a #ebe7e2;
+  scrollbar-width: thin;
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #ebe7e2;
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 2px solid #ebe7e2;
+  border-radius: 999px;
+  background: #a8a19a;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: #827a72;
+}
+
+html::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 body { min-height: 100vh; background: var(--bg-page); color: var(--ink); font-family: var(--font-notioninter); font-feature-settings: "kern" 1, "liga" 1; -webkit-font-smoothing: antialiased; }
 ::selection { background: var(--color-sky-tint); color: var(--ink); }
 *:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
