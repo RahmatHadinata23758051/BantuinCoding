@@ -64,23 +64,23 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen overflow-x-clip bg-[#f7f6f3] text-[#24231f] selection:bg-[#f4a261] selection:text-[#24231f]">
-      <header className="sticky top-0 z-30 border-b border-[#dedbd5] bg-[#f7f6f3]/90 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-[66px] max-w-[1240px] items-center justify-between gap-5 px-5 sm:px-8">
-          <Link href="/" className="shrink-0 text-[19px] font-bold tracking-[-0.07em]">bantuin<span className="font-serif font-normal text-[#a66142]">.</span></Link>
-          <nav aria-label={t('authNavigationLabel')} className="flex items-center gap-2 sm:gap-4">
-            <div className="hidden items-center gap-5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#716c65] lg:flex">
-              <a href="#engine" className="transition-colors hover:text-[#24231f]">{t('navWorkflow')}</a>
-              <a href="#artifacts" className="transition-colors hover:text-[#24231f]">{t('navFeatures')}</a>
-              <a href="#security" className="transition-colors hover:text-[#24231f]">{t('navSecurity')}</a>
+      <header className="sticky top-0 z-40 px-3 pt-3 sm:px-5 sm:pt-4">
+        <div className="mx-auto flex min-h-[60px] max-w-[1180px] items-center justify-between gap-4 rounded-2xl border border-white/80 bg-[#f7f6f3]/85 px-3 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl sm:min-h-[64px] sm:rounded-full sm:px-5">
+          <Link href="/" className="shrink-0 rounded-full px-2 py-1 text-[19px] font-bold tracking-[-0.07em] text-[#24231f] transition-colors hover:text-[#a66142] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">bantuin<span className="font-serif font-normal text-[#a66142]">.</span></Link>
+          <nav aria-label={t('authNavigationLabel')} className="flex items-center gap-1.5 sm:gap-2">
+            <div className="hidden items-center gap-1 rounded-full border border-[#dedbd5] bg-white/55 p-1 lg:flex">
+              <a href="#engine" className="rounded-full px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#716c65] transition-colors hover:bg-[#f0ece6] hover:text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{t('navWorkflow')}</a>
+              <a href="#artifacts" className="rounded-full px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#716c65] transition-colors hover:bg-[#f0ece6] hover:text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{t('navFeatures')}</a>
+              <a href="#security" className="rounded-full px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#716c65] transition-colors hover:bg-[#f0ece6] hover:text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{t('navSecurity')}</a>
             </div>
             <LanguageSwitcher />
-            <Link href="/login" className="hidden px-2 py-2 text-sm font-medium hover:underline sm:inline">{tCommon('signIn')}</Link>
-            <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-[#25241f] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#45433c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('getStarted')}<ArrowUpRight size={15} /></Link>
+            <Link href="/login" className="hidden rounded-full px-3 py-2 text-sm font-medium text-[#24231f] transition-colors hover:bg-white/70 sm:inline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('signIn')}</Link>
+            <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-[#25241f] px-4 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-[#45433c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('getStarted')}<ArrowUpRight size={15} /></Link>
           </nav>
         </div>
       </header>
 
-      <section className="mx-auto max-w-[1240px] px-5 pb-20 pt-14 sm:px-8 sm:pb-28 sm:pt-20 lg:pt-24">
+      <section className="mx-auto max-w-[1240px] px-5 pb-20 pt-8 sm:px-8 sm:pb-28 sm:pt-12 lg:pt-16">
         <div className="grid items-center gap-12 lg:grid-cols-[0.94fr_1.06fr] lg:gap-14">
           <div>
             <p className="mb-6 font-mono text-[10px] uppercase tracking-[0.18em] text-[#a66142]">{t('caption')}</p>
