@@ -1,6 +1,7 @@
 'use client'
 
 import { Check, ClipboardList, Copy, FileArchive, FileText, PackageCheck, TerminalSquare } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 
 interface AgentHandoffConsoleProps {
@@ -49,6 +50,24 @@ async function copyText(value: string) {
   }
 }
 
+const pulseKeyframes = {
+  borderColor: ['rgba(244,162,97,0.35)', 'rgba(244,162,97,1)', 'rgba(244,162,97,0.35)'],
+  boxShadow: ['0 0 0 rgba(244,162,97,0)', '0 0 18px rgba(244,162,97,0.22)', '0 0 0 rgba(244,162,97,0)'],
+}
+
+function PulseNode({ delay, reducedMotion, children, className }: { delay: number; reducedMotion: boolean | null; children: React.ReactNode; className: string }) {
+  return (
+    <motion.span
+      animate={reducedMotion ? undefined : pulseKeyframes}
+      transition={reducedMotion ? undefined : { duration: 3, delay, repeat: Infinity, ease: 'easeInOut' }}
+      className={className}
+      aria-hidden="true"
+    >
+      {children}
+    </motion.span>
+  )
+}
+
 export function AgentHandoffConsole({
   ariaLabel,
   title,
@@ -72,6 +91,7 @@ export function AgentHandoffConsole({
   copyFailedLabel,
 }: AgentHandoffConsoleProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const reducedMotion = useReducedMotion()
   const stages = [
     { label: briefLabel, meta: briefMeta },
     { label: contextLabel, meta: contextMeta },
@@ -116,19 +136,38 @@ export function AgentHandoffConsole({
                   const Icon = stageIcons[originalIndex] ?? TerminalSquare
                   return (
                     <div key={stage.label} className="relative flex min-h-[108px] min-w-0 items-start gap-3 border border-white/12 bg-[#22221e] p-3.5" role="listitem">
-                      <span className="flex size-9 shrink-0 items-center justify-center border border-[#f4a261]/35 bg-[#2b2a25] text-[#f4a261]" aria-hidden="true">
+                      <PulseNode
+                        delay={originalIndex * 0.6}
+                        reducedMotion={reducedMotion}
+                        className="flex size-9 shrink-0 items-center justify-center border border-[#f4a261]/35 bg-[#2b2a25] text-[#f4a261]"
+                      >
                         <Icon size={16} strokeWidth={1.7} />
-                      </span>
+                      </PulseNode>
                       <div className="min-w-0">
                         <span className="font-mono text-[10px] text-[#f4a261]/70">0{originalIndex + 1}</span>
                         <strong className="mt-1 block break-normal font-mono text-[10px] leading-4 tracking-[0.08em] text-white/90">{stage.label}</strong>
                         <span className="mt-2 block break-normal font-mono text-[9px] leading-4 text-white/45">{stage.meta}</span>
                       </div>
                       {((rowIndex === 0 && stageIndex < 2) || (rowIndex === 1 && stageIndex < 1)) && (
-                        <span className="absolute -right-3 top-1/2 z-10 flex size-6 -translate-y-1/2 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]" aria-hidden="true">{rowIndex === 0 ? `→ ${connectorLabel}` : `← ${connectorLabel}`}</span>
+                        <div className="absolute -right-7 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center justify-center gap-1" aria-hidden="true">
+                          <PulseNode
+                            delay={originalIndex * 0.6}
+                            reducedMotion={reducedMotion}
+                            className="flex size-6 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]"
+                          >
+                            {rowIndex === 0 ? '→' : '←'}
+                          </PulseNode>
+                          <span className="whitespace-nowrap font-mono text-[7px] uppercase tracking-[0.12em] text-white/40">{connectorLabel}</span>
+                        </div>
                       )}
                       {rowIndex === 0 && stageIndex === 2 && (
-                        <span className="absolute -bottom-3 left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]" aria-hidden="true">↓</span>
+                        <PulseNode
+                          delay={1.8}
+                          reducedMotion={reducedMotion}
+                          className="absolute -bottom-3 left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]"
+                        >
+                          ↓
+                        </PulseNode>
                       )}
                     </div>
                   )
@@ -142,9 +181,23 @@ export function AgentHandoffConsole({
               const Icon = stageIcons[index] ?? TerminalSquare
               return (
                 <div key={stage.label} className="relative flex min-w-0 items-start gap-3 border border-white/12 bg-[#22221e] p-3.5" role="listitem">
-                  <span className="flex size-9 shrink-0 items-center justify-center border border-[#f4a261]/35 bg-[#2b2a25] text-[#f4a261]" aria-hidden="true"><Icon size={16} strokeWidth={1.7} /></span>
+                  <PulseNode
+                    delay={index * 0.6}
+                    reducedMotion={reducedMotion}
+                    className="flex size-9 shrink-0 items-center justify-center border border-[#f4a261]/35 bg-[#2b2a25] text-[#f4a261]"
+                  >
+                    <Icon size={16} strokeWidth={1.7} />
+                  </PulseNode>
                   <div className="min-w-0"><span className="font-mono text-[10px] text-[#f4a261]/70">0{index + 1}</span><strong className="mt-1 block font-mono text-[10px] leading-4 tracking-[0.08em] text-white/90">{stage.label}</strong><span className="mt-2 block font-mono text-[9px] leading-4 text-white/45">{stage.meta}</span></div>
-                  {index < stages.length - 1 && <span className="absolute -bottom-3 left-5 z-10 flex size-6 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]" aria-hidden="true">↓</span>}
+                  {index < stages.length - 1 && (
+                    <PulseNode
+                      delay={index * 0.6}
+                      reducedMotion={reducedMotion}
+                      className="absolute -bottom-3 left-5 z-10 flex size-6 items-center justify-center rounded-full border border-[#f4a261]/35 bg-[#171714] font-mono text-xs text-[#f4a261]"
+                    >
+                      ↓
+                    </PulseNode>
+                  )}
                 </div>
               )
             })}
