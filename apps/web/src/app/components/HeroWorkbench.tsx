@@ -1,6 +1,6 @@
 'use client'
 
-import { Boxes, Bot, Check, FileCheck2, FileCode2, FileText, FolderOpen, GitBranch, ListTodo, LockKeyhole, TerminalSquare } from 'lucide-react'
+import { Boxes, Bot, Check, FileCheck2, FileCode2, FileText, FolderOpen, GitBranch, LockKeyhole, TerminalSquare } from 'lucide-react'
 import { motion, useMotionTemplate, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react'
 import { useState } from 'react'
 
@@ -49,22 +49,18 @@ const artifacts = [
   { name: 'BACKLOG.md', icon: FileCheck2 },
 ]
 
-const floatingIcons = [FileText, Boxes, FileCode2, Bot, LockKeyhole, ListTodo]
+const floatingIcons = [FileText, Boxes, FileCode2, Bot]
 const floatingPositions = [
-  'left-[0%] top-[15%]',
-  'left-[-2%] top-[46%]',
-  'left-[7%] bottom-[5%]',
-  'right-[-1%] top-[13%]',
-  'right-[-3%] top-[46%]',
-  'right-[4%] bottom-[4%]',
+  'left-[0%] top-[14%]',
+  'right-[0%] top-[14%]',
+  'left-[2%] top-[55%]',
+  'right-[2%] top-[55%]',
 ]
 const floatingTones = [
   'bg-[#fff0e4] text-[#b45f34]',
   'bg-[#f1e9ff] text-[#7751b4]',
   'bg-[#e8f2ff] text-[#3470b9]',
   'bg-[#e6f6eb] text-[#39774c]',
-  'bg-[#fff4d9] text-[#aa7418]',
-  'bg-[#e7f2fb] text-[#356b9f]',
 ]
 
 function FloatingArtifact({ file, index, reducedMotion }: { file: HeroWorkbenchFloatingFile; index: number; reducedMotion: boolean | null }) {
@@ -98,30 +94,24 @@ function StaticWorkbench({
   statusLabel,
   packMeta,
   workspaceLabel,
-  promptLabel,
-  prompts,
   activePrompt,
-  setActivePrompt,
-  note,
   filesLabel,
   artifactsAriaLabel,
   validatedLabel,
   contextReadyLabel,
   artifactsLabel,
   handoffReadyLabel,
-  previewOnlyLabel,
   previews,
   floatingFiles,
   reducedMotion,
-}: HeroWorkbenchProps & {
+}: Omit<HeroWorkbenchProps, 'promptLabel' | 'prompts' | 'note' | 'previewOnlyLabel'> & {
   activePrompt: number
-  setActivePrompt: (index: number) => void
   reducedMotion: boolean | null
 }) {
   const preview = previews[activePrompt] ?? previews[0]
 
   return (
-    <div className="relative min-h-[530px] overflow-hidden px-2 py-4 sm:min-h-[610px] sm:px-4 sm:py-5" role="group" aria-label={ariaLabel}>
+    <div className="relative min-h-[530px] px-2 py-4 sm:min-h-[610px] sm:px-4 sm:py-5" role="group" aria-label={ariaLabel}>
       <div className="pointer-events-none absolute inset-[14%_12%_11%] rounded-[50%] bg-[#f4a261]/15 blur-[70px]" aria-hidden="true" />
       <motion.div
         className="pointer-events-none absolute inset-[10%_12%_12%] rounded-[50%] border border-[#a85e3c]/20"
@@ -137,7 +127,7 @@ function StaticWorkbench({
       <div className="absolute left-[13%] top-[13%] h-[62%] w-[74%] rounded-[22px] border border-[#d9c6b6]/60 bg-[#d9c6b6]/25" style={{ transform: 'translateZ(-58px) translateX(25px) translateY(-17px)' }} aria-hidden="true" />
       <div className="absolute left-[13%] top-[13%] h-[62%] w-[74%] rounded-[22px] border border-white/60 bg-white/20" style={{ transform: 'translateZ(-28px) translateX(11px) translateY(-7px)', backdropFilter: 'blur(4px)' }} aria-hidden="true" />
 
-      {floatingFiles.slice(0, 6).map((file, index) => <FloatingArtifact key={`${file.name}-${index}`} file={file} index={index} reducedMotion={reducedMotion} />)}
+      {floatingFiles.slice(0, 4).map((file, index) => <FloatingArtifact key={`${file.name}-${index}`} file={file} index={index} reducedMotion={reducedMotion} />)}
 
       <motion.div
         className="absolute left-[10%] top-[16%] z-10 w-[80%] overflow-hidden rounded-[18px] border border-white/10 bg-[#11120f] shadow-[0_35px_90px_rgba(20,18,15,0.34)]"
@@ -193,16 +183,6 @@ function StaticWorkbench({
           <span className="font-mono text-[7px] uppercase tracking-[0.12em] text-white/25 sm:text-[8px] sm:tracking-[0.14em]">{statusLabel}</span>
         </div>
       </motion.div>
-
-      <div className="absolute bottom-[1%] left-[10%] right-[10%] z-30 flex flex-wrap items-end justify-between gap-3 sm:bottom-[0%]">
-        <div>
-          <p className="font-mono text-[8px] uppercase tracking-[0.13em] text-[#6f6860] sm:text-[9px]">{note}</p>
-          <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-3 sm:gap-2" role="group" aria-label={promptLabel}>
-            {prompts.map((prompt, index) => <button key={prompt.label} type="button" onClick={() => setActivePrompt(index)} className={`border px-2 py-1.5 font-mono text-[8px] uppercase tracking-[.08em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261] sm:px-2.5 sm:text-[10px] ${activePrompt === index ? 'border-[#f4a261] bg-[#f4a261] text-[#25241f]' : 'border-[#b9a99b] bg-white/70 text-[#665b52] hover:border-[#a85e3c] hover:text-[#25241f]'}`}>{prompt.label}</button>)}
-          </div>
-        </div>
-        <span className="font-mono text-[8px] uppercase tracking-[.1em] text-[#8c8175] sm:text-[9px]">{previewOnlyLabel}</span>
-      </div>
     </div>
   )
 }
@@ -256,23 +236,27 @@ export function HeroWorkbench({
           statusLabel={statusLabel}
           packMeta={packMeta}
           workspaceLabel={workspaceLabel}
-          promptLabel={promptLabel}
-          prompts={prompts}
-          note={note}
           filesLabel={filesLabel}
           artifactsAriaLabel={artifactsAriaLabel}
           validatedLabel={validatedLabel}
           contextReadyLabel={contextReadyLabel}
           artifactsLabel={artifactsLabel}
           handoffReadyLabel={handoffReadyLabel}
-          previewOnlyLabel={previewOnlyLabel}
           previews={previews}
           floatingFiles={floatingFiles}
           activePrompt={activePrompt}
-          setActivePrompt={setActivePrompt}
           reducedMotion={reducedMotion}
         />
       </motion.div>
+      <div className="relative z-30 -mt-1 flex flex-wrap items-end justify-between gap-3 px-[10%] pb-2 sm:mt-0 sm:pb-0">
+        <div>
+          <p className="font-mono text-[8px] uppercase tracking-[0.13em] text-[#6f6860] sm:text-[9px]">{note}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-3 sm:gap-2" role="group" aria-label={promptLabel}>
+            {prompts.map((prompt, index) => <button key={prompt.label} type="button" onClick={() => setActivePrompt(index)} className={`border px-2 py-1.5 font-mono text-[8px] uppercase tracking-[.08em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261] sm:px-2.5 sm:text-[10px] ${activePrompt === index ? 'border-[#f4a261] bg-[#f4a261] text-[#25241f]' : 'border-[#b9a99b] bg-white/70 text-[#665b52] hover:border-[#a85e3c] hover:text-[#25241f]'}`}>{prompt.label}</button>)}
+          </div>
+        </div>
+        <span className="font-mono text-[8px] uppercase tracking-[.1em] text-[#8c8175] sm:text-[9px]">{previewOnlyLabel}</span>
+      </div>
     </motion.div>
   )
 }
