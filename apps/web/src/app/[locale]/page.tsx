@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, KeyRound, PackageCheck, ShieldCheck } from 'lucide-react'
+import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/routing'
 
@@ -144,9 +144,7 @@ export default async function Home() {
           <RevealOnScroll className="mt-12 grid gap-4 md:grid-cols-12" delay={0.08}>
             <article className="group relative min-h-[330px] overflow-hidden rounded-2xl border border-[#d8d1c7] bg-white p-6 shadow-[0_4px_20px_rgba(36,35,31,0.04)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-[#c9c4bc] hover:shadow-[0_10px_30px_rgba(36,35,31,0.08)] md:col-span-7 md:p-8">
               <div className="flex items-start justify-between gap-4">
-                <span className="flex size-11 items-center justify-center rounded-xl bg-[#f4a261]/15 text-[#a85e3c] ring-1 ring-inset ring-[#f4a261]/25">
-                  <KeyRound size={21} strokeWidth={1.8} aria-hidden="true" />
-                </span>
+                <span className="inline-flex items-center rounded-lg border border-[#f4a261]/30 bg-[#f4a261]/10 px-2.5 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#a85e3c]">BYOK</span>
                 <span className="rounded-full border border-[#dedbd5] bg-[#f7f6f3] px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8b5b43]">01 / CUSTODY</span>
               </div>
               <h3 className="mt-8 max-w-sm text-2xl font-semibold tracking-[-.05em] sm:text-3xl">{t('securityCard1Title')}</h3>
@@ -168,10 +166,7 @@ export default async function Home() {
 
             <article className="group relative min-h-[330px] overflow-hidden rounded-2xl border border-[#d8d1c7] bg-[#25241f] p-6 text-white shadow-[0_4px_20px_rgba(36,35,31,0.08)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-[#f4a261]/45 hover:shadow-[0_10px_30px_rgba(36,35,31,0.14)] md:col-span-5 md:p-8">
               <div className="flex items-start justify-between gap-4">
-                <span className="relative flex size-11 items-center justify-center rounded-xl bg-[#f4a261]/15 text-[#f4a261] ring-1 ring-inset ring-[#f4a261]/30">
-                  <span className="absolute inset-1 rounded-lg border border-[#f4a261]/25" aria-hidden="true" />
-                  <ShieldCheck size={21} strokeWidth={1.8} aria-hidden="true" />
-                </span>
+                <span className="inline-flex items-center rounded-lg border border-[#f4a261]/35 bg-[#f4a261]/10 px-2.5 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#f4a261]">BYOK</span>
                 <span className="rounded-full border border-white/15 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-white/45">02 / BOUNDARY</span>
               </div>
               <h3 className="mt-8 max-w-sm text-2xl font-semibold tracking-[-.05em] sm:text-3xl">{t('securityCard2Title')}</h3>
@@ -196,9 +191,7 @@ export default async function Home() {
             <article className="group relative overflow-hidden rounded-2xl border border-[#d8d1c7] bg-white p-6 shadow-[0_4px_20px_rgba(36,35,31,0.04)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-[#c9c4bc] hover:shadow-[0_10px_30px_rgba(36,35,31,0.08)] md:col-span-12 md:flex md:items-center md:justify-between md:gap-10 md:p-8">
               <div className="max-w-xl">
                 <div className="flex items-start justify-between gap-4 md:justify-start">
-                  <span className="flex size-11 items-center justify-center rounded-xl bg-[#f0ece6] text-[#a85e3c] ring-1 ring-inset ring-[#d8d1c7]">
-                    <PackageCheck size={21} strokeWidth={1.8} aria-hidden="true" />
-                  </span>
+                  <span className="inline-flex items-center rounded-lg border border-[#d8d1c7] bg-[#f0ece6] px-2.5 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#a85e3c]">PACK</span>
                   <span className="rounded-full border border-[#dedbd5] bg-[#f7f6f3] px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[#8b5b43] md:hidden">03 / OUTPUT</span>
                 </div>
                 <div className="mt-6 flex items-center gap-3">
