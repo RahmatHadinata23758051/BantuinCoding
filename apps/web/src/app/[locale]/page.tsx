@@ -67,7 +67,7 @@ export default async function Home() {
             </div>
             <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 font-mono text-[10px] uppercase tracking-[0.1em] text-[#8a8178]"><span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-[#6f9474]" />{t('heroNote')}</span><span>{t('heroAsideEyebrow')}</span></div>
           </div>
-          <HeroWorkbench ariaLabel={t('heroSceneAria')} statusLabel={t('heroSceneStatus')} packMeta={t('heroSceneMeta')} promptLabel={t('heroPromptLabel')} prompts={prompts} note={t('heroSceneNote')} />
+          <HeroWorkbench ariaLabel={t('heroSceneAria')} statusLabel={t('heroSceneStatus')} packMeta={t('heroSceneMeta')} promptLabel={t('heroPromptLabel')} prompts={prompts} note={t('heroSceneNote')} filesLabel={t('heroWorkbenchFiles')} validatedLabel={t('heroWorkbenchValidated')} contextReadyLabel={t('heroWorkbenchContextReady')} artifactsLabel={t('heroWorkbenchArtifacts')} handoffReadyLabel={t('heroWorkbenchHandoffReady')} previewOnlyLabel={t('heroWorkbenchPreviewOnly')} />
         </div>
       </section>
 
