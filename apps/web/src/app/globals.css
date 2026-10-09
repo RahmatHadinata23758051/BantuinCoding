@@ -119,6 +119,57 @@ body { min-height: 100vh; background: var(--bg-page); color: var(--ink); font-fa
 @media (prefers-reduced-motion: reduce) { *,::before,::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
 @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.55} }
 .animate-pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+
+@keyframes security-chip-drift {
+  0%, 18%, 100% { transform: translateY(0); }
+  35% { transform: translateY(-4px); }
+  52% { transform: translateY(0); }
+}
+@keyframes security-signal {
+  0% { transform: translateX(-120%); opacity: 0; }
+  18% { opacity: 0.75; }
+  72% { opacity: 0.75; }
+  100% { transform: translateX(420%); opacity: 0; }
+}
+@keyframes security-boundary {
+  0%, 100% { border-color: rgba(244,162,97,0.2); box-shadow: inset 0 0 0 rgba(244,162,97,0); }
+  50% { border-color: rgba(244,162,97,0.58); box-shadow: inset 0 0 22px rgba(244,162,97,0.045); }
+}
+@keyframes security-boundary-pulse {
+  0%, 100% { transform: scale(0.7); opacity: 0.35; }
+  50% { transform: scale(1); opacity: 1; }
+}
+@keyframes security-bar {
+  0%, 100% { transform: scaleX(0.7); opacity: 0.35; transform-origin: left; }
+  50% { transform: scaleX(1); opacity: 0.85; transform-origin: left; }
+}
+@keyframes security-output-drift {
+  0%, 20%, 100% { transform: translateY(0); }
+  42% { transform: translateY(-4px); }
+  58% { transform: translateY(0); }
+}
+.security-chip-1 { animation: security-chip-drift 4.2s ease-in-out infinite; }
+.security-chip-2 { animation: security-chip-drift 4.2s ease-in-out 0.35s infinite; }
+.security-chip-3 { animation: security-chip-drift 4.2s ease-in-out 0.7s infinite; }
+.security-chip-4 { animation: security-chip-drift 4.2s ease-in-out 1.05s infinite; }
+.security-signal { animation: security-signal 3.4s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+.security-boundary { animation: security-boundary 3.6s ease-in-out infinite; }
+.security-boundary-pulse { animation: security-boundary-pulse 2.4s ease-in-out infinite; }
+.security-bar-1 { animation: security-bar 2.8s ease-in-out infinite; }
+.security-bar-2 { animation: security-bar 2.8s ease-in-out 0.35s infinite; }
+.security-bar-3 { animation: security-bar 2.8s ease-in-out 0.7s infinite; }
+.security-output-1 { animation: security-output-drift 4.8s ease-in-out infinite; }
+.security-output-2 { animation: security-output-drift 4.8s ease-in-out 0.45s infinite; }
+.security-output-3 { animation: security-output-drift 4.8s ease-in-out 0.9s infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .security-chip-1, .security-chip-2, .security-chip-3, .security-chip-4,
+  .security-signal, .security-boundary, .security-boundary-pulse,
+  .security-bar-1, .security-bar-2, .security-bar-3,
+  .security-output-1, .security-output-2, .security-output-3 { animation: none; }
+}
+
+
+.nb-panel,.nb-panel-sm { border: 1px solid var(--border-subtle); background: var(--bg-panel); box-shadow: none; border-radius: var(--radius-cards); }
 .nb-panel,.nb-panel-sm { border: 1px solid var(--border-subtle); background: var(--bg-panel); box-shadow: none; border-radius: var(--radius-cards); }
 .nb-button-press { transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
 .nb-button-press:active { transform: none; }

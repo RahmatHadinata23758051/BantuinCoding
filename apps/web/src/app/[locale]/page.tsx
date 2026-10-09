@@ -152,11 +152,12 @@ export default async function Home() {
 
               <div className="mt-8 rounded-xl border border-[#dedbd5] bg-[#f7f6f3] p-3.5" aria-hidden="true">
                 <div className="flex flex-wrap gap-2">
-                  {['Anthropic', 'OpenAI', 'Gemini', 'OpenRouter'].map((provider) => (
-                    <span key={provider} className="rounded-full border border-[#d8d1c7] bg-white px-2.5 py-1.5 font-mono text-[9px] text-[#706b64]">{provider}</span>
+                  {['Anthropic', 'OpenAI', 'Gemini', 'OpenRouter'].map((provider, i) => (
+                    <span key={provider} className={`rounded-full border border-[#d8d1c7] bg-white px-2.5 py-1.5 font-mono text-[9px] text-[#706b64] security-chip-${i + 1}`}>{provider}</span>
                   ))}
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[#f4a261]/25 bg-white px-3 py-2.5">
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[#f4a261]/25 bg-white px-3 py-2.5 security-boundary relative overflow-hidden">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-transparent via-[#f4a261]/25 to-transparent security-signal" aria-hidden="true" />
                   <span className="font-mono text-[10px] tracking-[0.08em] text-[#8b5b43]">key_••••••••••••</span>
                   <span className="font-mono text-[8px] uppercase tracking-[0.12em] text-[#a85e3c]">masked</span>
                 </div>
@@ -171,17 +172,17 @@ export default async function Home() {
               </div>
               <h3 className="mt-8 max-w-sm text-2xl font-semibold tracking-[-.05em] sm:text-3xl">{t('securityCard2Title')}</h3>
               <p className="mt-3 text-sm leading-6 text-white/60">{t('securityCard2Copy')}</p>
-              <div className="mt-8 rounded-xl border border-dashed border-[#f4a261]/35 bg-white/[0.04] p-4" aria-hidden="true">
+              <div className="mt-8 rounded-xl border border-dashed border-[#f4a261]/35 bg-white/[0.04] p-4 security-boundary relative overflow-hidden" aria-hidden="true">
                 <div className="flex items-center justify-between gap-3 font-mono text-[9px] uppercase tracking-[0.12em] text-[#f4a261]">
                   <span>credential boundary</span>
-                  <span className="size-2 rounded-full bg-[#f4a261] shadow-[0_0_0_5px_rgba(244,162,97,.12)]" />
+                  <span className="size-2 rounded-full bg-[#f4a261] shadow-[0_0_0_5px_rgba(244,162,97,.12)] security-boundary-pulse" />
                 </div>
                 <div className="mt-4 grid grid-cols-3 gap-1.5 opacity-55">
-                  <span className="h-1 rounded-full bg-white/30" />
-                  <span className="h-1 rounded-full bg-white/15" />
-                  <span className="h-1 rounded-full bg-white/10" />
+                  <span className="h-1 rounded-full bg-white/30 security-bar-1" />
+                  <span className="h-1 rounded-full bg-white/15 security-bar-2" />
+                  <span className="h-1 rounded-full bg-white/10 security-bar-3" />
                   <span className="col-span-2 h-1 rounded-full bg-white/15" />
-                  <span className="h-1 rounded-full bg-[#f4a261]/45" />
+                  <span className="h-1 rounded-full bg-[#f4a261]/45 security-bar-2" />
                 </div>
                 <p className="mt-4 font-mono text-[8px] uppercase leading-4 tracking-[0.1em] text-white/35">not in export / telemetry</p>
               </div>
@@ -201,9 +202,9 @@ export default async function Home() {
                 <p className="mt-3 text-sm leading-6 text-[#706b64]">{t('securityCard3Copy')}</p>
               </div>
               <div className="mt-8 flex shrink-0 flex-wrap items-center gap-2 rounded-xl border border-[#dedbd5] bg-[#f7f6f3] p-3 md:mt-0" aria-hidden="true">
-                <span className="rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 font-mono text-[10px] text-[#706b64]">PRD.md</span>
-                <span className="rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 font-mono text-[10px] text-[#706b64]">AGENT.md</span>
-                <span className="rounded-lg bg-[#a85e3c] px-3 py-2 font-mono text-[10px] font-semibold text-white">ZIP</span>
+                <span className="rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 font-mono text-[10px] text-[#706b64] security-output-1">PRD.md</span>
+                <span className="rounded-lg border border-[#d8d1c7] bg-white px-3 py-2 font-mono text-[10px] text-[#706b64] security-output-2">AGENT.md</span>
+                <span className="rounded-lg bg-[#a85e3c] px-3 py-2 font-mono text-[10px] font-semibold text-white security-output-3">ZIP</span>
                 <span className="w-full px-1 pt-1 font-mono text-[8px] uppercase tracking-[0.12em] text-[#8b5b43]">standalone UTF-8 / run anywhere</span>
               </div>
             </article>
