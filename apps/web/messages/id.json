@@ -245,7 +245,20 @@
     "packHandoffDocumentMeta": "SIAP DIBACA",
     "packHandoffAgentLabel": "AGEN KODING",
     "packHandoffAgentMeta": "LANGKAH BERIKUTNYA",
-    "packHandoffConnectorLabel": "berlanjut ke"
+    "packHandoffConnectorLabel": "berlanjut ke",
+    "handoffConsoleAria": "Konsol handoff paket bootstrap proyek",
+    "handoffConsoleTitle": "KONSOL HANDOFF AGEN",
+    "handoffConsoleStatus": "PRATINJAU / SIAP",
+    "handoffStagePack": "PAKET SPESIFIKASI",
+    "handoffStagePackMeta": "PRD · ARSITEKTUR · BACKLOG",
+    "handoffStageContext": "KONTEKS PROYEK",
+    "handoffStageContextMeta": "ATURAN · SKILL · KONTEKS",
+    "handoffStageAgent": "AGEN KODING",
+    "handoffStageAgentMeta": "SIAP DIEKSEKUSI",
+    "handoffConnector": "berlanjut ke",
+    "handoffCopyButton": "Salin prompt kickoff",
+    "handoffCopied": "Prompt kickoff tersalin ke papan klip.",
+    "handoffCopyFailed": "Papan klip tidak tersedia. Pilih dan salin pratinjau secara manual."
   },
   "Auth": {
     "loginCaption": "Pintu masuk ruang kerja",

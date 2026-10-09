@@ -245,7 +245,20 @@
     "packHandoffDocumentMeta": "READABLE · READY",
     "packHandoffAgentLabel": "CODING AGENT",
     "packHandoffAgentMeta": "NEXT STEP",
-    "packHandoffConnectorLabel": "moves into"
+    "packHandoffConnectorLabel": "moves into",
+    "handoffConsoleAria": "Project bootstrap pack handoff console",
+    "handoffConsoleTitle": "AGENT HANDOFF CONSOLE",
+    "handoffConsoleStatus": "PREVIEW / READY",
+    "handoffStagePack": "SPEC PACK",
+    "handoffStagePackMeta": "PRD · ARCHITECTURE · BACKLOG",
+    "handoffStageContext": "PROJECT CONTEXT",
+    "handoffStageContextMeta": "RULES · SKILLS · CONTEXT",
+    "handoffStageAgent": "CODING AGENT",
+    "handoffStageAgentMeta": "READY TO EXECUTE",
+    "handoffConnector": "moves into",
+    "handoffCopyButton": "Copy kickoff prompt",
+    "handoffCopied": "Kickoff prompt copied to clipboard.",
+    "handoffCopyFailed": "Clipboard unavailable. Select and copy the preview manually."
   },
   "Auth": {
     "loginCaption": "Workspace entrance",
