@@ -4,6 +4,7 @@ import { Link } from '@/i18n/routing'
 
 import { AgentHandoffConsole } from '@/app/components/AgentHandoffConsole'
 import { ArtifactCardDeck, type ArtifactCard } from '@/app/components/ArtifactCardDeck'
+import { CrowdCanvas } from '@/app/components/CrowdCanvas'
 import { HeroWorkbench, type HeroWorkbenchFloatingFile, type HeroWorkbenchPreview, type HeroWorkbenchPrompt } from '@/app/components/HeroWorkbench'
 import { InteractiveTransformation, type TransformationStage } from '@/app/components/InteractiveTransformation'
 import { RevealOnScroll } from '@/app/components/RevealOnScroll'
@@ -114,8 +115,9 @@ export default async function Home() {
         </RevealOnScroll>
       </section>
 
-      <section id="handoff" className="border-y border-[#dedbd5] bg-[#25241f] px-5 py-20 text-white sm:px-8 sm:py-28">
-        <div className="mx-auto max-w-[1120px]">
+      <section id="handoff" className="relative isolate overflow-hidden border-y border-[#dedbd5] bg-[#25241f] px-5 py-20 text-white sm:px-8 sm:py-28">
+        <CrowdCanvas className="absolute inset-0 z-0 opacity-[0.09] mix-blend-screen" />
+        <div className="relative z-10 mx-auto max-w-[1120px]">
           <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div><p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#f4a261]">{t('handoffEyebrow')}</p><h2 className="mt-5 text-4xl font-semibold leading-[.97] tracking-[-.07em] sm:text-6xl">{t('handoffHeading')}</h2><p className="mt-6 max-w-lg text-base leading-7 text-white/65">{t('handoffCopy')}</p><div className="mt-8 flex flex-wrap gap-2"><span className="border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-white/65">Claude Code</span><span className="border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-white/65">Cursor</span><span className="border border-white/20 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-white/65">Codex</span></div></div>
             <RevealOnScroll>
