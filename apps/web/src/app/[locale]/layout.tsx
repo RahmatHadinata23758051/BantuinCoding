@@ -51,10 +51,10 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${interSans.variable} ${lyonSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${interSans.variable} ${lyonSerif.variable} ${jetbrainsMono.variable} antialiased`}
     >
       <body
-        className="flex h-full flex-col font-sans"
+        className="flex flex-col font-sans"
         style={{ background: 'var(--color-paper-warmth)', color: 'var(--color-ink-black)' }}
         suppressHydrationWarning
       >
