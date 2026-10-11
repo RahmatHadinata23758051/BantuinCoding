@@ -2,7 +2,7 @@
 
 import { auth, signIn, signOut } from '@/lib/auth'
 import { clearProviderSession } from '@/lib/byok/session-store'
-import { registerUser } from '@/lib/auth/register'
+import { AUTH_ERROR_CODES, LoginSchema, registerUser } from '@/lib/auth/register'
 import type { ActionResult } from '@/lib/auth/register'
 
 export type { ActionResult }
@@ -29,22 +29,36 @@ export async function registerAction(
 export async function loginAction(
   formData: FormData,
 ): Promise<ActionResult> {
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
+  const rawEmail = formData.get('email')
+  const rawPassword = formData.get('password')
+  const email = typeof rawEmail === 'string' ? rawEmail : ''
+  const password = typeof rawPassword === 'string' ? rawPassword : ''
 
   if (!email || !password) {
-    return { success: false, error: 'Email and password are required' }
+    return { success: false, error: AUTH_ERROR_CODES.MISSING_CREDENTIALS }
   }
 
+  const parsed = LoginSchema.safeParse({ email, password })
+  if (!parsed.success) {
+    const error = parsed.error.issues[0]?.message
+    if (error === AUTH_ERROR_CODES.INVALID_EMAIL || error === AUTH_ERROR_CODES.PASSWORD_TOO_SHORT) {
+      return { success: false, error }
+    }
+    return { success: false, error: AUTH_ERROR_CODES.INVALID_CREDENTIALS }
+  }
+
+  const normalizedEmail = parsed.data.email.toLowerCase().trim()
+  const normalizedPassword = parsed.data.password
+
   try {
-    await signIn('credentials', { email, password, redirectTo: '/dashboard' })
+    await signIn('credentials', { email: normalizedEmail, password: normalizedPassword, redirectTo: '/dashboard' })
     return { success: true, data: undefined }
   } catch (error) {
     // Next.js redirect throws a special NEXT_REDIRECT error which MUST be re-thrown
     if (error && typeof error === 'object' && 'digest' in error && typeof error.digest === 'string' && error.digest.startsWith('NEXT_REDIRECT')) {
       throw error
     }
-    return { success: false, error: 'Invalid email or password' }
+    return { success: false, error: AUTH_ERROR_CODES.INVALID_CREDENTIALS }
   }
 }
 

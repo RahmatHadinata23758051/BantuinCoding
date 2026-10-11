@@ -126,7 +126,7 @@ describe('Auth — registerUser', () => {
     const result = await registerUser({ email: 'taken@example.com', password: 'password123' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error).toContain('already exists')
+      expect(result.error).toBe('DUPLICATE_ACCOUNT')
     }
   })
 
@@ -246,7 +246,7 @@ describe('Auth — loginAction', () => {
     const result = await loginAction(fd)
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error).toContain('Invalid email or password')
+      expect(result.error).toBe('INVALID_CREDENTIALS')
     }
   })
 
