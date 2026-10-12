@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Braces,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -28,6 +29,7 @@ import {
   FileText,
   Files,
   FolderKanban,
+  Languages,
   ListChecks,
   Loader2,
   Menu,
@@ -1483,29 +1485,37 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
           <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-8 sm:px-6 lg:px-10 xl:px-14">
             <header className="border-b border-[#dedbd5] pb-8">
-              <div className="flex flex-wrap items-start justify-between gap-5">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--workspace-muted)]"><span>{t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}</span><span>{formatLabel(initialData.classification)}</span><span>{initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}</span></div>
-                  <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-[4.5rem]">{initialData.name}</h1>
-                </div>
-              </div>
-              <div className="mt-6 max-w-4xl">
-                <div className="relative overflow-hidden rounded-[22px] border border-[#dedbd5] bg-[linear-gradient(135deg,#fffdfa_0%,#fffdfa_58%,#f8eee6_100%)] p-6 shadow-[0_10px_28px_rgba(36,35,31,0.045)] sm:p-9">
-                  <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 size-48 rounded-full bg-[radial-gradient(circle,#f4a261_0%,rgba(244,162,97,0.16)_42%,transparent_72%)] opacity-70" />
-                  <div aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 h-px w-2/5 bg-[linear-gradient(90deg,transparent,#a85e3c,transparent)] opacity-70" />
-                  <div className="relative">
-                    <div className="mb-6 flex items-center gap-3 text-xs font-semibold tracking-[0.08em] text-[var(--workspace-primary)]">
-                      <span className="inline-flex size-8 items-center justify-center rounded-full border border-[#e7cdbf] bg-[#fffdfa]/80">
+              <div className="relative overflow-hidden rounded-[24px] border border-[#dedbd5] bg-[linear-gradient(135deg,#fffdfa_0%,#fffdfa_70%,#faf5ee_100%)] p-6 shadow-[0_12px_36px_rgba(36,35,31,0.04)] before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-[linear-gradient(90deg,transparent,#f4a261,transparent)] before:opacity-60 sm:p-8 lg:p-10">
+                <div className="relative">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-3 text-xs font-semibold tracking-[0.08em] text-[var(--workspace-primary)]">
+                      <span className="inline-flex size-8 items-center justify-center rounded-full border border-[#e7cdbf] bg-[#fffdfa]">
                         <FileText aria-hidden="true" className="size-4" />
                       </span>
                       <span>{t('briefLabel')}</span>
                     </div>
-                    <div id="project-brief" className="max-w-[78ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
-                      <div className="space-y-5">
-                        {briefParagraphs.map((paragraph, index) => (
-                          <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line text-justify [text-align-last:left]">{paragraph}</p>
-                        ))}
-                      </div>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/70 px-3 py-1.5 text-xs text-[var(--workspace-muted)]">
+                        <CalendarDays aria-hidden="true" className="size-3.5" />
+                        {t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#dedbd5] bg-[#f4f1eb] px-3 py-1.5 text-xs font-medium text-[var(--workspace-muted)]">
+                        <FolderKanban aria-hidden="true" className="size-3.5" />
+                        {formatLabel(initialData.classification)}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/70 px-3 py-1.5 text-xs text-[var(--workspace-muted)]">
+                        <Languages aria-hidden="true" className="size-3.5" />
+                        {initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}
+                      </span>
+                    </div>
+                  </div>
+                  <h1 className="mt-7 max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
+                  <div className="my-7 border-t border-[#dedbd5]/80 sm:my-8" />
+                  <div id="project-brief" className="max-w-[78ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
+                    <div className="space-y-5">
+                      {briefParagraphs.map((paragraph, index) => (
+                        <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line text-justify [text-align-last:left]">{paragraph}</p>
+                      ))}
                     </div>
                   </div>
                 </div>
