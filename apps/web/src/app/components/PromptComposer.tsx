@@ -1,6 +1,6 @@
 'use client'
 
-import { Paperclip, Send, Sparkles, Wrench } from 'lucide-react'
+import { Send } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
@@ -83,21 +83,9 @@ export function PromptComposer({ action }: { action: PromptAction }) {
           })}
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#dedbd5] pt-3">
-          <div className="flex min-w-0 items-center gap-2 text-[#706b64]">
-            <button type="button" disabled aria-label={t('promptAttachment')} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#dedbd5] bg-white text-[#706b64] transition-colors hover:text-[#24231f] disabled:cursor-not-allowed" title={t('promptAttachment')}>
-              <Paperclip size={15} aria-hidden="true" />
-            </button>
-            <span className="hidden items-center gap-1.5 sm:flex" aria-label={t('promptModeLabel')}>
-              <span className="rounded-md bg-[#f0ece6] px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[#706b64]"><Sparkles size={12} className="mr-1 inline" aria-hidden="true" />{t('promptModePrompt')}</span>
-              <span className="px-2 py-1 text-[11px] text-[#a9a29a]">{t('promptModeAuto')}</span>
-              <span className="px-2 py-1 text-[11px] text-[#a9a29a]"><Wrench size={12} className="mr-1 inline" aria-hidden="true" />{t('promptModeTools')}</span>
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden text-[11px] text-[#a9a29a] sm:inline">{t('promptSendHint')}</span>
-            <SubmitButton />
-          </div>
+        <div className="mt-3 flex items-center justify-end gap-3 border-t border-[#dedbd5] pt-3">
+          <span className="hidden text-[11px] text-[#a9a29a] sm:inline">{t('promptSendHint')}</span>
+          <SubmitButton />
         </div>
       </div>
     </form>
