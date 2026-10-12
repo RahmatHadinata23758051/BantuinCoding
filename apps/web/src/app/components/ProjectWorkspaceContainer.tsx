@@ -588,6 +588,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     initialData.requiredArtifactTypes.length > 0 &&
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
+  const [isBriefExpanded, setIsBriefExpanded] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -1391,54 +1392,78 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         </Button>
       </LandingHeader>
 
-      <main className="mx-auto max-w-[1180px] px-4 pb-20 pt-10 sm:px-6 sm:pt-14 lg:px-8">
-        <header className="grid gap-7 border-b border-[#dedbd5] pb-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--workspace-muted)]">
-              <span className={`rounded-full border border-[#dedbd5] px-3 py-1 font-semibold ${statusTone(projectStatus)}`}>
-                {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
-              </span>
-              <span>{t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}</span>
-              <span>{formatLabel(initialData.classification)}</span>
-              <span>{initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}</span>
+      <main className="mx-auto w-full max-w-[1600px] px-4 pb-20 pt-6 sm:px-6 sm:pt-8 lg:px-10 xl:px-12">
+        <header className="border-b border-[#dedbd5] pb-6 sm:pb-7">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--workspace-muted)]">
+                <span className={`rounded-full border border-[#dedbd5] px-3 py-1 font-semibold ${statusTone(projectStatus)}`}>
+                  {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
+                </span>
+                <span>{t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}</span>
+                <span>{formatLabel(initialData.classification)}</span>
+                <span>{initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}</span>
+              </div>
+              <h1 className="mt-3 max-w-5xl text-3xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
+                {initialData.name}
+              </h1>
+              <div className="mt-3 max-w-4xl">
+                <p
+                  id="project-brief"
+                  className={`border-l-2 border-[var(--workspace-primary)] pl-4 text-sm leading-6 text-[var(--workspace-muted)] sm:text-base ${isBriefExpanded ? '' : 'line-clamp-2'}`}
+                >
+                  {initialData.description || t('noBrief')}
+                </p>
+                {(initialData.description?.length ?? 0) > 180 && (
+                  <button
+                    type="button"
+                    aria-controls="project-brief"
+                    aria-expanded={isBriefExpanded}
+                    onClick={() => setIsBriefExpanded((expanded) => !expanded)}
+                    className={`mt-2 inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 transition-colors hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}
+                  >
+                    {isBriefExpanded ? t('collapseBrief') : t('expandBrief')}
+                  </button>
+                )}
+              </div>
             </div>
-            <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[1.04] tracking-[-0.045em] sm:text-6xl">
-              {initialData.name}
-            </h1>
-            <p className="mt-5 max-w-2xl border-l-2 border-[var(--workspace-primary)] pl-4 text-base leading-7 text-[var(--workspace-muted)]">
-              {initialData.description || t('noBrief')}
+            <p className="shrink-0 text-xs leading-5 text-[var(--workspace-muted)] xl:max-w-[13rem] xl:pt-8 xl:text-right">
+              {t('stepXofY', { current: resolvedPipeline.currentIndex + 1, total: resolvedPipeline.stages.length })}
             </p>
           </div>
-          <p className="max-w-[13rem] text-right text-xs leading-5 text-[var(--workspace-muted)] lg:pb-1">
-            {t('stepXofY', { current: resolvedPipeline.currentIndex + 1, total: resolvedPipeline.stages.length })}
-          </p>
         </header>
 
-        <section aria-labelledby="next-move-title" className="mt-8 overflow-hidden rounded-[24px] bg-[#24231f] text-[#fffdfa] shadow-[0_16px_38px_rgba(36,35,31,0.13)]">
-          <div className="grid gap-7 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:p-10">
-            <div className="max-w-2xl">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#f4a261]">{t('controlRoomAction')}</p>
-              <h2 id="next-move-title" className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">{nextMove.title}</h2>
-              <p className="mt-4 text-sm leading-6 text-[#d9d2c8]">{nextMove.description}</p>
+        <section
+          aria-labelledby="next-move-title"
+          className="sticky top-[76px] z-30 mt-4 overflow-hidden rounded-2xl border border-[#3a3833] bg-[#24231f] text-[#fffdfa] shadow-[0_14px_30px_rgba(36,35,31,0.16)] sm:top-[84px]"
+        >
+          <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#f4a261]">{t('controlRoomAction')}</p>
+                <h2 id="next-move-title" className="truncate text-base font-semibold leading-6 tracking-[-0.02em] sm:text-lg">{nextMove.title}</h2>
+              </div>
+              <p className="mt-1 max-w-3xl line-clamp-2 text-xs leading-5 text-[#d9d2c8] sm:text-sm">{nextMove.description}</p>
               {(genMessage ?? discoveryMessage) && (
-                <p role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'} aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'} className="mt-4 text-sm font-semibold text-[#f4a261]">
+                <p role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'} aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'} className="mt-1 max-w-3xl text-xs font-semibold leading-5 text-[#f4a261]">
                   {(genMessage ?? discoveryMessage)?.text}
                 </p>
               )}
             </div>
-            <div className="lg:pb-1">{nextMove.action}</div>
+            <div className="shrink-0 sm:pl-4">{nextMove.action}</div>
           </div>
-          {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && (
-            <div className="border-t border-white/10 px-6 pb-6 sm:px-8 lg:px-10">{generationProgress}</div>
-          )}
         </section>
 
-        <div className="mt-8">
+        {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && (
+          <div className="mt-4">{generationProgress}</div>
+        )}
+
+        <div className="mt-4">
           <PipelineSpine
             current={resolvedPipeline.current.key}
             pipeline={resolvedPipeline}
             compact
-            className="rounded-[20px] border-[#dedbd5] bg-[#fffdfa] shadow-[0_8px_24px_rgba(36,35,31,0.04)]"
+            className="rounded-2xl border-[#dedbd5] bg-[#fffdfa] shadow-[0_8px_24px_rgba(36,35,31,0.04)]"
             hrefForStage={(stage) => {
               const tab = resolvedPipeline.stages.find((item) => item.key === stage)?.tab
               return tab ? `?tab=${tab}` : undefined
@@ -1446,7 +1471,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-5">
           <nav
             aria-label={t('workspaceSections')}
             className="border-b border-[#dedbd5]"

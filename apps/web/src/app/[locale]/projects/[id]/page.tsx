@@ -30,7 +30,7 @@ export default async function ProjectPage({
         <main
           aria-busy="true"
           aria-describedby="project-workspace-loading-label"
-          className="min-h-screen bg-[var(--paper)] p-8 text-sm font-bold"
+          className="min-h-screen bg-[#f7f6f3] p-8 text-sm font-bold text-[#24231f]"
         >
           <p id="project-workspace-loading-label" role="status" aria-live="polite">
             {t('loading')}

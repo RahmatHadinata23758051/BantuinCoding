@@ -618,6 +618,8 @@
     "backProjects": "Proyek",
     "updated": "Diperbarui {date}",
     "noBrief": "Belum ada ringkasan proyek yang tersimpan. Tambahkan masalah, pengguna, dan hasil akhir sebelum melakukan generasi.",
+    "expandBrief": "Baca ringkasan lengkap",
+    "collapseBrief": "Sembunyikan ringkasan lengkap",
     "controlRoomAction": "Aksi ruang kontrol",
     "pipelineSpine": "Jalur pipeline",
     "stepXofY": "Langkah {current} dari {total}. Status nyata proyek.",
