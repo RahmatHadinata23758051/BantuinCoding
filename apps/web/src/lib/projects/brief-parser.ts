@@ -162,7 +162,11 @@ function splitParagraphs(normalized: string): string[] {
       return [lines.slice(0, sectionStart).join('\n'), lines.slice(sectionStart).join('\n')]
     }
     if (firstSectionLine || hasListItems) return [block]
-    return lines
+
+    const hasParagraphBreaks = lines
+      .slice(0, -1)
+      .every((line) => /[.!?…]$/.test(line))
+    return hasParagraphBreaks ? lines : [block]
   })
 }
 
