@@ -780,7 +780,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           })}
         </nav>
       </div>
-      <div className="mt-auto border-t border-[#dedbd5] pt-5">
+      <div className="mt-8 border-t border-[#dedbd5] pt-5">
         <Button size="sm" variant="neutral" onClick={() => { setIsSettingsOpen(true); setIsWorkspaceNavOpen(false) }} className="w-full justify-start border-[#dedbd5] px-3 text-xs font-semibold">
           <Wrench className="size-3.5" /> {t('settings')}
         </Button>
@@ -1423,10 +1423,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               ),
             }
 
-  const overviewAction = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? null : nextMove.action
-  const overviewActionTitle = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? t('overviewReadyTitle') : nextMove.title
-  const overviewActionDescription = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? t('overviewReadyDescription') : nextMove.description
-  const overviewActionTab = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? 'documents' : nextMove.tab
+  const isExportReady = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip)
+  const overviewAction = isExportReady ? null : nextMove.action
+  const overviewActionTitle = nextMove.title
+  const overviewActionDescription = nextMove.description
 
   const generateButton = contextReady ? (
     <div className="flex flex-wrap gap-3">
@@ -1464,9 +1464,9 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   return (
     <div className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]" style={WORKSPACE_STYLE}>
       <div className="min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden lg:block lg:px-3 lg:py-4">
-          <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
-            <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">{workspaceNavigation}</div>
+        <aside className="hidden h-screen items-center self-start px-3 py-8 lg:sticky lg:top-0 lg:flex">
+          <div className="w-full rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
+            <div className="flex flex-col">{workspaceNavigation}</div>
           </div>
         </aside>
         <div className="min-w-0">
@@ -1493,8 +1493,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             <header className="border-b border-[#dedbd5] pb-8">
               <div className="flex flex-wrap items-start justify-between gap-5">
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--workspace-muted)]"><span className={`rounded-full border border-[#dedbd5] px-3 py-1 font-semibold ${statusTone(projectStatus)}`}>{tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}</span><span>{t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}</span><span>{formatLabel(initialData.classification)}</span><span>{initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}</span></div>
-                  <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl">{initialData.name}</h1>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--workspace-muted)]"><span>{t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}</span><span>{formatLabel(initialData.classification)}</span><span>{initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}</span></div>
+                  <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-[4.5rem]">{initialData.name}</h1>
                 </div>
               </div>
               <div className="mt-6 max-w-3xl">
@@ -1504,7 +1504,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             </header>
 
             {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && <div>{generationProgress}</div>}
-            {activeTab === 'overview' && (
+            {activeTab === 'overview' && !isExportReady && (
               <section aria-labelledby="next-move-title" className="border-b border-[#dedbd5] py-7">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 max-w-3xl">
@@ -1515,7 +1515,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       <p role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'} aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'} className="mt-4 border-l-2 border-[var(--workspace-rose)] pl-3 text-sm font-semibold leading-6 text-[var(--workspace-rose)]">{(genMessage ?? discoveryMessage)?.text}</p>
                     )}
                   </div>
-                  {overviewAction ? <div className="shrink-0 lg:pt-1">{overviewAction}</div> : <button type="button" onClick={() => selectTab(overviewActionTab)} className={`inline-flex shrink-0 items-center justify-center rounded-full border border-[#dedbd5] px-4 py-2.5 text-sm font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>{t('overviewReviewDocuments')}</button>}
+                  {overviewAction ? <div className="shrink-0 lg:pt-1">{overviewAction}</div> : null}
                 </div>
               </section>
             )}
@@ -1523,33 +1523,23 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               <div className="hidden" aria-hidden="true">
                 {SECTION_ITEMS.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}</button>)}
               </div>
-              <div className={activeTab === 'overview' ? 'space-y-10' : 'hidden'}>
-                <SectionHeading
-                  title={t('overviewTitle')}
-                  description={t('overviewDescription')}
-                />
+              <div className={activeTab === 'overview' ? 'space-y-8' : 'hidden'}>
+                <div className="flex items-end justify-between gap-4 border-b border-black/[0.08] pb-4">
+                  <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewStatusTitle')}</h2>
+                  <span className="font-mono text-xs text-[var(--workspace-muted)]">{t('liveData')}</span>
+                </div>
 
-                <section aria-labelledby="overview-status-title" className={`${PANEL_CLASS} overflow-hidden bg-[var(--workspace-paper)]`}>
-                  <div className="flex flex-col gap-2 border-b border-black/[0.08] px-5 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
-                    <div>
-                      <h3 id="overview-status-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewStatusTitle')}</h3>
-                      <p className="mt-1 text-sm leading-6 text-[var(--workspace-muted)]">{t('overviewStatusDescription')}</p>
-                    </div>
-                    <span className="font-mono text-xs font-semibold text-[var(--workspace-muted)]">{t('liveData')}</span>
-                  </div>
+                <section aria-label={t('overviewStatusTitle')} className="border-y border-black/[0.08]">
                   <ul className="divide-y divide-black/[0.08]">
                     {overviewStatusItems.map((item) => {
                       const Icon = item.tone === 'ready' ? CheckCircle2 : item.tone === 'attention' ? AlertTriangle : CircleDashed
                       return (
                         <li key={item.id}>
-                          <button type="button" onClick={() => selectTab(item.id)} className={`flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-[var(--workspace-blue-soft)] sm:items-center sm:px-6 ${BUTTON_FOCUS_CLASS}`}>
-                            <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center sm:mt-0 ${item.tone === 'ready' ? 'bg-[var(--workspace-mint-soft)] text-emerald-700' : item.tone === 'attention' ? 'bg-[var(--workspace-yellow-soft)] text-amber-700' : 'bg-black/[0.04] text-[var(--workspace-faint)]'}`}>
-                              <Icon aria-hidden="true" className="size-4" />
-                            </span>
+                          <button type="button" onClick={() => selectTab(item.id)} className={`flex w-full items-center gap-3 px-1 py-4 text-left transition-colors hover:bg-[var(--workspace-blue-soft)] sm:px-2 ${BUTTON_FOCUS_CLASS}`}>
+                            <Icon aria-hidden="true" className={`size-4 shrink-0 ${item.tone === 'ready' ? 'text-emerald-700' : item.tone === 'attention' ? 'text-amber-700' : 'text-[var(--workspace-faint)]'}`} />
                             <span className="min-w-0 flex-1 text-sm font-semibold text-[var(--workspace-ink)]">{item.label}</span>
-                            <span className="shrink-0 text-right font-mono text-xs font-semibold text-[var(--workspace-muted)]">{item.value}</span>
-                            <span className="shrink-0 text-xs font-semibold text-[var(--workspace-primary)]">{t('openSection')}</span>
-                            <ChevronRight aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-faint)]" />
+                            <span className="shrink-0 text-right text-sm text-[var(--workspace-muted)]">{item.value}</span>
+                            <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-faint)]" />
                           </button>
                         </li>
                       )
