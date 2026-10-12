@@ -10,6 +10,7 @@ import { InteractiveTransformation, type TransformationStage } from '@/app/compo
 import { RevealOnScroll } from '@/app/components/RevealOnScroll'
 import { LandingHeader } from '@/app/components/LandingHeader'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
+import { BrandLogo } from '@/app/components/BrandLogo'
 
 export default async function Home() {
   const t = await getTranslations('Home')
@@ -67,7 +68,7 @@ export default async function Home() {
   return (
     <main className="min-h-screen overflow-x-clip bg-[#f7f6f3] text-[#24231f] selection:bg-[#f4a261] selection:text-[#24231f]">
       <LandingHeader>
-        <Link href="/" className="shrink-0 rounded-full px-2 py-1 text-[19px] font-bold tracking-[-0.07em] text-[#24231f] transition-colors hover:text-[#a66142] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">bantuin<span className="font-serif font-normal text-[#a66142]">.</span></Link>
+        <Link href="/" className="shrink-0 rounded-full px-2 py-1 text-[#24231f] transition-colors hover:text-[#a66142] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]"><BrandLogo imageSize={30} textClassName="text-[19px] font-bold tracking-[-0.07em]" /></Link>
         <nav aria-label={t('authNavigationLabel')} className="flex items-center gap-1.5 sm:gap-2">
           <div className="hidden items-center gap-1 rounded-full border border-[#dedbd5] bg-white/55 p-1 lg:flex">
             <a href="#engine" className="rounded-full px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#716c65] transition-colors hover:bg-[#f0ece6] hover:text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{t('navWorkflow')}</a>
@@ -234,7 +235,7 @@ export default async function Home() {
 
       <section className="border-t border-[#dedbd5] bg-[#f4a261] px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto max-w-[1120px] md:flex md:items-end md:justify-between md:gap-10"><div><p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#6f4328]">{t('closingEyebrow')}</p><h2 className="mt-5 max-w-3xl text-4xl font-semibold leading-[.97] tracking-[-.07em] text-[#25241f] sm:text-6xl">{t('closingHeading')}</h2><p className="mt-5 max-w-lg text-base leading-7 text-[#5a3d2b]">{t('closingCopy')}</p></div><Link href="/register" className="mt-9 inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#25241f] px-6 py-3 text-sm font-semibold text-white shadow-[6px_6px_0_#fffdfa] transition-transform hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25241f]">{t('buildFirst')}<ArrowRight size={17} /></Link></div></section>
 
-      <footer className="border-t border-[#dedbd5]"><div className="mx-auto flex max-w-[1240px] flex-col justify-between gap-5 px-5 py-8 text-sm text-[#716c65] sm:flex-row sm:items-center sm:px-8"><div><Link href="/" className="font-semibold tracking-[-.06em] text-[#24231f]">bantuin.dev</Link><p className="mt-2 text-xs">{t('footerNote')}</p></div><div className="flex flex-wrap gap-x-6 gap-y-3"><a href="#engine" className="hover:text-[#24231f]">{t('footerWorkflow')}</a><a href="#artifacts" className="hover:text-[#24231f]">{t('footerFeatures')}</a><a href="#security" className="hover:text-[#24231f]">{t('navSecurity')}</a><a href="#" className="inline-flex items-center gap-1 hover:text-[#24231f]">{t('backToTop')}<ArrowUpRight size={13} /></a></div></div></footer>
+      <footer className="border-t border-[#dedbd5]"><div className="mx-auto flex max-w-[1240px] flex-col justify-between gap-5 px-5 py-8 text-sm text-[#716c65] sm:flex-row sm:items-center sm:px-8"><div><Link href="/" className="inline-flex rounded-full text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4a261]"><BrandLogo imageSize={24} textClassName="text-base font-semibold tracking-[-.06em]" /></Link><p className="mt-2 text-xs">{t('footerNote')}</p></div><div className="flex flex-wrap gap-x-6 gap-y-3"><a href="#engine" className="hover:text-[#24231f]">{t('footerWorkflow')}</a><a href="#artifacts" className="hover:text-[#24231f]">{t('footerFeatures')}</a><a href="#security" className="hover:text-[#24231f]">{t('navSecurity')}</a><a href="#" className="inline-flex items-center gap-1 hover:text-[#24231f]">{t('backToTop')}<ArrowUpRight size={13} /></a></div></div></footer>
     </main>
   )
 }

@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
 import { Link } from '@/i18n/routing'
+import { BrandLogo } from '@/app/components/BrandLogo'
 
 export default function DashboardError({
   error,
@@ -21,9 +22,7 @@ export default function DashboardError({
   return (
     <main className="min-h-screen bg-[#f7f6f3] text-[#24231f]">
       <div className="mx-3 flex min-h-[60px] items-center rounded-2xl border border-white/80 bg-[#f7f6f3]/85 px-4 shadow-[0_12px_30px_rgba(36,35,31,0.08)] sm:mx-5 sm:min-h-[64px] sm:rounded-full sm:px-5">
-        <Link href="/" className="rounded-full px-1 py-1 text-[19px] font-bold tracking-[-0.07em] text-[#24231f] transition-colors hover:text-[#a66142] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">
-          bantuin<span className="font-serif font-normal text-[#a66142]">.</span>
-        </Link>
+        <Link href="/" className="rounded-full px-1 py-1 text-[#24231f] transition-colors hover:text-[#a66142] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]"><BrandLogo imageSize={30} textClassName="text-[19px] font-bold tracking-[-0.07em]" /></Link>
       </div>
       <section role="alert" className="mx-auto flex min-h-[calc(100vh-100px)] w-full max-w-3xl items-start px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
         <div className="w-full rounded-[24px] border border-[#dedbd5] bg-[#fffdfa] p-6 shadow-[0_16px_35px_rgba(36,35,31,0.06)] sm:p-9">

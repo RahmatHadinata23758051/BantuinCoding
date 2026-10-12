@@ -5,6 +5,7 @@ import { Link } from '@/i18n/routing'
 
 import { LandingHeader } from '@/app/components/LandingHeader'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
+import { BrandLogo } from '@/app/components/BrandLogo'
 import { PromptComposer } from '@/app/components/PromptComposer'
 import { StatusBadge } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
@@ -88,9 +89,7 @@ export default async function DashboardPage() {
     <main className="min-h-screen bg-[#f7f6f3] text-[#24231f] selection:bg-[#f4a261] selection:text-[#24231f]">
       <LandingHeader>
         <div className="flex min-w-0 items-center gap-3">
-          <Link href="/" className="shrink-0 rounded-full px-1 py-1 text-[19px] font-bold tracking-[-0.07em] text-[#24231f] transition-colors hover:text-[#a66142] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">
-            bantuin<span className="font-serif font-normal text-[#a66142]">.</span>
-          </Link>
+          <Link href="/" className="shrink-0 rounded-full px-1 py-1 text-[#24231f] transition-colors hover:text-[#a66142] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]"><BrandLogo imageSize={30} textClassName="text-[19px] font-bold tracking-[-0.07em]" /></Link>
           <span className="hidden truncate border-l border-[#dedbd5] pl-3 text-xs font-medium text-[#706b64] sm:inline">{t('workspaceLabel')}</span>
         </div>
         <nav aria-label={t('dashboardNavigation')} className="flex shrink-0 items-center gap-1.5 sm:gap-2">

@@ -26,6 +26,11 @@ export const metadata: Metadata = {
   title: 'Project Bootstrapper — Bantuin Coding',
   description:
     'Transform raw project ideas into structured documentation packs for coding agents. BYOK — your API keys never leave your session.',
+  icons: {
+    icon: [{ url: '/logo.png', type: 'image/png' }],
+    shortcut: ['/logo.png'],
+    apple: ['/logo.png'],
+  },
 }
 
 export function generateStaticParams() {

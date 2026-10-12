@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import { Link } from '@/i18n/routing'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
@@ -47,6 +46,7 @@ import {
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
+import { BrandLogo } from '@/app/components/BrandLogo'
 import { PackHandoffVisual } from '@/app/components/PackHandoffVisual'
 import { parseProjectBrief, type ParsedProjectBrief } from '@/lib/projects/brief-parser'
 
@@ -868,10 +868,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     <>
       <div className="flex items-start justify-between gap-3 border-b border-[var(--workspace-border)] pb-5">
         <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <Image src="/favicon.ico" alt="" width={28} height={28} className="size-7 shrink-0 rounded-lg" />
-            <p className="text-xl font-semibold tracking-[-0.04em]">bantuin<span className="text-[var(--workspace-primary)]">.</span></p>
-          </div>
+          <BrandLogo imageSize={28} textClassName="text-xl font-semibold tracking-[-0.04em]" />
           <p className="mt-1 truncate text-xs text-[var(--workspace-muted)]">{initialData.name}</p>
         </div>
         <span className={`rounded-full border border-[var(--workspace-border)] px-2.5 py-1 text-[10px] font-semibold ${statusTone(projectStatus)}`}>

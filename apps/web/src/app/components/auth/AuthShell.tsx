@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { AuthVisualPanel } from '@/app/components/auth/AuthVisualPanel'
+import { BrandLogo } from '@/app/components/BrandLogo'
 
 export function AuthShell({
   children,
@@ -24,9 +25,7 @@ export function AuthShell({
     >
       <div className="w-full max-w-[430px]">
         <div className="mb-5 flex items-center justify-between gap-3 lg:hidden">
-          <Link href="/" className="shrink-0 rounded-full text-[18px] font-bold tracking-[-0.07em] text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4a261]">
-            bantuin<span className="font-serif font-normal text-[#a66142]">.</span>
-          </Link>
+          <Link href="/" className="shrink-0 rounded-full text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4a261]"><BrandLogo imageSize={28} textClassName="text-[18px] font-bold tracking-[-0.07em]" /></Link>
           <div className="flex items-center gap-2">
             <Link href="/" className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#dedbd5] bg-white/70 px-2.5 text-[11px] font-semibold text-[#24231f] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa]">
               <ArrowLeft size={14} aria-hidden="true" />
@@ -37,9 +36,7 @@ export function AuthShell({
         </div>
         <div className="rounded-[24px] border border-[#dedbd5] bg-[#fffdfa] p-5 shadow-[0_18px_55px_rgba(36,35,31,0.08)] sm:p-7 lg:p-8">
           <div className="mb-5 flex justify-center" aria-hidden="true">
-            <span className="grid size-10 place-items-center rounded-xl bg-[#24231f] text-xl font-bold tracking-[-0.08em] text-[#fffdfa] shadow-[3px_3px_0_#a85e3c]">
-              b<span className="font-serif font-normal text-[#f4a261]">.</span>
-            </span>
+            <BrandLogo imageSize={40} showWordmark={false} />
           </div>
           <div>{children}</div>
         </div>
@@ -66,9 +63,7 @@ export function AuthShell({
   return (
     <main className="auth-fade-in min-h-dvh overflow-x-clip bg-[#f7f6f3] text-[#24231f] selection:bg-[#f4a261] selection:text-[#24231f] lg:h-dvh lg:overflow-hidden">
       <div className="hidden items-center justify-between px-7 pt-6 lg:flex xl:px-10">
-        <Link href="/" className="rounded-full text-[19px] font-bold tracking-[-0.07em] text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4a261]">
-          bantuin<span className="font-serif font-normal text-[#a66142]">.</span>
-        </Link>
+        <Link href="/" className="rounded-full text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4a261]"><BrandLogo imageSize={30} textClassName="text-[19px] font-bold tracking-[-0.07em]" /></Link>
         <div className="flex items-center gap-2">
           <Link href="/" className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#dedbd5] bg-white/70 px-3 text-xs font-semibold text-[#24231f] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
             <ArrowLeft size={14} aria-hidden="true" />
