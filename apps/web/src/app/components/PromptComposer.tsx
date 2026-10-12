@@ -28,7 +28,7 @@ function SubmitButton() {
       type="submit"
       disabled={pending}
       aria-label={pending ? t('promptCreating') : t('promptSubmit')}
-      className="group relative flex size-12 shrink-0 items-center justify-center rounded-full border border-white/25 bg-[#e8e5df] text-[#202126] shadow-[0_0_0_5px_rgba(244,162,97,0.14),0_8px_24px_rgba(0,0,0,0.3)] transition-transform hover:scale-105 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#17181b] disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none"
+      className="group relative flex size-12 shrink-0 items-center justify-center rounded-full bg-[#a85e3c] text-white shadow-[0_8px_24px_rgba(168,94,60,0.28)] transition-colors hover:bg-[#8e4e32] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] disabled:cursor-wait disabled:opacity-65 motion-reduce:transition-none"
     >
       <Send size={18} strokeWidth={2.2} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
     </button>
@@ -48,8 +48,7 @@ export function PromptComposer({ action }: { action: PromptAction }) {
   }
 
   return (
-    <form ref={formRef} action={action} className="relative overflow-hidden rounded-[24px] border border-[#35373e] bg-[linear-gradient(145deg,#23252b_0%,#151619_55%,#101113_100%)] p-3 text-white shadow-[0_22px_60px_rgba(15,16,18,0.28)] sm:p-4">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_32%),linear-gradient(115deg,transparent_20%,rgba(255,255,255,0.035)_50%,transparent_80%)]" aria-hidden="true" />
+    <form ref={formRef} action={action} className="relative overflow-hidden rounded-[24px] border border-[#dedbd5] bg-[#fffdfa] p-3 text-[#24231f] shadow-[0_12px_30px_rgba(36,35,31,0.08)] sm:p-4">
       <div className="relative">
         <label htmlFor="dashboard-prompt" className="sr-only">{t('promptLabel')}</label>
         <textarea
@@ -61,13 +60,13 @@ export function PromptComposer({ action }: { action: PromptAction }) {
           rows={4}
           onKeyDown={handleKeyDown}
           placeholder={t('promptPlaceholder')}
-          className="min-h-32 w-full resize-none bg-transparent px-2 py-2 text-base leading-7 text-white outline-none placeholder:text-white/38 focus:placeholder:text-white/48 sm:min-h-36 sm:text-lg"
+          className="min-h-32 w-full resize-none bg-transparent px-2 py-2 text-base leading-7 text-[#24231f] outline-none placeholder:text-[#a9a29a] focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] focus:placeholder:text-[#706b64] sm:min-h-36 sm:text-lg"
         />
 
         <input type="hidden" name="classification" value={classification} />
         <input type="hidden" name="language" value={locale === 'id' ? 'id' : 'en'} />
 
-        <div className="mt-3 flex gap-2 overflow-x-auto border-t border-white/10 pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={t('promptCategoryLabel')}>
+        <div className="mt-3 flex gap-2 overflow-x-auto border-t border-[#dedbd5] pt-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label={t('promptCategoryLabel')}>
           {CLASSIFICATIONS.map((value) => {
             const selected = value === classification
             return (
@@ -76,7 +75,7 @@ export function PromptComposer({ action }: { action: PromptAction }) {
                 type="button"
                 onClick={() => setClassification(value)}
                 aria-pressed={selected}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] ${selected ? 'border-[#f4a261]/80 bg-[#f4a261] text-[#25241f]' : 'border-white/12 bg-white/[0.06] text-white/62 hover:border-white/30 hover:text-white'}`}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] ${selected ? 'border-[#a85e3c] bg-[#a85e3c] text-white' : 'border-[#dedbd5] bg-[#f4f1eb] text-[#706b64] hover:border-[#c9c4bc] hover:text-[#24231f]'}`}
               >
                 {t(`classification${value === 'FULLSTACK_COMPLEX' ? 'FullstackComplex' : value === 'LANDING_PAGE' ? 'LandingPage' : value === 'CRUD_APP' ? 'CrudApp' : value === 'API_SERVICE' ? 'ApiService' : value === 'MOBILE_APP' ? 'MobileApp' : value === 'AI_APP' ? 'AiApp' : value === 'SAAS' ? 'Saas' : value === 'DASHBOARD' ? 'Dashboard' : 'Other'}` as Parameters<typeof t>[0])}
               </button>
@@ -84,19 +83,19 @@ export function PromptComposer({ action }: { action: PromptAction }) {
           })}
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-          <div className="flex min-w-0 items-center gap-2 text-white/48">
-            <button type="button" disabled aria-label={t('promptAttachment')} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] disabled:cursor-not-allowed" title={t('promptAttachment')}>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#dedbd5] pt-3">
+          <div className="flex min-w-0 items-center gap-2 text-[#706b64]">
+            <button type="button" disabled aria-label={t('promptAttachment')} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#dedbd5] bg-white text-[#706b64] transition-colors hover:text-[#24231f] disabled:cursor-not-allowed" title={t('promptAttachment')}>
               <Paperclip size={15} aria-hidden="true" />
             </button>
             <span className="hidden items-center gap-1.5 sm:flex" aria-label={t('promptModeLabel')}>
-              <span className="rounded-md bg-white/10 px-2 py-1 text-[11px] font-medium text-white/75"><Sparkles size={12} className="mr-1 inline" aria-hidden="true" />{t('promptModePrompt')}</span>
-              <span className="rounded-md px-2 py-1 text-[11px]">{t('promptModeAuto')}</span>
-              <span className="rounded-md px-2 py-1 text-[11px]"><Wrench size={12} className="mr-1 inline" aria-hidden="true" />{t('promptModeTools')}</span>
+              <span className="rounded-md bg-[#f0ece6] px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em] text-[#706b64]"><Sparkles size={12} className="mr-1 inline" aria-hidden="true" />{t('promptModePrompt')}</span>
+              <span className="px-2 py-1 text-[11px] text-[#a9a29a]">{t('promptModeAuto')}</span>
+              <span className="px-2 py-1 text-[11px] text-[#a9a29a]"><Wrench size={12} className="mr-1 inline" aria-hidden="true" />{t('promptModeTools')}</span>
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden text-[11px] text-white/35 sm:inline">{t('promptSendHint')}</span>
+            <span className="hidden text-[11px] text-[#a9a29a] sm:inline">{t('promptSendHint')}</span>
             <SubmitButton />
           </div>
         </div>
