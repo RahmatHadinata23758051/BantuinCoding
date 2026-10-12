@@ -40,6 +40,7 @@ import {
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
+import { LandingHeader } from '@/app/components/LandingHeader'
 import { PackHandoffVisual } from '@/app/components/PackHandoffVisual'
 import { PipelineSpine } from '@/app/components/PipelineSpine'
 
@@ -142,27 +143,28 @@ const SECTION_ITEMS: {
 ]
 
 const WORKSPACE_STYLE = {
-  '--workspace-paper': '#ffffff',
-  '--workspace-ink': '#111111',
-  '--workspace-canvas': '#f8f7f5',
-  '--workspace-panel': '#ffffff',
-  '--workspace-muted': '#615d59',
-  '--workspace-faint': '#757575',
-  '--workspace-primary': '#0075de',
-  '--workspace-mint': '#dff3e5',
-  '--workspace-rose': '#c73524',
-  '--workspace-blue-soft': '#f2f7fb',
-  '--workspace-yellow-soft': '#faf7ef',
-  '--workspace-mint-soft': '#f1f7f3',
-  '--workspace-rose-soft': '#fbf1ef',
+  '--workspace-paper': '#fffdfa',
+  '--workspace-ink': '#24231f',
+  '--workspace-canvas': '#f7f6f3',
+  '--workspace-panel': '#fffdfa',
+  '--workspace-muted': '#706b64',
+  '--workspace-faint': '#a9a29a',
+  '--workspace-primary': '#a85e3c',
+  '--workspace-mint': '#e7eee7',
+  '--workspace-rose': '#9b4434',
+  '--workspace-blue-soft': '#f0ece6',
+  '--workspace-yellow-soft': '#f8eee6',
+  '--workspace-mint-soft': '#edf2eb',
+  '--workspace-rose-soft': '#f8e9e5',
+  '--workspace-sun': '#f4a261',
 } as CSSProperties
 
 const PANEL_CLASS =
-  'border border-black/[0.08] bg-[var(--workspace-panel)]'
+  'rounded-[20px] border border-[#dedbd5] bg-[var(--workspace-panel)] shadow-[0_10px_28px_rgba(36,35,31,0.045)]'
 const PANEL_SOFT_CLASS =
-  'bg-[var(--workspace-paper)]'
+  'rounded-[16px] bg-[var(--workspace-paper)]'
 const BUTTON_FOCUS_CLASS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-canvas)]'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-canvas)]'
 
 const SENSITIVE_CONTEXT_KEY =
   /(api.?key|access.?token|authorization|credential|password|private.?key|secret|token)/i
@@ -436,7 +438,7 @@ function ContextValue({
     return (
       <ol className="space-y-3">
         {value.map((item, index) => (
-          <li key={index} className="border-l border-black/[0.12] pl-3">
+          <li key={index} className="border-l border-[#c9c4bc] pl-3">
             <span className="mb-2 block font-mono text-xs font-bold text-[var(--workspace-faint)]">
               {entryLabel(index + 1)}
             </span>
@@ -465,7 +467,7 @@ function ContextValue({
     }
 
     return (
-      <dl className={depth > 1 ? 'space-y-3' : 'divide-y divide-black/[0.08]'}>
+      <dl className={depth > 1 ? 'space-y-3' : 'divide-y divide-[#dedbd5]'}>
         {entries.map(([key, nestedValue]) => (
           <div
             key={key}
@@ -1126,7 +1128,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   const generationProgress = (
     <section
       aria-labelledby="generation-progress-title"
-      className="mt-5 rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-4"
+      className="mt-5 rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-4"
       aria-busy={isGenerating}
     >
       <div className="flex items-start justify-between gap-3 border-b border-black/[0.08] pb-3">
@@ -1147,7 +1149,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         <span>{t('generationProgressStep', { current: generationStep, total: GENERATION_STAGES.length })}</span>
       </div>
       <div
-        className="mt-2 h-2 rounded-full border border-black/[0.08] bg-black/[0.04] overflow-hidden"
+        className="mt-2 h-2 rounded-full border border-[#dedbd5] bg-black/[0.04] overflow-hidden"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -1231,13 +1233,122 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     </button>
   )
 
+  const nextMove = projectStatus === 'ANALYZING' || projectStatus === 'GENERATING' || isAnalyzing || isGenerating
+    ? {
+        title: projectStatus === 'GENERATING' || isGenerating ? t('generationRunning') : t('analyzingProject'),
+        description: projectStatus === 'GENERATING' || isGenerating ? t('generationProgressDesc') : t('preparingClarifications'),
+        tab: projectStatus === 'GENERATING' || isGenerating ? 'documents' as WorkspaceSection : 'context' as WorkspaceSection,
+        action: (
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-[#fffdfa]/10 px-5 py-3 text-sm font-semibold text-white" role="status" aria-live="polite">
+            <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
+            {projectStatus === 'GENERATING' || isGenerating ? t('generationRunning') : t('analyzingProject')}
+          </span>
+        ),
+      }
+    : !contextReady
+    ? pendingClarifications.length > 0
+      ? {
+          title: t('actionClarify'),
+          description: t('actionClarifyDesc'),
+          tab: 'context' as WorkspaceSection,
+          action: discoveryButton,
+        }
+      : projectStatus === 'CLARIFYING' && answeredClarifications.length > 0
+        ? {
+            title: t('actionGenerate'),
+            description: t('descEstablishContext'),
+            tab: 'context' as WorkspaceSection,
+            action: (
+              <button
+                type="button"
+                onClick={buildCanonicalContext}
+                disabled={isAnalyzing || isSubmittingAnswers}
+                className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+              >
+                {isAnalyzing ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Braces aria-hidden="true" className="size-4" />}
+                {isAnalyzing ? t('normalizingContext') : t('actionGenerate')}
+              </button>
+            ),
+          }
+        : {
+            title: t('stateEstablishContext'),
+            description: t('descEstablishContext'),
+            tab: 'overview' as WorkspaceSection,
+            action: discoveryButton,
+          }
+    : projectStatus === 'GENERATION_FAILED' || attentionArtifacts.length > 0
+      ? {
+          title: t('generationFailed'),
+          description: t('descResolveWarnings', { count: Math.max(attentionArtifacts.length, 1) }),
+          tab: 'documents' as WorkspaceSection,
+          action: (
+            <button
+              type="button"
+              onClick={handleRegenerateFailed}
+              disabled={isGenerating}
+              className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+            >
+              {isGenerating ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <RefreshCw aria-hidden="true" className="size-4" />}
+              {isGenerating ? tCommon('loading') : t('retryFailed', { count: Math.max(attentionArtifacts.length, 1) })}
+            </button>
+          ),
+        }
+      : readyArtifacts.length === 0
+        ? {
+            title: t('stateGenerateFirst'),
+            description: t('descGenerateFirst'),
+            tab: 'documents' as WorkspaceSection,
+            action: (
+              <button
+                type="button"
+                onClick={handleGenerateAll}
+                disabled={isGenerating}
+                className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+              >
+                {isGenerating ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Play aria-hidden="true" className="size-4" />}
+                {isGenerating ? tCommon('loading') : t('actionGenerate')}
+              </button>
+            ),
+          }
+        : canExport && !hasExportedZip
+          ? {
+              title: t('stateExportable'),
+              description: t('descExportable'),
+              tab: 'export' as WorkspaceSection,
+              action: (
+                <button
+                  type="button"
+                  onClick={() => selectTab('export')}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}
+                >
+                  <Package aria-hidden="true" className="size-4" />
+                  {t('downloadZipPack')}
+                </button>
+              ),
+            }
+          : {
+              title: t('stateReviewPack'),
+              description: t('descReviewPack'),
+              tab: 'documents' as WorkspaceSection,
+              action: (
+                <button
+                  type="button"
+                  onClick={() => selectTab('documents')}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}
+                >
+                  <FileText aria-hidden="true" className="size-4" />
+                  {t('actionReview')}
+                </button>
+              ),
+            }
+
   const generateButton = contextReady ? (
     <div className="flex flex-wrap gap-3">
       <button
         type="button"
         onClick={handleGenerateAll}
         disabled={isGenerating}
-        className={`inline-flex items-center justify-center gap-2 border border-black/[0.08] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+        className={`inline-flex items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
       >
         {isGenerating ? (
           <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
@@ -1253,7 +1364,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           type="button"
           onClick={handleRegenerateFailed}
           disabled={isGenerating}
-          className={`inline-flex items-center justify-center gap-2 border border-black/[0.08] bg-[var(--electric-yellow)] px-4 py-2.5 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+          className={`inline-flex items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
         >
           <RefreshCw aria-hidden="true" className="size-4" />
           {t('retryFailed', { count: attentionArtifacts.length })}
@@ -1265,104 +1376,85 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   )
 
   return (
-    <div
-      className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]"
-      style={WORKSPACE_STYLE}
-    >
-      <header className="border-b border-black/[0.08] bg-[var(--workspace-paper)]">
-        <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-8 lg:px-12">
-          <div className="flex items-center justify-between">
-            <Link
-              href="/dashboard"
-              className={`inline-flex items-center gap-2 text-sm font-medium text-[var(--workspace-muted)] transition-colors hover:text-[var(--workspace-ink)] ${BUTTON_FOCUS_CLASS}`}
-            >
-              <ArrowLeft aria-hidden="true" className="size-4" />
-              {t('backProjects')}
-            </Link>
-            
-          </div>
+    <div className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]" style={WORKSPACE_STYLE}>
+      <LandingHeader>
+        <Link
+          href="/dashboard"
+          className={`inline-flex items-center gap-2 text-sm font-semibold text-[var(--workspace-ink)] transition-colors hover:text-[var(--workspace-primary)] ${BUTTON_FOCUS_CLASS}`}
+        >
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          <span>{t('backProjects')}</span>
+        </Link>
+        <span className="hidden truncate text-sm text-[var(--workspace-muted)] sm:block">{initialData.name}</span>
+        <Button size="sm" variant="neutral" onClick={() => setIsSettingsOpen(true)} className="h-9 rounded-full border-[#dedbd5] px-3 text-xs font-semibold">
+          <Wrench className="size-3.5" /> {t('settings')}
+        </Button>
+      </LandingHeader>
 
-          <div className="mt-8 grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem] xl:gap-10">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full px-2.5 py-1 font-mono text-xs font-medium ${statusTone(projectStatus)}`}
-                >
-                  {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
-                </span>
-                <span className="text-xs text-[var(--workspace-faint)]">
-                  {t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}
-                </span>
-                <Button size="sm" variant="neutral" onClick={() => setIsSettingsOpen(true)} className="h-7 px-2 text-[10px] ml-2 font-semibold uppercase tracking-wider">
-                  <Wrench className="size-3" /> {t('settings')}
-                </Button>
-              </div>
-              <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                {initialData.name}
-              </h1>
-              <p className="mt-4 max-w-3xl border-l border-[var(--workspace-primary)] pl-4 text-sm leading-6 text-[var(--workspace-muted)]">
-                {initialData.description ||
-                  t('noBrief')}
-              </p>
+      <main className="mx-auto max-w-[1180px] px-4 pb-20 pt-10 sm:px-6 sm:pt-14 lg:px-8">
+        <header className="grid gap-7 border-b border-[#dedbd5] pb-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--workspace-muted)]">
+              <span className={`rounded-full border border-[#dedbd5] px-3 py-1 font-semibold ${statusTone(projectStatus)}`}>
+                {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
+              </span>
+              <span>{t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}</span>
+              <span>{formatLabel(initialData.classification)}</span>
+              <span>{initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}</span>
             </div>
-
-            <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5`}>
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
-                {t('controlRoomAction')}
-              </p>
-              <div className="mt-4">{generateButton}</div>
-              {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && generationProgress}
-              <p
-                role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'}
-                aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'}
-                className={`mt-4 min-h-5 text-sm font-semibold leading-5 ${
-                  (genMessage ?? discoveryMessage)?.type === 'error'
-                    ? 'text-[var(--workspace-rose)]'
-                    : 'text-[var(--workspace-muted)]'
-                }`}
-              >
-                {(genMessage ?? discoveryMessage)?.text ??
-                  (contextReady
-                    ? t('generatePlanMessage')
-                    : pendingClarifications.length > 0
-                      ? pendingClarifications.length === 1
-                        ? t('clarificationWaitingSingular', { count: pendingClarifications.length })
-                        : t('clarificationWaitingPlural', { count: pendingClarifications.length })
-                      : t('analyzeIdeaMessage'))}
-              </p>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto max-w-[1600px] lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-        <aside className="border-b border-black/[0.08] bg-[var(--workspace-paper)] lg:sticky lg:top-0 lg:max-h-screen lg:self-start lg:overflow-y-auto lg:border-b-0 lg:border-r lg:border-black/[0.08]">
-          <div className="px-4 py-5 sm:px-6 lg:px-5 lg:py-8">
-            <PipelineSpine
-              current={resolvedPipeline.current.key}
-              pipeline={resolvedPipeline}
-              compact={false}
-              className="mt-6 border-0 bg-transparent p-0 shadow-none"
-              hrefForStage={(stage) => {
-                const tab = resolvedPipeline.stages.find((item) => item.key === stage)?.tab
-                return tab ? `?tab=${tab}` : undefined
-              }}
-            />
-            <p className="mt-4 font-mono text-xs font-bold leading-5 text-[var(--workspace-muted)]">
-              {t('stepXofY', { current: resolvedPipeline.currentIndex + 1, total: resolvedPipeline.stages.length })}
+            <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[1.04] tracking-[-0.045em] sm:text-6xl">
+              {initialData.name}
+            </h1>
+            <p className="mt-5 max-w-2xl border-l-2 border-[var(--workspace-primary)] pl-4 text-base leading-7 text-[var(--workspace-muted)]">
+              {initialData.description || t('noBrief')}
             </p>
           </div>
-        </aside>
+          <p className="max-w-[13rem] text-right text-xs leading-5 text-[var(--workspace-muted)] lg:pb-1">
+            {t('stepXofY', { current: resolvedPipeline.currentIndex + 1, total: resolvedPipeline.stages.length })}
+          </p>
+        </header>
 
-        <div className="min-w-0">
+        <section aria-labelledby="next-move-title" className="mt-8 overflow-hidden rounded-[24px] bg-[#24231f] text-[#fffdfa] shadow-[0_16px_38px_rgba(36,35,31,0.13)]">
+          <div className="grid gap-7 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:p-10">
+            <div className="max-w-2xl">
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#f4a261]">{t('controlRoomAction')}</p>
+              <h2 id="next-move-title" className="mt-4 text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">{nextMove.title}</h2>
+              <p className="mt-4 text-sm leading-6 text-[#d9d2c8]">{nextMove.description}</p>
+              {(genMessage ?? discoveryMessage) && (
+                <p role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'} aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'} className="mt-4 text-sm font-semibold text-[#f4a261]">
+                  {(genMessage ?? discoveryMessage)?.text}
+                </p>
+              )}
+            </div>
+            <div className="lg:pb-1">{nextMove.action}</div>
+          </div>
+          {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && (
+            <div className="border-t border-white/10 px-6 pb-6 sm:px-8 lg:px-10">{generationProgress}</div>
+          )}
+        </section>
+
+        <div className="mt-8">
+          <PipelineSpine
+            current={resolvedPipeline.current.key}
+            pipeline={resolvedPipeline}
+            compact
+            className="rounded-[20px] border-[#dedbd5] bg-[#fffdfa] shadow-[0_8px_24px_rgba(36,35,31,0.04)]"
+            hrefForStage={(stage) => {
+              const tab = resolvedPipeline.stages.find((item) => item.key === stage)?.tab
+              return tab ? `?tab=${tab}` : undefined
+            }}
+          />
+        </div>
+
+        <div className="mt-8">
           <nav
             aria-label={t('workspaceSections')}
-            className="border-b border-black/[0.08] bg-[var(--workspace-paper)]"
+            className="border-b border-[#dedbd5]"
           >
             <div
               role="tablist"
               aria-label={t('workspaceSections')}
-              className="flex gap-1 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8"
+              className="flex gap-1 overflow-x-auto pb-px"
             >
               {SECTION_ITEMS.map((section) => {
                 const Icon = section.icon
@@ -1398,7 +1490,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             </div>
           </nav>
 
-          <main className="px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+          <section className="px-0 py-8 sm:py-10">
             <div
               id={getSectionPanelId(activeTab)}
               role="tabpanel"
@@ -1584,7 +1676,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         <p
                           role={discoveryMessage.type === 'error' ? 'alert' : 'status'}
                           aria-live={discoveryMessage.type === 'error' ? 'assertive' : 'polite'}
-                          className={`mt-5 rounded-lg border border-black/[0.08] p-4 text-sm font-medium leading-5 ${
+                          className={`mt-5 rounded-lg border border-[#dedbd5] p-4 text-sm font-medium leading-5 ${
                             discoveryMessage.type === 'error'
                               ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
                               : 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
@@ -1599,10 +1691,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {pendingClarifications.map((question, index) => (
                             <div
                               key={question.id}
-                              className="rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-4"
+                              className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-4"
                             >
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-md border border-black/[0.08] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-medium">
+                                <span className="rounded-md border border-[#dedbd5] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-medium">
                                   {t('roundLabel', { round: question.round })}
                                 </span>
                                 <span className="font-mono text-xs font-medium text-[var(--workspace-muted)]">
@@ -1616,24 +1708,24 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                 {question.question}
                               </label>
                               {question.impact && (
-                                <p className="mt-2 border-l-2 border-black/[0.12] pl-3 text-sm leading-5 text-[var(--workspace-muted)]">
+                                <p className="mt-2 border-l-2 border-[#c9c4bc] pl-3 text-sm leading-5 text-[var(--workspace-muted)]">
                                   {t('impact')}: {question.impact}
                                 </p>
                               )}
                               <div className="mt-4 space-y-3">
                                 {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
-                                  <label key={i} className={`flex cursor-pointer items-start gap-3 rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-3 transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" />
+                                  <label key={i} className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-3 transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border border-[#dedbd5] accent-[var(--workspace-ink)]" />
                                     <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
                                   </label>
                                 ))}
-                                <label className={`flex cursor-pointer items-start gap-3 rounded-lg border border-black/[0.08] bg-[var(--workspace-blue-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" />
+                                <label className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[#dedbd5] bg-[var(--workspace-blue-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border border-[#dedbd5] accent-[var(--workspace-ink)]" />
                                   <span className="text-sm font-semibold text-[var(--workspace-ink)]">{t('autoPick')}</span>
                                 </label>
                                 <div className="pt-2">
                                   <label className="text-sm font-semibold flex items-center gap-2 mb-2">
-                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border border-black/[0.08] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
+                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border border-[#dedbd5] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
                                     {t('otherCustom')}
                                   </label>
                                   <textarea
@@ -1649,7 +1741,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                       }
                                     }}
                                     placeholder={t('writeDecision')}
-                                    className={`w-full resize-y rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-medium leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
+                                    className={`w-full resize-y rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-medium leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
                                   />
                                 </div>
                               </div>
@@ -1680,7 +1772,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         {t('decisionLedgerDesc')}
                       </p>
 
-                      <dl className="mt-5 divide-y divide-black/[0.08] border-y border-black/[0.08]">
+                      <dl className="mt-5 divide-y divide-[#dedbd5] border-y border-black/[0.08]">
                         <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
                           <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
                             {t('pending')}
@@ -1708,7 +1800,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {answeredClarifications.slice(-4).map((question) => (
                             <div
                               key={question.id}
-                              className="border border-black/[0.08] bg-[var(--workspace-paper)] p-3 shadow-none"
+                              className="border border-[#dedbd5] bg-[var(--workspace-paper)] p-3 shadow-none"
                             >
                               <p className="font-mono text-[0.68rem] font-semibold text-[var(--workspace-faint)]">
                                 {t('answerRound', { round: question.round })}
@@ -1729,20 +1821,20 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       className={`${PANEL_SOFT_CLASS} mb-7 flex flex-wrap items-center gap-x-5 gap-y-2 bg-[var(--workspace-paper)] p-4 font-mono text-xs font-bold text-[var(--workspace-muted)]`}
                     >
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-black/[0.08] bg-[var(--workspace-mint)]" />
+                        <span className="size-3 border border-[#dedbd5] bg-[var(--workspace-mint)]" />
                         {t('confirmedByOwner')}
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-black/[0.08] bg-[var(--workspace-sun)]" />
+                        <span className="size-3 border border-[#dedbd5] bg-[var(--workspace-sun)]" />
                         {t('assumedBySystem')}
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-black/[0.08] bg-[var(--workspace-paper)]" />
+                        <span className="size-3 border border-[#dedbd5] bg-[var(--workspace-paper)]" />
                         {t('stillUnknown')}
                       </span>
                     </div>
                     <div
-                      className={`${PANEL_CLASS} divide-y divide-black/[0.08] bg-[var(--workspace-paper)]`}
+                      className={`${PANEL_CLASS} divide-y divide-[#dedbd5] bg-[var(--workspace-paper)]`}
                     >
                       {Object.entries(initialData.context ?? {}).map(([key, value]) => (
                         <section
@@ -1832,12 +1924,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     {initialData.skills.map((skill, index) => (
                       <article
                         key={skill.id}
-                        className="rounded-xl border border-black/[0.08] bg-white p-5 transition-colors hover:border-black/20"
+                        className="rounded-xl border border-[#dedbd5] bg-[#fffdfa] p-5 transition-colors hover:border-black/20"
                       >
                         <div className="flex min-w-0 flex-col gap-3 border-b border-black/[0.08] pb-4 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex min-w-0 items-start gap-3">
                             <span
-                              className={`flex size-8 shrink-0 items-center justify-center rounded-lg border border-black/[0.08] ${index % 2 === 0 ? 'bg-[var(--workspace-sun)]' : 'bg-[var(--workspace-blue-soft)]'}`}
+                              className={`flex size-8 shrink-0 items-center justify-center rounded-lg border border-[#dedbd5] ${index % 2 === 0 ? 'bg-[var(--workspace-sun)]' : 'bg-[var(--workspace-blue-soft)]'}`}
                               aria-hidden="true"
                             >
                               <Wrench className="size-4 text-[var(--workspace-ink)]" />
@@ -1871,7 +1963,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               {skill.metadata?.applicable_phases?.map((phase) => (
                                 <span
                                   key={`phase-${phase}`}
-                                  className="rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
+                                  className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
                                 >
                                   {phase}
                                 </span>
@@ -1879,7 +1971,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               {skill.metadata?.applicable_task_types?.map((taskType) => (
                                 <span
                                   key={`type-${taskType}`}
-                                  className="rounded-lg border border-black/[0.08] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
+                                  className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
                                 >
                                   {formatLabel(taskType)}
                                 </span>
@@ -1888,7 +1980,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           )}
 
                           {skill.metadata?.installation_hint && (
-                            <div className="rounded-lg border border-black/[0.08] bg-[var(--workspace-paper)] p-3">
+                            <div className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-3">
                               <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
                                 {t('setupNote')}
                               </h4>
@@ -1967,7 +2059,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     <section aria-label={t('oneShotAgentPrompt')} className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6 sm:p-8`}>
                       <div className="flex flex-col gap-5 border-b border-black/[0.08] pb-6 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="flex size-10 items-center justify-center border border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]">
+                          <span className="flex size-10 items-center justify-center border border-[#dedbd5] bg-[#f8eee6] text-[#8e4e32]">
                             <Wrench aria-hidden="true" className="size-5" />
                           </span>
                           <div>
@@ -1982,14 +2074,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                       {/* Prompt Output Box */}
                       <div className="mt-5 relative">
-                        <pre className="max-h-80 overflow-y-auto border border-black/[0.08] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-none whitespace-pre-wrap">
+                        <pre className="max-h-80 overflow-y-auto border border-[#dedbd5] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-none whitespace-pre-wrap">
                           {generateOneShotKickoffPrompt()}
                         </pre>
 
                         <button
                           type="button"
                           onClick={handleCopyOneShotPrompt}
-                          className={`mt-4 inline-flex items-center justify-center gap-2 border border-black/[0.08] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
+                          className={`mt-4 inline-flex items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
                         >
                           {copiedPrompt ? (
                             <>
@@ -2017,7 +2109,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             {t('filesCount', { count: readyArtifacts.length + (includesReadme ? 0 : 1) })}
                           </span>
                         </div>
-                        <ul className="bg-[var(--workspace-paper)] divide-y divide-black/[0.08]">
+                        <ul className="bg-[var(--workspace-paper)] divide-y divide-[#dedbd5]">
                           {readyArtifacts.map((artifact) => (
                             <li
                               key={artifact.id}
@@ -2080,7 +2172,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             ariaLabel={t('packHandoffVisualLabel')}
                             description={`${t('packHandoffPackageLabel')} ${t('packHandoffConnectorLabel')} ${t('packHandoffAgentLabel')}`}
                           />
-                          <span className="flex size-12 items-center justify-center border border-black/[0.08] bg-[var(--workspace-paper)] shadow-none">
+                          <span className="flex size-12 items-center justify-center border border-[#dedbd5] bg-[var(--workspace-paper)] shadow-none">
                             <Package aria-hidden="true" className="size-6" />
                           </span>
                           <h3 className="mt-6 text-3xl font-semibold leading-none tracking-[-0.05em]">
@@ -2107,7 +2199,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           onClick={handleDownloadZip}
                           disabled={isExporting}
                           aria-busy={isExporting}
-                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border border-black/[0.08] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
                         >
                           {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
                           {isExporting ? t('validatingPack') : t('downloadZipPack')}
@@ -2118,10 +2210,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 )}
               </div>
             </div>
-          </main>
+          </section>
         </div>
-      </div>
-      
+      </main>
+
       <Modal
         open={isSettingsOpen}
         onClose={() => !isSavingSettings && setIsSettingsOpen(false)}
@@ -2130,7 +2222,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       >
         <form onSubmit={handleSaveSettings} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="projectName" className="text-sm font-semibold text-[var(--ink)]">
+            <label htmlFor="projectName" className="text-sm font-semibold text-[var(--workspace-ink)]">
               {t('projectName')}
             </label>
             <Input
@@ -2142,7 +2234,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="projectLang" className="text-sm font-semibold text-[var(--ink)]">
+            <label htmlFor="projectLang" className="text-sm font-semibold text-[var(--workspace-ink)]">
               {t('language')}
             </label>
             <Select id="projectLang" value={projectLang} onChange={(e) => setProjectLang(e.target.value)}>
