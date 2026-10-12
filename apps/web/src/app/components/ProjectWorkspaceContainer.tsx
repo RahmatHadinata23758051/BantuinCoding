@@ -591,6 +591,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
   const [isBriefExpanded, setIsBriefExpanded] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
+  const briefText = initialData.description || t('noBrief')
+  const briefParagraphs = briefText.split(/\n{2,}/).filter(Boolean)
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1470,23 +1472,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           </div>
         </aside>
         <div className="min-w-0">
-          <header className="border-b border-[#dedbd5] bg-[var(--workspace-paper)] px-4 py-4 sm:px-6 lg:px-10">
+          <header className="border-b border-[#dedbd5] bg-[var(--workspace-paper)] px-4 py-4 sm:px-6 lg:hidden">
             <div className="flex items-center justify-between gap-4">
-              <button type="button" aria-expanded={isWorkspaceNavOpen} aria-controls="workspace-mobile-navigation" onClick={() => setIsWorkspaceNavOpen((open) => !open)} className={`inline-flex items-center gap-2 rounded-lg border border-[#dedbd5] px-3 py-2 text-sm font-semibold lg:hidden ${BUTTON_FOCUS_CLASS}`}>
+              <button type="button" aria-expanded={isWorkspaceNavOpen} aria-controls="workspace-mobile-navigation" onClick={() => setIsWorkspaceNavOpen((open) => !open)} className={`inline-flex items-center gap-2 rounded-lg border border-[#dedbd5] px-3 py-2 text-sm font-semibold ${BUTTON_FOCUS_CLASS}`}>
                 {isWorkspaceNavOpen ? <X aria-hidden="true" className="size-4" /> : <Menu aria-hidden="true" className="size-4" />}
                 <span>{t(`tab${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}` as Parameters<typeof t>[0])}</span>
               </button>
-              <div className="hidden min-w-0 items-center gap-3 lg:flex">
-                <Link href="/dashboard" className={`inline-flex items-center gap-2 text-sm font-semibold text-[var(--workspace-muted)] hover:text-[var(--workspace-primary)] ${BUTTON_FOCUS_CLASS}`}><ArrowLeft aria-hidden="true" className="size-4" />{t('backProjects')}</Link>
-                <span className="text-[#dedbd5]" aria-hidden="true">/</span>
-                <span className="truncate text-sm font-semibold">{t(`tab${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}` as Parameters<typeof t>[0])}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`hidden rounded-full border border-[#dedbd5] px-3 py-1 text-xs font-semibold sm:inline-flex ${statusTone(projectStatus)}`}>{tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}</span>
-                <Button size="sm" variant="neutral" onClick={() => setIsSettingsOpen(true)} className="h-9 rounded-lg border-[#dedbd5] px-3 text-xs font-semibold"><Wrench className="size-3.5" /> <span className="hidden sm:inline">{t('settings')}</span></Button>
-              </div>
             </div>
-            {isWorkspaceNavOpen && <div id="workspace-mobile-navigation" className="mt-4 border-t border-[#dedbd5] pt-4 lg:hidden"><div className="flex flex-col gap-5">{workspaceNavigation}</div></div>}
+            {isWorkspaceNavOpen && <div id="workspace-mobile-navigation" className="mt-4 border-t border-[#dedbd5] pt-4"><div className="flex flex-col gap-5">{workspaceNavigation}</div></div>}
           </header>
 
           <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-8 sm:px-6 lg:px-10 xl:px-14">
@@ -1498,7 +1491,17 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 </div>
               </div>
               <div className="mt-6 max-w-3xl">
-                <p id="project-brief" className={`max-w-[72ch] text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8 ${isBriefExpanded ? '' : 'line-clamp-2'}`}>{initialData.description || t('noBrief')}</p>
+                <div id="project-brief" className="max-w-[68ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
+                  {isBriefExpanded ? (
+                    <div className="space-y-5">
+                      {briefParagraphs.map((paragraph, index) => (
+                        <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line">{paragraph}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="line-clamp-2 whitespace-pre-line">{briefText}</p>
+                  )}
+                </div>
                 {(initialData.description?.length ?? 0) > 180 && <button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded((expanded) => !expanded)} className={`mt-3 inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{isBriefExpanded ? t('collapseBrief') : t('expandBrief')}</button>}
               </div>
             </header>

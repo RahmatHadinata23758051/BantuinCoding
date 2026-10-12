@@ -13,10 +13,11 @@ export default async function ProjectWorkspaceLoading() {
         {t('loading')}
       </p>
       <div aria-hidden="true">
-        <div className="mx-3 flex min-h-[60px] items-center justify-between rounded-2xl border border-white/80 bg-[#f7f6f3]/85 px-4 shadow-[0_12px_30px_rgba(36,35,31,0.08)] sm:mx-5 sm:min-h-[64px] sm:rounded-full sm:px-5">
-          <div className="h-5 w-28 rounded-full bg-[#dedbd5] motion-safe:animate-pulse" />
+        <div className="mx-3 flex min-h-[60px] items-center justify-end rounded-2xl border border-white/80 bg-[#f7f6f3]/85 px-4 shadow-[0_12px_30px_rgba(36,35,31,0.08)] sm:mx-5 sm:min-h-[64px] sm:rounded-full sm:px-5 lg:hidden">
           <div className="h-9 w-24 rounded-full bg-[#dedbd5] motion-safe:animate-pulse" />
         </div>
+        <div className="hidden h-0 lg:block" />
+
         <div className="min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
           <div className="hidden min-h-screen items-center px-3 py-8 lg:flex">
             <div className="w-full rounded-[24px] border border-white/80 bg-[#fffdfa]/88 p-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] lg:backdrop-blur-xl">
