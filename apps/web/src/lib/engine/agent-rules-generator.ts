@@ -19,9 +19,10 @@ export interface GenerateAgentRulesOptions {
  */
 export function generateFallbackAgentMd(
   projectName: string,
-  targetAgent: string,
+  _targetAgent?: string,
 ): string {
-  return `# Agent.md — Operational Contract for ${targetAgent}
+  void _targetAgent
+  return `# Agent.md — Universal Operational Contract for AI Coding Agents
 
 ## Project: ${projectName}
 
@@ -106,10 +107,8 @@ export async function generateAgentAndRulesArtifacts({
 
   await updateProject(userId, projectId, { status: 'GENERATING' })
 
-  const targetAgent = project.targetAgent || 'CLAUDE_CODE'
   const userPrompt = buildAgentRulesGeneratorUserPrompt(
     project.name,
-    targetAgent,
     currentContextRecord.contentJson,
   )
 

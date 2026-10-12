@@ -56,11 +56,12 @@ export function scanContentForSecrets(content: string, filename: string): void {
   }
 }
 
-export function generateBootstrapReadme(projectName: string, targetAgent = 'CLAUDE_CODE'): string {
+export function generateBootstrapReadme(projectName: string, _targetAgent?: string): string {
+  void _targetAgent
   return `# ${projectName} — Project Bootstrap Pack
 
 > Downloaded from **Project Bootstrapper (BantuinCoding)**.
-> Optimized for coding agent: **${targetAgent}**
+> Optimized for any modern AI coding agent that can read Markdown instructions.
 
 ---
 
@@ -169,7 +170,7 @@ export async function exportProjectZip({
   }
 
   if (!normalizedPaths.has('README.md')) {
-    const readmeContent = generateBootstrapReadme(project.name, project.targetAgent)
+    const readmeContent = generateBootstrapReadme(project.name)
     scanContentForSecrets(readmeContent, 'README.md')
     zip.file('README.md', readmeContent)
   }

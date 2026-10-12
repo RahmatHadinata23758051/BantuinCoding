@@ -108,13 +108,13 @@ describe('CreateProjectSchema', () => {
     expect(result.data?.classification).toBe('OTHER')
   })
 
-  it('defaults targetAgent to CLAUDE_CODE if omitted', () => {
+  it('defaults targetAgent to OTHER if omitted', () => {
     const result = CreateProjectSchema.safeParse({
       name: 'Valid Name',
       rawIdea: 'Valid raw idea description over 10 characters',
     })
     expect(result.success).toBe(true)
-    expect(result.data?.targetAgent).toBe('CLAUDE_CODE')
+    expect(result.data?.targetAgent).toBe('OTHER')
   })
 })
 

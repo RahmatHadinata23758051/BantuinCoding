@@ -42,11 +42,13 @@ CRITICAL CONSTRAINTS:
 
 export function buildAgentRulesGeneratorUserPrompt(
   projectName: string,
-  targetAgent: string,
-  contextJson: string,
+  contextOrLegacyAgent: string,
+  legacyContextJson?: string,
 ): string {
+  const contextJson = legacyContextJson ?? contextOrLegacyAgent
+
   return `Project Name: ${projectName}
-Target Coding Agent: ${targetAgent}
+Target: Any modern AI coding agent that can read Markdown instructions.
 
 Canonical Project Context:
 """

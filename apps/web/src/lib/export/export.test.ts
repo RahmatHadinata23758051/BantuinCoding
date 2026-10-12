@@ -76,10 +76,10 @@ describe('ZIP Secret Leakage Scanner', () => {
 })
 
 describe('Bootstrap README Generator', () => {
-  it('generates informative README.md content with target agent and DESIGN reference', () => {
-    const readme = generateBootstrapReadme('Acme SaaS', 'CLAUDE_CODE')
+  it('generates informative README.md content for universal agents and DESIGN reference', () => {
+    const readme = generateBootstrapReadme('Acme SaaS')
     expect(readme).toContain('# Acme SaaS — Project Bootstrap Pack')
-    expect(readme).toContain('CLAUDE_CODE')
+    expect(readme).toContain('any modern AI coding agent')
     expect(readme).toContain('PRD.md')
     expect(readme).toContain('DESIGN.md')
     expect(readme).toContain('BACKLOG.md')

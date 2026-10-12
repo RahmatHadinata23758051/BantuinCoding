@@ -51,7 +51,7 @@ export const CanonicalContextSchema = z.object({
   security_requirements: z.array(ContextItemWithProvenance),
   integrations: z.array(ContextItemWithProvenance),
   deployment_target: ContextItemWithProvenance,
-  agent_target: z.string(),
+  agent_target: z.string().default('OTHER'),
   confirmed_decisions: z.array(ContextItemWithProvenance),
   open_questions: z.array(ContextItemWithProvenance),
   assumptions: z.array(ContextItemWithProvenance),
@@ -115,7 +115,7 @@ export function buildContextNormalizerUserPrompt(
   projectName: string,
   rawIdea: string,
   classification: string,
-  targetAgent: string,
+  _targetAgent: string,
   analysisJson: string,
   qaJson: string,
   language: string = 'id',
@@ -127,7 +127,7 @@ export function buildContextNormalizerUserPrompt(
 
   return `Project Name: ${projectName}
 Project Type: ${classification}
-Target Agent: ${targetAgent}
+Target: Any modern AI coding agent that can read Markdown instructions.
 ${languageDirective}
 
 Raw Idea Input:

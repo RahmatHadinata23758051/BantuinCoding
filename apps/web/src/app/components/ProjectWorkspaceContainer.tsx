@@ -16,7 +16,6 @@ import { useRouter } from '@/i18n/routing'
 import {
   AlertTriangle,
   ArrowLeft,
-  Bot,
   Braces,
   Check,
   CheckCircle2,
@@ -74,7 +73,6 @@ export interface ProjectWorkspaceProps {
     name: string
     description: string | null
     classification: string
-    targetAgent: string
     language: string
     status: string
     createdAt: string
@@ -588,7 +586,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     initialData.requiredArtifactTypes.length > 0 &&
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
-  const [selectedAgentTarget, setSelectedAgentTarget] = useState(initialData.targetAgent || 'CLAUDE_CODE')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -664,10 +661,10 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     }
   }
 
-  const generateOneShotKickoffPrompt = (agent: string) => {
+  const generateOneShotKickoffPrompt = () => {
     return `# Project implementation brief — ${initialData.name}
 
-You are the coding agent (${formatLabel(agent)}) preparing an implementation plan for **${initialData.name}** (${initialData.classification}). Use the generated pack as the source of project context, and keep the human owner in control of scope, sequencing, and execution.
+Prepare an implementation plan for **${initialData.name}** (${initialData.classification}). Use the generated pack as the source of project context, and keep the human owner in control of scope, sequencing, and execution.
 
 ## Pack reading order
 Read the available specification files before making implementation decisions:
@@ -688,7 +685,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   }
 
   const handleCopyOneShotPrompt = () => {
-    const promptText = generateOneShotKickoffPrompt(selectedAgentTarget)
+    const promptText = generateOneShotKickoffPrompt()
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       void navigator.clipboard
         .writeText(promptText)
@@ -1455,10 +1452,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       </div>
                       <div className="border-b border-black/[0.08] py-4 sm:pl-5">
                         <dt className="font-mono text-xs font-medium text-[var(--workspace-faint)]">
-                          {t('targetAgent')}
+                          {t('language')}
                         </dt>
                         <dd className="mt-1 text-sm font-semibold">
-                          {formatLabel(initialData.targetAgent)}
+                          {initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}
                         </dd>
                       </div>
                       <div className="border-b border-black/[0.08] py-4 sm:border-b-0 sm:border-r sm:border-black/[0.08] sm:pr-5">
@@ -1936,7 +1933,6 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   <BacklogKanbanBoard
                     projectId={initialData.id}
                     phases={initialData.phases}
-                    targetAgent={initialData.targetAgent}
                   />
                 )}
               </div>
@@ -1972,7 +1968,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       <div className="flex flex-col gap-5 border-b border-black/[0.08] pb-6 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
                           <span className="flex size-10 items-center justify-center border border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]">
-                            <Bot aria-hidden="true" className="size-5" />
+                            <Wrench aria-hidden="true" className="size-5" />
                           </span>
                           <div>
                             <h3 className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">{t('oneShotAgentPrompt')}</h3>
@@ -1982,30 +1978,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           </div>
                         </div>
 
-                        {/* Agent Selector Tabs */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          {['CLAUDE_CODE', 'CURSOR', 'OPENCODE', 'CODEX', 'ANTIGRAVITY'].map((agent) => (
-                            <button
-                              key={agent}
-                              type="button"
-                              onClick={() => setSelectedAgentTarget(agent)}
-                              aria-pressed={selectedAgentTarget === agent}
-                              className={`border border-black/[0.08] px-2.5 py-1 font-mono text-xs font-semibold transition-colors ${BUTTON_FOCUS_CLASS} ${
-                                selectedAgentTarget === agent
-                                  ? 'bg-[var(--workspace-sun)] text-[var(--workspace-ink)] shadow-none'
-                                  : 'bg-[var(--workspace-paper)] text-[var(--workspace-muted)] hover:bg-white hover:text-[var(--workspace-ink)]'
-                              }`}
-                            >
-                              {agent.replace('_', ' ')}
-                            </button>
-                          ))}
-                        </div>
                       </div>
 
                       {/* Prompt Output Box */}
                       <div className="mt-5 relative">
                         <pre className="max-h-80 overflow-y-auto border border-black/[0.08] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-none whitespace-pre-wrap">
-                          {generateOneShotKickoffPrompt(selectedAgentTarget)}
+                          {generateOneShotKickoffPrompt()}
                         </pre>
 
                         <button
@@ -2109,7 +2087,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             {t('bootstrapPack')}
                           </h3>
                           <p className="mt-3 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                            {t('preparedFor', { agent: formatLabel(selectedAgentTarget) })}
+                            {t('preparedForUniversal')}
                           </p>
 
                           <div className="mt-6 space-y-2 border-y border-black/[0.08] py-4 text-sm font-medium">

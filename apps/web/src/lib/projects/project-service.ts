@@ -103,7 +103,7 @@ export const CreateProjectSchema = z.object({
     .default('OTHER'),
   targetAgent: z
     .enum(['CLAUDE_CODE', 'CODEX', 'OPENCODE', 'ANTIGRAVITY', 'CURSOR', 'OTHER'])
-    .default('CLAUDE_CODE'),
+    .default('OTHER'),
   language: z.enum(['en', 'id']).default('id'),
 })
 

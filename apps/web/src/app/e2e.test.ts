@@ -31,7 +31,7 @@ describe('End-to-End Pipeline & Final Quality Control Suite', () => {
     expect(prd).toContain('# PRD.md')
     expect(srs).toContain('# SRS.md')
     expect(arch).toContain('# ARCHITECTURE.md')
-    expect(agentMd).toContain('# Agent.md — Operational Contract')
+    expect(agentMd).toContain('# Agent.md — Universal Operational Contract for AI Coding Agents')
     expect(rulesMd).toContain('# Agent.md — Operational Rules')
 
     // 2. Skill Catalog Resolution

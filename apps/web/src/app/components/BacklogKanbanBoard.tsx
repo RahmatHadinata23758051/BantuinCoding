@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import {
   Ban,
-  Bot,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -58,7 +57,6 @@ interface BacklogKanbanBoardProps {
       dependencies: string[]
     }>
   }>
-  targetAgent?: string
   onTaskUpdated?: (task: { id: string; taskKey: string; status: string }) => void
 }
 
@@ -123,7 +121,6 @@ const COLUMNS: Array<{
 export function BacklogKanbanBoard({
   projectId,
   phases,
-  targetAgent = 'CLAUDE_CODE',
   onTaskUpdated,
 }: BacklogKanbanBoardProps) {
   const t = useTranslations('Workspace')
@@ -278,10 +275,10 @@ export function BacklogKanbanBoard({
   const buildTaskExecutionPrompt = (taskKey: string) => {
     const task = tasks.find((t) => t.taskKey === taskKey || t.id === taskKey)
     if (!task) {
-      return `Read Agent.md and execute task ${taskKey} from BACKLOG.md as ${targetAgent} following all acceptance criteria.`
+      return `Read Agent.md and execute task ${taskKey} from BACKLOG.md following all acceptance criteria.`
     }
 
-    let p = `Read Agent.md and execute task ${task.taskKey} from BACKLOG.md as ${targetAgent}.\n\n`
+    let p = `Read Agent.md and execute task ${task.taskKey} from BACKLOG.md.\n\n`
     p += `### Task ${task.taskKey}: ${task.title}\n`
     p += `Description: ${task.description}\n`
     if (task.acceptanceCriteria && task.acceptanceCriteria.length > 0) {
@@ -314,7 +311,7 @@ export function BacklogKanbanBoard({
   const handleCopyQuickPrompt = (taskKey: string) => {
     const task = tasks.find((t) => t.taskKey === taskKey || t.id === taskKey)
     const title = task?.title ? ` (${task.title})` : ''
-    const prompt = `Read Agent.md and execute task ${taskKey}${title} from BACKLOG.md as ${targetAgent}. Follow all acceptance criteria and quality gates.`
+    const prompt = `Read Agent.md and execute task ${taskKey}${title} from BACKLOG.md. Follow all acceptance criteria and quality gates.`
     void navigator.clipboard.writeText(prompt)
     setCopiedTaskKey(taskKey)
     setCopyMessage(t('backlogPromptCopied'))
@@ -331,11 +328,6 @@ export function BacklogKanbanBoard({
       {/* Board Controls: Filters & Agent Live Gateway */}
       <div className="flex flex-col gap-4 rounded-xl border border-black/10 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-[#f6f5f4] px-3 py-1.5 font-mono text-xs font-medium text-[var(--ink)]">
-            <Bot size={14} className="text-[#0075de]" aria-hidden="true" />
-            <span>{t('agentLabel', { agent: targetAgent })}</span>
-          </div>
-
           <div className="flex items-center gap-2">
             <Layers size={16} className="text-[#615d59]" aria-hidden="true" />
             <label htmlFor="phase-filter" className="text-xs font-medium">

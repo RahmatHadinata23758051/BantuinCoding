@@ -72,7 +72,7 @@ describe('Requirement Analysis Prompt Builder', () => {
 
     expect(prompt).toContain('Project Name: Acme Analytics')
     expect(prompt).toContain('Project Type: DASHBOARD')
-    expect(prompt).toContain('Target Agent: CLAUDE_CODE')
+    expect(prompt).toContain('Target: Any modern AI coding agent')
     expect(prompt).toContain('I want a dashboard for multi-tenant analytics.')
   })
 

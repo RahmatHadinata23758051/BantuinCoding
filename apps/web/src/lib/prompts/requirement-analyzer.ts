@@ -46,9 +46,10 @@ export function buildRequirementAnalysisUserPrompt(
   projectName: string,
   rawIdea: string,
   classification: string,
-  targetAgent: string,
+  _targetAgent: string = 'OTHER',
   language: string = 'id',
 ): string {
+  void _targetAgent
   const languageDirective =
     language === 'id'
       ? 'CRITICAL LANGUAGE DIRECTIVE: You MUST analyze and write all known_facts, missing_information, ambiguities, important_decisions, optional_decisions, and risk_flags in natural, professional Indonesian (Bahasa Indonesia).'
@@ -56,7 +57,7 @@ export function buildRequirementAnalysisUserPrompt(
 
   return `Project Name: ${projectName}
 Project Type: ${classification}
-Target Agent: ${targetAgent}
+Target: Any modern AI coding agent that can read Markdown instructions.
 ${languageDirective}
 
 Raw Idea Input:

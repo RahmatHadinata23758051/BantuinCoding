@@ -17,8 +17,8 @@ interface AgentHandoffConsoleProps {
   packMeta: string
   exportLabel: string
   exportMeta: string
-  agentLabel: string
-  agentMeta: string
+  handoffLabel: string
+  handoffMeta: string
   connectorLabel: string
   command: string
   prompt: string
@@ -127,8 +127,8 @@ export function AgentHandoffConsole({
   packMeta,
   exportLabel,
   exportMeta,
-  agentLabel,
-  agentMeta,
+  handoffLabel,
+  handoffMeta,
   connectorLabel,
   command,
   prompt,
@@ -144,7 +144,7 @@ export function AgentHandoffConsole({
     { label: contextLabel, meta: contextMeta },
     { label: packLabel, meta: packMeta },
     { label: exportLabel, meta: exportMeta },
-    { label: agentLabel, meta: agentMeta },
+    { label: handoffLabel, meta: handoffMeta },
   ]
 
   const handleCopy = async () => {

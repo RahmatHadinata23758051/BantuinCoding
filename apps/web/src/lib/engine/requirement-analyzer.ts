@@ -56,7 +56,7 @@ export async function analyzeProjectRequirements({
     project.name,
     project.rawIdea,
     project.classification,
-    project.targetAgent,
+    'OTHER',
     project.language,
   )
 

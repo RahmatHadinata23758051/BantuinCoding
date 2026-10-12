@@ -47,7 +47,7 @@ describe('Agent Rules Prompt & Schema', () => {
   it('builds user prompt with target agent and context', () => {
     const prompt = buildAgentRulesGeneratorUserPrompt('Acme', 'CLAUDE_CODE', '{"name":"Acme"}')
     expect(prompt).toContain('Project Name: Acme')
-    expect(prompt).toContain('Target Coding Agent: CLAUDE_CODE')
+    expect(prompt).toContain('Target: Any modern AI coding agent')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('unified operational contract')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain(
       'DESIGN for visual/interaction scope',
@@ -58,7 +58,7 @@ describe('Agent Rules Prompt & Schema', () => {
 describe('Agent Rules Fallback Generators', () => {
   it('generates fallback Agent.md markdown', () => {
     const md = generateFallbackAgentMd('Acme App', 'CLAUDE_CODE')
-    expect(md).toContain('# Agent.md — Operational Contract for CLAUDE_CODE')
+    expect(md).toContain('# Agent.md — Universal Operational Contract for AI Coding Agents')
     expect(md).toContain('Project: Acme App')
     expect(md).toContain('Document Hierarchy Precedence')
     expect(md).toContain('DESIGN.md (visual and interaction scope)')
