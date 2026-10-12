@@ -33,6 +33,23 @@ describe('parseProjectBrief', () => {
     })
   })
 
+  it('splits single-newline prose into separate paragraphs', () => {
+    const result = parseProjectBrief('A project for a small team.\nIt should keep the workflow easy to scan.\nThe first release stays focused.')
+
+    expect(result.paragraphs).toEqual([
+      'A project for a small team.',
+      'It should keep the workflow easy to scan.',
+      'The first release stays focused.',
+    ])
+  })
+
+  it('preserves labeled sections and bullet lists across single newlines', () => {
+    const result = parseProjectBrief('A small inventory app.\nFeatures:\n- Add products\n- Track stock')
+
+    expect(result.paragraphs).toEqual(['A small inventory app.', 'Features:\n- Add products\n- Track stock'])
+    expect(result.features).toEqual([{ title: 'Add products' }, { title: 'Track stock' }])
+  })
+
   it('prefers structured context over text-derived sections', () => {
     const result = parseProjectBrief('A plain brief.\n\nFeatures: Invented text', {
       summary: 'Confirmed summary',

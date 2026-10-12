@@ -140,11 +140,35 @@ function contextScope(context: BriefContext): BriefScope {
   }
 }
 
+function splitParagraphs(normalized: string): string[] {
+  if (!normalized) return []
+
+  const blocks = normalized
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+
+  return blocks.flatMap((block) => {
+    const lines = block.split('\n').map((line) => line.trim()).filter(Boolean)
+    if (lines.length <= 1) return [block]
+
+    const sectionStart = lines.findIndex((line) =>
+      Object.values(LABELS).some((pattern) => pattern.test(line)),
+    )
+    const firstSectionLine = sectionStart >= 0 ? lines[sectionStart] : null
+    const hasListItems = lines.some((line) => /^[-*•]\s+/.test(line))
+
+    if (sectionStart > 0) {
+      return [lines.slice(0, sectionStart).join('\n'), lines.slice(sectionStart).join('\n')]
+    }
+    if (firstSectionLine || hasListItems) return [block]
+    return lines
+  })
+}
+
 export function parseProjectBrief(description: string | null | undefined, context?: BriefContext): ParsedProjectBrief {
   const normalized = (description ?? '').replace(/\r\n?/g, '\n').trim()
-  const paragraphs = normalized
-    ? normalized.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean)
-    : []
+  const paragraphs = splitParagraphs(normalized)
   const explicit = parseExplicitSections(paragraphs)
   const structuredScope = contextScope(context)
   const structuredFeatures = contextFeatures(context)
