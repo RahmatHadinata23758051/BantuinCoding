@@ -18,14 +18,15 @@ export default async function ProjectWorkspaceLoading() {
           <div className="h-9 w-24 rounded-full bg-[#dedbd5] motion-safe:animate-pulse" />
         </div>
         <div className="mx-auto w-full max-w-[1600px] px-4 pb-20 pt-6 sm:px-6 sm:pt-8 lg:px-10 xl:px-12">
-          <div className="border-b border-[#dedbd5] pb-7">
-            <div className="h-5 w-52 rounded bg-[#dedbd5] motion-safe:animate-pulse" />
-            <div className="mt-4 h-12 w-full max-w-4xl rounded bg-[#dedbd5] motion-safe:animate-pulse" />
-            <div className="mt-4 h-12 w-full max-w-3xl rounded bg-[#dedbd5] motion-safe:animate-pulse" />
+          <div className="grid gap-8 border-b border-[#dedbd5] pb-8 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] xl:gap-12">
+            <div>
+              <div className="h-5 w-64 rounded bg-[#dedbd5] motion-safe:animate-pulse" />
+              <div className="mt-5 h-14 w-full max-w-4xl rounded bg-[#dedbd5] motion-safe:animate-pulse" />
+              <div className="mt-5 h-14 w-full max-w-3xl rounded bg-[#dedbd5] motion-safe:animate-pulse" />
+            </div>
+            <div className="h-[27rem] rounded-[20px] border border-[#dedbd5] bg-[#fffdfa] p-5 motion-safe:animate-pulse sm:p-6" />
           </div>
-          <div className="mt-4 h-20 rounded-2xl bg-[#24231f] p-4 motion-safe:animate-pulse sm:h-16" />
-          <div className="mt-4 h-24 rounded-2xl border border-[#dedbd5] bg-[#fffdfa] motion-safe:animate-pulse" />
-          <div className="mt-5 h-12 w-full rounded bg-[#dedbd5] motion-safe:animate-pulse" />
+          <div className="mt-6 h-12 w-full rounded bg-[#dedbd5] motion-safe:animate-pulse" />
           <div className="mt-8 h-72 rounded-[20px] border border-[#dedbd5] bg-[#fffdfa] motion-safe:animate-pulse" />
         </div>
       </div>
