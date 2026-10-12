@@ -13,7 +13,9 @@
     "cancel": "Batal",
     "newProject": "Proyek baru",
     "loading": "Memuat...",
-    "language": "Bahasa"
+    "language": "Bahasa",
+    "indonesian": "Bahasa Indonesia",
+    "english": "English"
   },
   "Home": {
     "navWorkflow": "Alur kerja",
@@ -417,7 +419,26 @@
     "justNow": "baru saja",
     "mAgo": "{minutes}m yang lalu",
     "hAgo": "{hours}j yang lalu",
-    "dAgo": "{days}h yang lalu"
+    "dAgo": "{days}h yang lalu",
+    "dashboardNavigation": "Navigasi dasbor",
+    "providerShort": "Provider",
+    "promptEyebrow": "Mulai dari bentuk idenya",
+    "promptTitle": "Susun konteks sebelum menulis kode.",
+    "promptSubtitle": "Jelaskan apa yang ingin Anda buat. Pilih jenis proyek, lalu biarkan BantuinCoding mengubah ide pertama menjadi ruang kerja yang bisa ditinjau.",
+    "promptLabel": "Prompt proyek",
+    "promptPlaceholder": "Bangun apa saja...",
+    "promptCategoryLabel": "Jenis proyek",
+    "promptAttachment": "Lampiran akan segera tersedia",
+    "promptModeLabel": "Kontrol prompt",
+    "promptModePrompt": "Prompt",
+    "promptModeAuto": "Otomatis",
+    "promptModeTools": "Tools",
+    "promptSendHint": "Enter untuk kirim · Shift+Enter untuk baris baru",
+    "promptSubmit": "Buat proyek",
+    "promptCreating": "Membuat proyek",
+    "promptNote": "Kunci provider tidak diperlukan untuk menyimpan draf. Atur nanti saat Anda siap menganalisisnya.",
+    "projectsEyebrow": "Ruang kerja Anda",
+    "projectsHeading": "Lanjutkan pekerjaan sebelumnya"
   },
   "Pipeline": {
     "idea": "Ide",
@@ -865,6 +886,7 @@
     "copyAgentKickoffPrompt": "Salin Prompt Awalan Agen",
     "bootstrapPack": "Paket bootstrap",
     "preparedFor": "Disiapkan untuk {agent}. Kunci dan kredensial provider tidak pernah disertakan dalam arsip.",
+    "preparedForUniversal": "Disiapkan untuk agen AI koding modern apa pun. Kunci dan kredensial provider tidak pernah disertakan dalam arsip.",
     "contentScanned": "Konten dipindai sebelum dikemas",
     "controlledFilenames": "Nama file terkontrol & Markdown UTF-8",
     "packHandoffVisualLabel": "Alur paket statis dari paket spesifikasi ke agen koding",

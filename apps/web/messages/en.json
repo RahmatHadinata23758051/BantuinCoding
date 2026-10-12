@@ -13,7 +13,9 @@
     "cancel": "Cancel",
     "newProject": "New project",
     "loading": "Loading...",
-    "language": "Language"
+    "language": "Language",
+    "indonesian": "Bahasa Indonesia",
+    "english": "English"
   },
   "Home": {
     "navWorkflow": "Workflow",
@@ -417,7 +419,26 @@
     "justNow": "just now",
     "mAgo": "{minutes}m ago",
     "hAgo": "{hours}h ago",
-    "dAgo": "{days}d ago"
+    "dAgo": "{days}d ago",
+    "dashboardNavigation": "Dashboard navigation",
+    "providerShort": "Provider",
+    "promptEyebrow": "Start with the shape of the idea",
+    "promptTitle": "Build the context before you build the code.",
+    "promptSubtitle": "Describe what you want to make. Choose a project type, then let BantuinCoding turn the first thought into a workspace you can inspect.",
+    "promptLabel": "Project prompt",
+    "promptPlaceholder": "Build anything...",
+    "promptCategoryLabel": "Project type",
+    "promptAttachment": "Attachments are coming soon",
+    "promptModeLabel": "Prompt controls",
+    "promptModePrompt": "Prompt",
+    "promptModeAuto": "Auto",
+    "promptModeTools": "Tools",
+    "promptSendHint": "Enter to send · Shift+Enter for a new line",
+    "promptSubmit": "Create project",
+    "promptCreating": "Creating project",
+    "promptNote": "No provider key is needed to save the draft. Configure one later when you are ready to analyze it.",
+    "projectsEyebrow": "Your workspaces",
+    "projectsHeading": "Continue where you left off"
   },
   "Pipeline": {
     "idea": "Idea",
@@ -865,6 +886,7 @@
     "copyAgentKickoffPrompt": "Copy Agent Kickoff Prompt",
     "bootstrapPack": "Bootstrap pack",
     "preparedFor": "Prepared for {agent}. Provider keys and credentials are never included in the archive.",
+    "preparedForUniversal": "Prepared for any modern AI coding agent. Provider keys and credentials are never included in the archive.",
     "contentScanned": "Content is scanned before packaging",
     "controlledFilenames": "Controlled filenames & UTF-8 Markdown",
     "packHandoffVisualLabel": "Static package handoff from specification pack to coding agent",
