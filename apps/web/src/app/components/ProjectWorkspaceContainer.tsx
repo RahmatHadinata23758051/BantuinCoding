@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { Link } from '@/i18n/routing'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
@@ -868,10 +869,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       <div className="flex items-start justify-between gap-3 border-b border-[var(--workspace-border)] pb-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
-            <span aria-hidden="true" className="relative flex size-7 shrink-0 items-center justify-center rounded-lg border border-[var(--workspace-ink)] bg-[var(--workspace-ink)] text-[var(--workspace-paper)]">
-              <span className="absolute left-1.5 top-1.5 size-2 rounded-full bg-[var(--workspace-primary)]" />
-              <span className="absolute bottom-1.5 right-1.5 size-2 rounded-full border border-[var(--workspace-paper)]" />
-            </span>
+            <Image src="/icon.svg" alt="" width={28} height={28} className="size-7 shrink-0 rounded-lg" />
             <p className="text-xl font-semibold tracking-[-0.04em]">bantuin<span className="text-[var(--workspace-primary)]">.</span></p>
           </div>
           <p className="mt-1 truncate text-xs text-[var(--workspace-muted)]">{initialData.name}</p>
