@@ -1504,7 +1504,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           </header>
 
           <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-6 sm:px-6 lg:px-10 lg:pt-0 xl:px-14">
-            <header className="border-b border-[var(--workspace-border)] pb-8">
+            <header className={activeTab === 'overview' ? 'border-b border-[var(--workspace-border)] pb-0' : 'border-b border-[var(--workspace-border)] pb-8'}>
               <div
                 ref={briefCardRef}
                 className={`relative isolate overflow-hidden rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 shadow-[0_14px_40px_var(--workspace-card-shadow)] transition-[height] duration-300 ease-out sm:p-6 lg:p-8 ${heroContentClass} ${heroMotionPaused ? 'workspace-motion-paused' : ''}`}
@@ -1549,11 +1549,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
             {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && <div>{generationProgress}</div>}
 
-            <section className="py-5 sm:py-6"><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
+            <section className={activeTab === 'overview' ? 'py-0' : 'py-5 sm:py-6'}><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
               <div className="hidden" aria-hidden="true">
                 {SECTION_ITEMS.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}</button>)}
               </div>
-              <div className={activeTab === 'overview' ? 'space-y-6' : 'hidden'}>
+              <div className={activeTab === 'overview' ? (briefHasStructuredSections ? 'space-y-4' : 'space-y-0') : 'hidden'}>
                 {overviewStructuredContent}
                 <section aria-labelledby="overview-status-title" className="border-t border-[var(--workspace-border-subtle)] pt-5">
                   <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-3">
