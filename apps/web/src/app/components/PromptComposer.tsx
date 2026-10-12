@@ -48,8 +48,12 @@ export function PromptComposer({ action }: { action: PromptAction }) {
   }
 
   return (
-    <form ref={formRef} action={action} className="relative overflow-hidden rounded-[24px] border border-[#dedbd5] bg-[#fffdfa] p-3 text-[#24231f] shadow-[0_12px_30px_rgba(36,35,31,0.08)] sm:p-4">
-      <div className="relative">
+    <form ref={formRef} action={action} className="prompt-composer-shell relative overflow-hidden rounded-[24px] border border-[#dedbd5] bg-[#fffdfa] p-3 text-[#24231f] shadow-[0_12px_30px_rgba(36,35,31,0.08)] sm:p-4">
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
+        <div className="prompt-composer-orb absolute -right-14 -top-16 size-40 rounded-full bg-[#f4a261]/20 blur-3xl" />
+        <div className="prompt-composer-signal absolute left-0 top-0 h-px w-1/3 bg-gradient-to-r from-transparent via-[#a85e3c]/70 to-transparent" />
+      </div>
+      <div className="relative z-10">
         <label htmlFor="dashboard-prompt" className="sr-only">{t('promptLabel')}</label>
         <textarea
           id="dashboard-prompt"
