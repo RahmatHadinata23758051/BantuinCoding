@@ -5,6 +5,7 @@ import { Link } from '@/i18n/routing'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
+  useEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -26,6 +27,7 @@ import {
   ClipboardCheck,
   Copy,
   Download,
+  Pencil,
   FileText,
   Files,
   FolderKanban,
@@ -46,6 +48,7 @@ import {
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
 import { PackHandoffVisual } from '@/app/components/PackHandoffVisual'
+import { parseProjectBrief, type ParsedProjectBrief } from '@/lib/projects/brief-parser'
 
 const PackHandoffWebGL = dynamic(
   () => import('@/app/components/PackHandoffWebGL').then((module) => module.PackHandoffWebGL),
@@ -145,24 +148,30 @@ const SECTION_ITEMS: {
 ]
 
 const WORKSPACE_STYLE = {
-  '--workspace-paper': '#fffdfa',
-  '--workspace-ink': '#24231f',
-  '--workspace-canvas': '#f7f6f3',
-  '--workspace-panel': '#fffdfa',
-  '--workspace-muted': '#706b64',
-  '--workspace-faint': '#a9a29a',
-  '--workspace-primary': '#a85e3c',
-  '--workspace-mint': '#e7eee7',
-  '--workspace-rose': '#9b4434',
-  '--workspace-blue-soft': '#f0ece6',
-  '--workspace-yellow-soft': '#f8eee6',
-  '--workspace-mint-soft': '#edf2eb',
-  '--workspace-rose-soft': '#f8e9e5',
-  '--workspace-sun': '#f4a261',
+  '--workspace-paper': 'var(--color-workspace-paper)',
+  '--workspace-ink': 'var(--color-workspace-ink)',
+  '--workspace-canvas': 'var(--color-workspace-canvas)',
+  '--workspace-panel': 'var(--color-workspace-paper)',
+  '--workspace-border': 'var(--color-workspace-border)',
+  '--workspace-border-muted': 'var(--color-workspace-border-muted)',
+  '--workspace-body': 'var(--color-workspace-body)',
+  '--workspace-muted': 'var(--color-workspace-muted)',
+  '--workspace-faint': 'var(--color-workspace-faint)',
+  '--workspace-primary': 'var(--color-workspace-primary)',
+  '--workspace-primary-hover': 'var(--color-workspace-primary-hover)',
+  '--workspace-deep': 'var(--color-workspace-deep)',
+  '--workspace-mint': 'var(--color-workspace-mint)',
+  '--workspace-rose': 'var(--color-workspace-rose)',
+  '--workspace-blue-soft': 'var(--color-workspace-blue-soft)',
+  '--workspace-yellow-soft': 'var(--color-workspace-yellow-soft)',
+  '--workspace-mint-soft': 'var(--color-workspace-mint-soft)',
+  '--workspace-rose-soft': 'var(--color-workspace-rose-soft)',
+  '--workspace-sun': 'var(--color-workspace-sun)',
+  '--workspace-peach': 'var(--color-workspace-peach)',
 } as CSSProperties
 
 const PANEL_CLASS =
-  'rounded-[20px] border border-[#dedbd5] bg-[var(--workspace-panel)] shadow-[0_10px_28px_rgba(36,35,31,0.045)]'
+  'rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] shadow-[0_10px_28px_rgba(36,35,31,0.045)]'
 const PANEL_SOFT_CLASS =
   'rounded-[16px] bg-[var(--workspace-paper)]'
 const BUTTON_FOCUS_CLASS =
@@ -440,7 +449,7 @@ function ContextValue({
     return (
       <ol className="space-y-3">
         {value.map((item, index) => (
-          <li key={index} className="border-l border-[#c9c4bc] pl-3">
+          <li key={index} className="border-l border-[var(--workspace-border-muted)] pl-3">
             <span className="mb-2 block font-mono text-xs font-bold text-[var(--workspace-faint)]">
               {entryLabel(index + 1)}
             </span>
@@ -469,7 +478,7 @@ function ContextValue({
     }
 
     return (
-      <dl className={depth > 1 ? 'space-y-3' : 'divide-y divide-[#dedbd5]'}>
+      <dl className={depth > 1 ? 'space-y-3' : 'divide-y divide-[var(--workspace-border)]'}>
         {entries.map(([key, nestedValue]) => (
           <div
             key={key}
@@ -592,8 +601,141 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
+  const [copiedBrief, setCopiedBrief] = useState(false)
+  const [isBriefExpanded, setIsBriefExpanded] = useState(false)
+  const [isBriefOverflowing, setIsBriefOverflowing] = useState(false)
+  const [isHeroVisible, setIsHeroVisible] = useState(true)
+  const [isDocumentVisible, setIsDocumentVisible] = useState(true)
+  const briefCardRef = useRef<HTMLDivElement>(null)
+  const briefContentRef = useRef<HTMLDivElement>(null)
   const briefText = initialData.description || t('noBrief')
-  const briefParagraphs = briefText.split(/\n{2,}/).filter(Boolean)
+  const parsedBrief: ParsedProjectBrief = parseProjectBrief(initialData.description, initialData.context)
+  const briefParagraphs = parsedBrief.paragraphs.length > 0
+    ? [parsedBrief.lead, ...parsedBrief.paragraphs.slice(1)]
+    : [briefText]
+
+  useEffect(() => {
+    let frame = 0
+    try {
+      const stored = window.localStorage.getItem(`project_brief_collapsed_${initialData.id}`)
+      if (stored === 'false') {
+        frame = window.requestAnimationFrame(() => setIsBriefExpanded(true))
+      }
+    } catch {}
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [initialData.id])
+
+  useEffect(() => {
+    const content = briefContentRef.current
+    if (!content) return
+
+    const updateOverflow = () => {
+      const overflows = content.scrollHeight > content.clientHeight + 1
+      setIsBriefOverflowing((current) => (isBriefExpanded ? current || overflows : overflows))
+    }
+    updateOverflow()
+    const observer = new ResizeObserver(updateOverflow)
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [briefParagraphs.length, isBriefExpanded])
+
+  useEffect(() => {
+    const card = briefCardRef.current
+    if (!card) return
+    const observer = new IntersectionObserver(([entry]) => setIsHeroVisible(entry.isIntersecting), { threshold: 0.05 })
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const handleVisibility = () => setIsDocumentVisible(document.visibilityState === 'visible')
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
+  const toggleBrief = () => {
+    const nextExpanded = !isBriefExpanded
+    setIsBriefExpanded(nextExpanded)
+    try {
+      window.localStorage.setItem(`project_brief_collapsed_${initialData.id}`, String(!nextExpanded))
+    } catch {}
+
+    if (!nextExpanded) {
+      window.requestAnimationFrame(() => {
+        briefCardRef.current?.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'start',
+        })
+      })
+    }
+  }
+
+  const handleCopyBrief = () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    void navigator.clipboard.writeText(briefText).then(() => {
+      setCopiedBrief(true)
+      window.setTimeout(() => setCopiedBrief(false), 2000)
+    }).catch(() => setCopiedBrief(false))
+  }
+
+  const heroMotionPaused = !isHeroVisible || !isDocumentVisible
+  const briefHasStructuredSections = parsedBrief.features.length > 0 || parsedBrief.pageStructure.length > 0 || parsedBrief.scope.included.length > 0 || parsedBrief.scope.excluded.length > 0 || parsedBrief.audience.length > 0
+  const localizedLanguage = initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')
+  const localizedClassification = formatLabel(initialData.classification)
+  const formattedUpdatedDate = formatDate(initialData.updatedAt, locale) ?? t('unknownDate')
+
+  const briefActionButton = isBriefOverflowing ? (
+    <button
+      type="button"
+      onClick={toggleBrief}
+      aria-expanded={isBriefExpanded}
+      aria-controls="project-brief-content"
+      className={`inline-flex items-center gap-2 rounded-full border border-[var(--workspace-primary)] bg-[var(--workspace-paper)] px-3.5 py-2 text-xs font-semibold text-[var(--workspace-ink)] transition-colors hover:bg-[var(--workspace-yellow-soft)] ${BUTTON_FOCUS_CLASS}`}
+    >
+      {isBriefExpanded ? <ChevronRight aria-hidden="true" className="size-3.5 -rotate-90" /> : <ChevronRight aria-hidden="true" className="size-3.5 rotate-90" />}
+      {isBriefExpanded ? t('briefCollapse') : t('briefExpand')}
+    </button>
+  ) : null
+
+  const heroContentClass = isBriefExpanded
+    ? 'h-auto'
+    : 'h-[calc(100dvh-3rem)] max-[639px]:h-auto max-[639px]:max-h-[38rem] max-[639px]:overflow-hidden'
+
+  const renderBriefParagraphs = (className?: string) => (
+    <div className={`max-w-[65ch] text-left text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base ${className ?? ''}`}>
+      <div className="space-y-5">
+        {briefParagraphs.map((paragraph, index) => (
+          <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line break-words">{paragraph}</p>
+        ))}
+      </div>
+    </div>
+  )
+
+  const briefMaskClass = !isBriefExpanded && isBriefOverflowing
+    ? '[mask-image:linear-gradient(to_bottom,black_0%,black_76%,transparent_100%)]'
+    : ''
+
+  const renderHeroBrief = () => (
+    <div
+      id="project-brief-content"
+      ref={briefContentRef}
+      className={`min-h-0 flex-1 overflow-hidden ${briefMaskClass}`}
+    >
+      {renderBriefParagraphs()}
+    </div>
+  )
+
+  const overviewStructuredContent = (
+    <div className="space-y-10">
+      {parsedBrief.features.length > 0 && <section aria-labelledby="overview-features-title"><h2 id="overview-features-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewFeatures')}</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{parsedBrief.features.map((feature) => <article key={feature.title} className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4"><h3 className="text-sm font-semibold">{feature.title}</h3>{feature.description && <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">{feature.description}</p>}</article>)}</div></section>}
+      {parsedBrief.pageStructure.length > 0 && <section aria-labelledby="overview-structure-title"><h2 id="overview-structure-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewStructure')}</h2><div className="mt-4 flex flex-wrap gap-2">{parsedBrief.pageStructure.map((item) => <span key={item} className="rounded-full border border-[var(--workspace-border)] bg-white/60 px-3 py-1.5 text-sm font-medium text-[var(--workspace-ink)]">{item}</span>)}</div></section>}
+      {(parsedBrief.scope.included.length > 0 || parsedBrief.scope.excluded.length > 0) && <section aria-labelledby="overview-scope-title"><h2 id="overview-scope-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewScope')}</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><div className="rounded-xl border border-[#cdddcf] bg-[var(--workspace-mint-soft)] p-4"><h3 className="text-sm font-semibold">{t('overviewIncluded')}</h3><ul className="mt-3 space-y-2 text-sm leading-6">{parsedBrief.scope.included.map((item) => <li key={item} className="flex gap-2"><Check aria-hidden="true" className="mt-1 size-4 shrink-0" />{item}</li>)}</ul></div><div className="rounded-xl border border-[#e4c7c0] bg-[var(--workspace-rose-soft)] p-4"><h3 className="text-sm font-semibold">{t('overviewExcluded')}</h3><ul className="mt-3 space-y-2 text-sm leading-6">{parsedBrief.scope.excluded.map((item) => <li key={item} className="flex gap-2"><X aria-hidden="true" className="mt-1 size-4 shrink-0" />{item}</li>)}</ul></div></div></section>}
+      {parsedBrief.audience.length > 0 && <section aria-labelledby="overview-audience-title"><h2 id="overview-audience-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewAudience')}</h2><div className="mt-4 flex flex-wrap gap-2">{parsedBrief.audience.map((item) => <span key={item} className="rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-blue-soft)] px-3 py-1.5 text-sm font-medium">{item}</span>)}</div></section>}
+      {!briefHasStructuredSections && <p className="sr-only">{t('overviewStructuredFallback')}</p>}
+    </div>
+  )
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -637,9 +779,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
       tone: blockedTasks.length > 0 ? 'attention' : allTasks.length > 0 ? 'ready' : 'idle',
     },
   ]
-  const overviewProgress = Math.max(0, Math.min(100, Math.round((overviewStatusItems.filter((item) => item.tone === 'ready').length / overviewStatusItems.length) * 100)))
-  const overviewActionIsAttention = Boolean(genMessage ?? discoveryMessage)
-  const overviewStatusTone: ReadinessTone = overviewActionIsAttention ? 'attention' : overviewProgress === 100 ? 'ready' : 'idle'
   const includesReadme = readyArtifacts.some((artifact) => artifact.path === 'README.md')
   const [isExporting, setIsExporting] = useState(false)
 
@@ -734,12 +873,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
   const workspaceNavigation = (
     <>
-      <div className="flex items-start justify-between gap-3 border-b border-[#dedbd5] pb-5">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--workspace-border)] pb-5">
         <div className="min-w-0">
           <p className="text-xl font-semibold tracking-[-0.04em]">bantuin<span className="text-[var(--workspace-primary)]">.</span></p>
           <p className="mt-1 truncate text-xs text-[var(--workspace-muted)]">{initialData.name}</p>
         </div>
-        <span className={`rounded-full border border-[#dedbd5] px-2.5 py-1 text-[10px] font-semibold ${statusTone(projectStatus)}`}>
+        <span className={`rounded-full border border-[var(--workspace-border)] px-2.5 py-1 text-[10px] font-semibold ${statusTone(projectStatus)}`}>
           {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
         </span>
       </div>
@@ -750,7 +889,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         </Link>
       </div>
       <div className="mt-8">
-        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-faint)]">{t('workspaceSections')}</p>
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-faint)]">{t('workspaceSections')}</p>
         <nav aria-label={t('workspaceSections')} className="mt-3 space-y-1">
           {SECTION_ITEMS.map((section) => {
             const Icon = section.icon
@@ -783,8 +922,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           })}
         </nav>
       </div>
-      <div className="mt-8 border-t border-[#dedbd5] pt-5">
-        <Button size="sm" variant="neutral" onClick={() => { setIsSettingsOpen(true); setIsWorkspaceNavOpen(false) }} className="w-full justify-start border-[#dedbd5] px-3 text-xs font-semibold">
+      <div className="mt-auto border-t border-[var(--workspace-border)] pt-5">
+        <Button size="sm" variant="neutral" onClick={() => { setIsSettingsOpen(true); setIsWorkspaceNavOpen(false) }} className="w-full justify-start border-[var(--workspace-border)] px-3 text-xs font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-blue-soft)]">
           <Wrench className="size-3.5" /> {t('settings')}
         </Button>
       </div>
@@ -1212,7 +1351,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   const generationProgress = (
     <section
       aria-labelledby="generation-progress-title"
-      className="mt-5 rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-4"
+      className="mt-5 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4"
       aria-busy={isGenerating}
     >
       <div className="flex items-start justify-between gap-3 border-b border-black/[0.08] pb-3">
@@ -1233,7 +1372,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         <span>{t('generationProgressStep', { current: generationStep, total: GENERATION_STAGES.length })}</span>
       </div>
       <div
-        className="mt-2 h-2 rounded-full border border-[#dedbd5] bg-black/[0.04] overflow-hidden"
+        className="mt-2 h-2 rounded-full border border-[var(--workspace-border)] bg-black/[0.04] overflow-hidden"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
@@ -1317,127 +1456,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     </button>
   )
 
-  const nextMove = projectStatus === 'ANALYZING' || projectStatus === 'GENERATING' || isAnalyzing || isGenerating
-    ? {
-        title: projectStatus === 'GENERATING' || isGenerating ? t('generationRunning') : t('analyzingProject'),
-        description: projectStatus === 'GENERATING' || isGenerating ? t('generationProgressDesc') : t('preparingClarifications'),
-        tab: projectStatus === 'GENERATING' || isGenerating ? 'documents' as WorkspaceSection : 'context' as WorkspaceSection,
-        action: (
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-[#fffdfa]/10 px-5 py-3 text-sm font-semibold text-white" role="status" aria-live="polite">
-            <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
-            {projectStatus === 'GENERATING' || isGenerating ? t('generationRunning') : t('analyzingProject')}
-          </span>
-        ),
-      }
-    : !contextReady
-    ? pendingClarifications.length > 0
-      ? {
-          title: t('actionClarify'),
-          description: t('actionClarifyDesc'),
-          tab: 'context' as WorkspaceSection,
-          action: discoveryButton,
-        }
-      : projectStatus === 'CLARIFYING' && answeredClarifications.length > 0
-        ? {
-            title: t('actionGenerate'),
-            description: t('descEstablishContext'),
-            tab: 'context' as WorkspaceSection,
-            action: (
-              <button
-                type="button"
-                onClick={buildCanonicalContext}
-                disabled={isAnalyzing || isSubmittingAnswers}
-                className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-              >
-                {isAnalyzing ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Braces aria-hidden="true" className="size-4" />}
-                {isAnalyzing ? t('normalizingContext') : t('actionGenerate')}
-              </button>
-            ),
-          }
-        : {
-            title: t('stateEstablishContext'),
-            description: t('descEstablishContext'),
-            tab: 'overview' as WorkspaceSection,
-            action: discoveryButton,
-          }
-    : projectStatus === 'GENERATION_FAILED' || attentionArtifacts.length > 0
-      ? {
-          title: t('generationFailed'),
-          description: t('descResolveWarnings', { count: Math.max(attentionArtifacts.length, 1) }),
-          tab: 'documents' as WorkspaceSection,
-          action: (
-            <button
-              type="button"
-              onClick={handleRegenerateFailed}
-              disabled={isGenerating}
-              className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-            >
-              {isGenerating ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <RefreshCw aria-hidden="true" className="size-4" />}
-              {isGenerating ? tCommon('loading') : t('retryFailed', { count: Math.max(attentionArtifacts.length, 1) })}
-            </button>
-          ),
-        }
-      : readyArtifacts.length === 0
-        ? {
-            title: t('stateGenerateFirst'),
-            description: t('descGenerateFirst'),
-            tab: 'documents' as WorkspaceSection,
-            action: (
-              <button
-                type="button"
-                onClick={handleGenerateAll}
-                disabled={isGenerating}
-                className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-              >
-                {isGenerating ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Play aria-hidden="true" className="size-4" />}
-                {isGenerating ? tCommon('loading') : t('actionGenerate')}
-              </button>
-            ),
-          }
-        : canExport && !hasExportedZip
-          ? {
-              title: t('stateExportable'),
-              description: t('descExportable'),
-              tab: 'export' as WorkspaceSection,
-              action: (
-                <button
-                  type="button"
-                  onClick={() => selectTab('export')}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}
-                >
-                  <Package aria-hidden="true" className="size-4" />
-                  {t('downloadZipPack')}
-                </button>
-              ),
-            }
-          : {
-              title: t('stateReviewPack'),
-              description: t('descReviewPack'),
-              tab: 'documents' as WorkspaceSection,
-              action: (
-                <button
-                  type="button"
-                  onClick={() => selectTab('documents')}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}
-                >
-                  <FileText aria-hidden="true" className="size-4" />
-                  {t('actionReview')}
-                </button>
-              ),
-            }
-
-  const isExportReady = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip)
-  const overviewAction = isExportReady ? null : nextMove.action
-  const overviewActionTitle = nextMove.title
-  const overviewActionDescription = nextMove.description
-
   const generateButton = contextReady ? (
     <div className="flex flex-wrap gap-3">
       <button
         type="button"
         onClick={handleGenerateAll}
         disabled={isGenerating}
-        className={`inline-flex items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+        className={`inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
       >
         {isGenerating ? (
           <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
@@ -1453,7 +1478,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           type="button"
           onClick={handleRegenerateFailed}
           disabled={isGenerating}
-          className={`inline-flex items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+          className={`inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
         >
           <RefreshCw aria-hidden="true" className="size-4" />
           {t('retryFailed', { count: attentionArtifacts.length })}
@@ -1466,91 +1491,93 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
   return (
     <div className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]" style={WORKSPACE_STYLE}>
-      <div className="min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden h-screen items-center self-start px-3 py-8 lg:sticky lg:top-0 lg:flex">
-          <div className="w-full rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
-            <div className="flex flex-col">{workspaceNavigation}</div>
+      <div className="min-h-screen gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <aside className="hidden h-[calc(100dvh-3rem)] self-start lg:sticky lg:top-6 lg:flex">
+          <div className="flex h-full w-full flex-col rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
+            <div className="flex min-h-0 flex-1 flex-col">{workspaceNavigation}</div>
           </div>
         </aside>
         <div className="min-w-0">
-          <header className="border-b border-[#dedbd5] bg-[var(--workspace-paper)] px-4 py-4 sm:px-6 lg:hidden">
+          <div className="lg:hidden">
+            {/* Mobile navigation remains in normal document flow so it does not cover the brief. */}
+          </div>
+          <header className="border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-4 sm:px-6 lg:hidden">
             <div className="flex items-center justify-between gap-4">
-              <button type="button" aria-expanded={isWorkspaceNavOpen} aria-controls="workspace-mobile-navigation" onClick={() => setIsWorkspaceNavOpen((open) => !open)} className={`inline-flex items-center gap-2 rounded-lg border border-[#dedbd5] px-3 py-2 text-sm font-semibold ${BUTTON_FOCUS_CLASS}`}>
+              <button type="button" aria-expanded={isWorkspaceNavOpen} aria-controls="workspace-mobile-navigation" onClick={() => setIsWorkspaceNavOpen((open) => !open)} className={`inline-flex items-center gap-2 rounded-lg border border-[var(--workspace-border)] px-3 py-2 text-sm font-semibold ${BUTTON_FOCUS_CLASS}`}>
                 {isWorkspaceNavOpen ? <X aria-hidden="true" className="size-4" /> : <Menu aria-hidden="true" className="size-4" />}
                 <span>{t(`tab${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}` as Parameters<typeof t>[0])}</span>
               </button>
             </div>
-            {isWorkspaceNavOpen && <div id="workspace-mobile-navigation" className="mt-4 border-t border-[#dedbd5] pt-4"><div className="flex flex-col gap-5">{workspaceNavigation}</div></div>}
+            {isWorkspaceNavOpen && <div id="workspace-mobile-navigation" className="mt-4 border-t border-[var(--workspace-border)] pt-4"><div className="flex flex-col gap-5">{workspaceNavigation}</div></div>}
           </header>
 
           <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-8 sm:px-6 lg:px-10 xl:px-14">
-            <header className="border-b border-[#dedbd5] pb-8">
-              <div className="relative overflow-hidden rounded-[24px] border border-[#dedbd5] bg-[linear-gradient(135deg,#fffdfa_0%,#fffdfa_70%,#faf5ee_100%)] p-6 shadow-[0_12px_36px_rgba(36,35,31,0.04)] before:absolute before:inset-x-0 before:top-0 before:h-[2px] before:bg-[linear-gradient(90deg,transparent,#f4a261,transparent)] before:opacity-60 sm:p-8 lg:p-10">
-                <div className="relative">
+            <header className="border-b border-[var(--workspace-border)] pb-8">
+              <div
+                ref={briefCardRef}
+                className={`relative isolate overflow-hidden rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-6 shadow-[0_12px_36px_rgba(36,35,31,0.04)] transition-[height] duration-300 ease-out sm:p-8 lg:p-10 ${heroContentClass} ${heroMotionPaused ? 'workspace-motion-paused' : ''}`}
+              >
+                <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-0 h-px overflow-hidden bg-[var(--workspace-peach)]">
+                  <span className="workspace-hero-border absolute inset-y-0 left-0 w-2/3 bg-[var(--workspace-sun)]" />
+                </span>
+                <span aria-hidden="true" className="workspace-hero-blob pointer-events-none absolute -right-16 bottom-[-4rem] z-0 size-64 rounded-full bg-[radial-gradient(circle,var(--workspace-peach)_0%,transparent_68%)]" />
+                <span aria-hidden="true" className="workspace-hero-blob workspace-hero-blob-delayed pointer-events-none absolute right-20 bottom-[-5rem] z-0 size-56 rounded-full bg-[radial-gradient(circle,var(--workspace-sun)_0%,transparent_70%)]" />
+                <span aria-hidden="true" className="workspace-hero-blob workspace-hero-blob-slow pointer-events-none absolute right-[-3rem] top-24 z-0 size-48 rounded-full bg-[radial-gradient(circle,var(--workspace-peach)_0%,transparent_72%)]" />
+                <div className="relative z-10 flex h-full flex-col">
                   <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-3 text-xs font-semibold tracking-[0.08em] text-[var(--workspace-primary)]">
-                      <span className="inline-flex size-8 items-center justify-center rounded-full border border-[#e7cdbf] bg-[#fffdfa]">
+                    <div className="flex items-center gap-3 text-xs font-semibold text-[var(--workspace-primary)]">
+                      <span className="inline-flex size-8 items-center justify-center rounded-full border border-[var(--workspace-peach)] bg-[var(--workspace-paper)]">
                         <FileText aria-hidden="true" className="size-4" />
                       </span>
                       <span>{t('briefLabel')}</span>
                     </div>
                     <div className="flex flex-wrap gap-2 sm:justify-end">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/70 px-3 py-1.5 text-xs text-[var(--workspace-muted)]">
-                        <CalendarDays aria-hidden="true" className="size-3.5" />
-                        {t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#dedbd5] bg-[#f4f1eb] px-3 py-1.5 text-xs font-medium text-[var(--workspace-muted)]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--workspace-ink)]">
                         <FolderKanban aria-hidden="true" className="size-3.5" />
-                        {formatLabel(initialData.classification)}
+                        {localizedClassification}
                       </span>
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/70 px-3 py-1.5 text-xs text-[var(--workspace-muted)]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--workspace-muted)]">
+                        <CalendarDays aria-hidden="true" className="size-3.5" />
+                        {formattedUpdatedDate}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--workspace-muted)]">
                         <Languages aria-hidden="true" className="size-3.5" />
-                        {initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}
+                        {localizedLanguage}
                       </span>
                     </div>
                   </div>
-                  <h1 className="mt-7 max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
-                  <div className="my-7 border-t border-[#dedbd5]/80 sm:my-8" />
-                  <div id="project-brief" className="max-w-[78ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
-                    <div className="space-y-5">
-                      {briefParagraphs.map((paragraph, index) => (
-                        <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line text-justify [text-align-last:left]">{paragraph}</p>
-                      ))}
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <h1 className="mt-7 max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
+                    <div className="mt-7 flex items-center gap-2" aria-label={t('briefActions')}>
+                      <span title={t('comingSoon')}><button type="button" disabled aria-disabled="true" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><Pencil aria-hidden="true" className="size-3.5" />{t('briefEdit')}</button></span>
+                      <button type="button" onClick={handleCopyBrief} className={`inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-primary)] bg-[var(--workspace-paper)] px-3 py-2 text-xs font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)] ${BUTTON_FOCUS_CLASS}`}><Copy aria-hidden="true" className="size-3.5" />{copiedBrief ? t('briefCopied') : t('briefCopy')}</button>
+                      <span title={t('comingSoon')}><button type="button" disabled aria-disabled="true" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><RefreshCw aria-hidden="true" className="size-3.5" />{t('briefRegenerate')}</button></span>
                     </div>
                   </div>
+                  <div className="my-7 border-t border-[var(--workspace-border)]/80 sm:my-8" />
+                  {renderHeroBrief()}
+                  {briefActionButton && <div className="relative z-20 mt-auto flex justify-start border-t border-[var(--workspace-border)]/80 pt-5">{briefActionButton}</div>}
                 </div>
               </div>
             </header>
 
             {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && <div>{generationProgress}</div>}
-            {activeTab === 'overview' && !isExportReady && (
-              <section aria-labelledby="next-move-title" className="border-b border-[#dedbd5] py-7">
-                <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 max-w-3xl">
-                    <p className={`font-mono text-[10px] font-semibold tracking-[0.08em] ${overviewStatusTone === 'attention' ? 'text-[var(--workspace-rose)]' : 'text-[var(--workspace-primary)]'}`}>{overviewStatusTone === 'attention' ? t('overviewAttention') : t('overviewNextStep')}</p>
-                    <h2 id="next-move-title" className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">{overviewActionTitle}</h2>
-                    <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">{overviewActionDescription}</p>
-                    {(genMessage ?? discoveryMessage) && (
-                      <p role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'} aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'} className="mt-4 border-l-2 border-[var(--workspace-rose)] pl-3 text-sm font-semibold leading-6 text-[var(--workspace-rose)]">{(genMessage ?? discoveryMessage)?.text}</p>
-                    )}
-                  </div>
-                  {overviewAction ? <div className="shrink-0 lg:pt-1">{overviewAction}</div> : null}
-                </div>
-              </section>
-            )}
+
             <section className="py-8 sm:py-10"><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
               <div className="hidden" aria-hidden="true">
                 {SECTION_ITEMS.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}</button>)}
               </div>
-              <div className={activeTab === 'overview' ? 'space-y-8' : 'hidden'}>
-                <div className="flex items-end justify-between gap-4 border-b border-black/[0.08] pb-4">
-                  <h2 className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewStatusTitle')}</h2>
-                  <span className="font-mono text-xs text-[var(--workspace-muted)]">{t('liveData')}</span>
-                </div>
+              <div className={activeTab === 'overview' ? 'space-y-10' : 'hidden'}>
+                {overviewStructuredContent}
+                <section aria-labelledby="overview-status-title" className="border-t border-black/[0.08] pt-8">
+                  <div className="flex items-end justify-between gap-4 border-b border-black/[0.08] pb-4">
+                    <h2 id="overview-status-title" className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewStatusTitle')}</h2>
+                    <span className="font-mono text-xs text-[var(--workspace-muted)]">{t('liveData')}</span>
+                  </div>
 
-                <section aria-label={t('overviewStatusTitle')} className="border-y border-black/[0.08]">
-                  <ul className="divide-y divide-black/[0.08]">
-                    {overviewStatusItems.map((item) => {
+                  <div aria-label={t('overviewStatusTitle')} className="mt-4 border-y border-black/[0.08]">
+                    <ul className="divide-y divide-black/[0.08]">
+                      {overviewStatusItems.map((item) => {
                       const Icon = item.tone === 'ready' ? CheckCircle2 : item.tone === 'attention' ? AlertTriangle : CircleDashed
                       return (
                         <li key={item.id}>
@@ -1563,7 +1590,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         </li>
                       )
                     })}
-                  </ul>
+                    </ul>
+                  </div>
                 </section>
               </div>
 
@@ -1746,7 +1774,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         <p
                           role={discoveryMessage.type === 'error' ? 'alert' : 'status'}
                           aria-live={discoveryMessage.type === 'error' ? 'assertive' : 'polite'}
-                          className={`mt-5 rounded-lg border border-[#dedbd5] p-4 text-sm font-medium leading-5 ${
+                          className={`mt-5 rounded-lg border border-[var(--workspace-border)] p-4 text-sm font-medium leading-5 ${
                             discoveryMessage.type === 'error'
                               ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
                               : 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
@@ -1761,10 +1789,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {pendingClarifications.map((question, index) => (
                             <div
                               key={question.id}
-                              className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-4"
+                              className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4"
                             >
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-md border border-[#dedbd5] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-medium">
+                                <span className="rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-medium">
                                   {t('roundLabel', { round: question.round })}
                                 </span>
                                 <span className="font-mono text-xs font-medium text-[var(--workspace-muted)]">
@@ -1778,24 +1806,24 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                 {question.question}
                               </label>
                               {question.impact && (
-                                <p className="mt-2 border-l-2 border-[#c9c4bc] pl-3 text-sm leading-5 text-[var(--workspace-muted)]">
+                                <p className="mt-2 border-l-2 border-[var(--workspace-border-muted)] pl-3 text-sm leading-5 text-[var(--workspace-muted)]">
                                   {t('impact')}: {question.impact}
                                 </p>
                               )}
                               <div className="mt-4 space-y-3">
                                 {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
-                                  <label key={i} className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-3 transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border border-[#dedbd5] accent-[var(--workspace-ink)]" />
+                                  <label key={i} className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3 transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border border-[var(--workspace-border)] accent-[var(--workspace-ink)]" />
                                     <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
                                   </label>
                                 ))}
-                                <label className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[#dedbd5] bg-[var(--workspace-blue-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border border-[#dedbd5] accent-[var(--workspace-ink)]" />
+                                <label className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-blue-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border border-[var(--workspace-border)] accent-[var(--workspace-ink)]" />
                                   <span className="text-sm font-semibold text-[var(--workspace-ink)]">{t('autoPick')}</span>
                                 </label>
                                 <div className="pt-2">
                                   <label className="text-sm font-semibold flex items-center gap-2 mb-2">
-                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border border-[#dedbd5] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
+                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border border-[var(--workspace-border)] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
                                     {t('otherCustom')}
                                   </label>
                                   <textarea
@@ -1811,7 +1839,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                       }
                                     }}
                                     placeholder={t('writeDecision')}
-                                    className={`w-full resize-y rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-medium leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
+                                    className={`w-full resize-y rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-medium leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
                                   />
                                 </div>
                               </div>
@@ -1842,7 +1870,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         {t('decisionLedgerDesc')}
                       </p>
 
-                      <dl className="mt-5 divide-y divide-[#dedbd5] border-y border-black/[0.08]">
+                      <dl className="mt-5 divide-y divide-[var(--workspace-border)] border-y border-black/[0.08]">
                         <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
                           <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
                             {t('pending')}
@@ -1870,7 +1898,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {answeredClarifications.slice(-4).map((question) => (
                             <div
                               key={question.id}
-                              className="border border-[#dedbd5] bg-[var(--workspace-paper)] p-3 shadow-none"
+                              className="border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3 shadow-none"
                             >
                               <p className="font-mono text-[0.68rem] font-semibold text-[var(--workspace-faint)]">
                                 {t('answerRound', { round: question.round })}
@@ -1891,20 +1919,20 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       className={`${PANEL_SOFT_CLASS} mb-7 flex flex-wrap items-center gap-x-5 gap-y-2 bg-[var(--workspace-paper)] p-4 font-mono text-xs font-bold text-[var(--workspace-muted)]`}
                     >
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-[#dedbd5] bg-[var(--workspace-mint)]" />
+                        <span className="size-3 border border-[var(--workspace-border)] bg-[var(--workspace-mint)]" />
                         {t('confirmedByOwner')}
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-[#dedbd5] bg-[var(--workspace-sun)]" />
+                        <span className="size-3 border border-[var(--workspace-border)] bg-[var(--workspace-sun)]" />
                         {t('assumedBySystem')}
                       </span>
                       <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-[#dedbd5] bg-[var(--workspace-paper)]" />
+                        <span className="size-3 border border-[var(--workspace-border)] bg-[var(--workspace-paper)]" />
                         {t('stillUnknown')}
                       </span>
                     </div>
                     <div
-                      className={`${PANEL_CLASS} divide-y divide-[#dedbd5] bg-[var(--workspace-paper)]`}
+                      className={`${PANEL_CLASS} divide-y divide-[var(--workspace-border)] bg-[var(--workspace-paper)]`}
                     >
                       {Object.entries(initialData.context ?? {}).map(([key, value]) => (
                         <section
@@ -1994,12 +2022,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     {initialData.skills.map((skill, index) => (
                       <article
                         key={skill.id}
-                        className="rounded-xl border border-[#dedbd5] bg-[#fffdfa] p-5 transition-colors hover:border-black/20"
+                        className="rounded-xl border border-[var(--workspace-border)] bg-[#fffdfa] p-5 transition-colors hover:border-black/20"
                       >
                         <div className="flex min-w-0 flex-col gap-3 border-b border-black/[0.08] pb-4 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex min-w-0 items-start gap-3">
                             <span
-                              className={`flex size-8 shrink-0 items-center justify-center rounded-lg border border-[#dedbd5] ${index % 2 === 0 ? 'bg-[var(--workspace-sun)]' : 'bg-[var(--workspace-blue-soft)]'}`}
+                              className={`flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--workspace-border)] ${index % 2 === 0 ? 'bg-[var(--workspace-sun)]' : 'bg-[var(--workspace-blue-soft)]'}`}
                               aria-hidden="true"
                             >
                               <Wrench className="size-4 text-[var(--workspace-ink)]" />
@@ -2033,7 +2061,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               {skill.metadata?.applicable_phases?.map((phase) => (
                                 <span
                                   key={`phase-${phase}`}
-                                  className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
+                                  className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
                                 >
                                   {phase}
                                 </span>
@@ -2041,7 +2069,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               {skill.metadata?.applicable_task_types?.map((taskType) => (
                                 <span
                                   key={`type-${taskType}`}
-                                  className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
+                                  className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
                                 >
                                   {formatLabel(taskType)}
                                 </span>
@@ -2050,7 +2078,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           )}
 
                           {skill.metadata?.installation_hint && (
-                            <div className="rounded-lg border border-[#dedbd5] bg-[var(--workspace-paper)] p-3">
+                            <div className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3">
                               <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
                                 {t('setupNote')}
                               </h4>
@@ -2129,7 +2157,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     <section aria-label={t('oneShotAgentPrompt')} className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6 sm:p-8`}>
                       <div className="flex flex-col gap-5 border-b border-black/[0.08] pb-6 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                          <span className="flex size-10 items-center justify-center border border-[#dedbd5] bg-[#f8eee6] text-[#8e4e32]">
+                          <span className="flex size-10 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] text-[var(--workspace-deep)]">
                             <Wrench aria-hidden="true" className="size-5" />
                           </span>
                           <div>
@@ -2144,14 +2172,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                       {/* Prompt Output Box */}
                       <div className="mt-5 relative">
-                        <pre className="max-h-80 overflow-y-auto border border-[#dedbd5] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-none whitespace-pre-wrap">
+                        <pre className="max-h-80 overflow-y-auto border border-[var(--workspace-border)] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-none whitespace-pre-wrap">
                           {generateOneShotKickoffPrompt()}
                         </pre>
 
                         <button
                           type="button"
                           onClick={handleCopyOneShotPrompt}
-                          className={`mt-4 inline-flex items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
+                          className={`mt-4 inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
                         >
                           {copiedPrompt ? (
                             <>
@@ -2179,7 +2207,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             {t('filesCount', { count: readyArtifacts.length + (includesReadme ? 0 : 1) })}
                           </span>
                         </div>
-                        <ul className="bg-[var(--workspace-paper)] divide-y divide-[#dedbd5]">
+                        <ul className="bg-[var(--workspace-paper)] divide-y divide-[var(--workspace-border)]">
                           {readyArtifacts.map((artifact) => (
                             <li
                               key={artifact.id}
@@ -2242,7 +2270,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             ariaLabel={t('packHandoffVisualLabel')}
                             description={`${t('packHandoffPackageLabel')} ${t('packHandoffConnectorLabel')} ${t('packHandoffAgentLabel')}`}
                           />
-                          <span className="flex size-12 items-center justify-center border border-[#dedbd5] bg-[var(--workspace-paper)] shadow-none">
+                          <span className="flex size-12 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] shadow-none">
                             <Package aria-hidden="true" className="size-6" />
                           </span>
                           <h3 className="mt-6 text-3xl font-semibold leading-none tracking-[-0.05em]">
@@ -2269,7 +2297,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           onClick={handleDownloadZip}
                           disabled={isExporting}
                           aria-busy={isExporting}
-                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border border-[#dedbd5] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
                         >
                           {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
                           {isExporting ? t('validatingPack') : t('downloadZipPack')}
