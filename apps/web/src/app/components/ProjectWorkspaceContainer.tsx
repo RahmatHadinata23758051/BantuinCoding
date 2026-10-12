@@ -589,7 +589,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     initialData.requiredArtifactTypes.length > 0 &&
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
-  const [isBriefExpanded, setIsBriefExpanded] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const briefText = initialData.description || t('noBrief')
   const briefParagraphs = briefText.split(/\n{2,}/).filter(Boolean)
@@ -1490,24 +1489,26 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-[4.5rem]">{initialData.name}</h1>
                 </div>
               </div>
-              <div className="mt-6 max-w-3xl">
-                {isBriefExpanded ? (
-                  <div className="rounded-[20px] border border-[#dedbd5] bg-[var(--workspace-paper)] p-6 shadow-[0_8px_22px_rgba(36,35,31,0.035)] sm:p-9">
-                    <div id="project-brief" className="mx-auto max-w-[68ch] break-words text-center text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
+              <div className="mt-6 max-w-4xl">
+                <div className="relative overflow-hidden rounded-[22px] border border-[#dedbd5] bg-[linear-gradient(135deg,#fffdfa_0%,#fffdfa_58%,#f8eee6_100%)] p-6 shadow-[0_10px_28px_rgba(36,35,31,0.045)] sm:p-9">
+                  <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-20 size-48 rounded-full bg-[radial-gradient(circle,#f4a261_0%,rgba(244,162,97,0.16)_42%,transparent_72%)] opacity-70" />
+                  <div aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 h-px w-2/5 bg-[linear-gradient(90deg,transparent,#a85e3c,transparent)] opacity-70" />
+                  <div className="relative">
+                    <div className="mb-6 flex items-center gap-3 text-xs font-semibold tracking-[0.08em] text-[var(--workspace-primary)]">
+                      <span className="inline-flex size-8 items-center justify-center rounded-full border border-[#e7cdbf] bg-[#fffdfa]/80">
+                        <FileText aria-hidden="true" className="size-4" />
+                      </span>
+                      <span>{t('briefLabel')}</span>
+                    </div>
+                    <div id="project-brief" className="max-w-[78ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
                       <div className="space-y-5">
                         {briefParagraphs.map((paragraph, index) => (
-                          <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line">{paragraph}</p>
+                          <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line text-justify [text-align-last:left]">{paragraph}</p>
                         ))}
                       </div>
                     </div>
-                    {(initialData.description?.length ?? 0) > 180 && <div className="mt-6 text-center"><button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded(false)} className={`inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{t('collapseBrief')}</button></div>}
                   </div>
-                ) : (
-                  <div id="project-brief" className="max-w-[68ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
-                    <p className="line-clamp-2 whitespace-pre-line">{briefText}</p>
-                    {(initialData.description?.length ?? 0) > 180 && <button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded(true)} className={`mt-3 inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{t('expandBrief')}</button>}
-                  </div>
-                )}
+                </div>
               </div>
             </header>
 

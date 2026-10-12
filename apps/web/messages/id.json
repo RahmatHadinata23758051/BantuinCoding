@@ -617,9 +617,8 @@
   "Workspace": {
     "backProjects": "Proyek",
     "updated": "Diperbarui {date}",
+    "briefLabel": "Ringkasan proyek",
     "noBrief": "Belum ada ringkasan proyek yang tersimpan. Tambahkan masalah, pengguna, dan hasil akhir sebelum melakukan generasi.",
-    "expandBrief": "Baca ringkasan lengkap",
-    "collapseBrief": "Sembunyikan ringkasan lengkap",
     "overviewNextStep": "Langkah berikutnya",
     "overviewAttention": "Perlu perhatian",
     "overviewStatusTitle": "Status proyek",

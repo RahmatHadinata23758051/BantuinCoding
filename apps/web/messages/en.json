@@ -617,9 +617,8 @@
   "Workspace": {
     "backProjects": "Projects",
     "updated": "Updated {date}",
+    "briefLabel": "Project brief",
     "noBrief": "No project brief has been recorded yet. Add the problem, intended users, and expected outcome before generation.",
-    "expandBrief": "Read full brief",
-    "collapseBrief": "Hide full brief",
     "overviewNextStep": "Next step",
     "overviewAttention": "Needs attention",
     "overviewStatusTitle": "Project status",
