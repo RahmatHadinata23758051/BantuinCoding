@@ -39,8 +39,16 @@ export default async function ProjectWorkspaceLoading() {
                 <div className="mt-5 h-14 w-full max-w-4xl rounded bg-[#dedbd5] motion-safe:animate-pulse" />
                 <div className="mt-5 h-14 w-full max-w-3xl rounded bg-[#dedbd5] motion-safe:animate-pulse" />
               </div>
-              <div className="h-24 border-b border-[#dedbd5] motion-safe:animate-pulse" />
-              <div className="mt-8 h-72 rounded-[20px] border border-[#dedbd5] bg-[#fffdfa] motion-safe:animate-pulse" />
+              <div className="h-28 border-b border-[#dedbd5] motion-safe:animate-pulse" />
+              <div className="mt-8 overflow-hidden rounded-[20px] border border-[#dedbd5] bg-[#fffdfa]">
+                <div className="h-24 border-b border-[#dedbd5] motion-safe:animate-pulse" />
+                <div className="divide-y divide-[#dedbd5]">
+                  <div className="h-20 motion-safe:animate-pulse" />
+                  <div className="h-20 motion-safe:animate-pulse" />
+                  <div className="h-20 motion-safe:animate-pulse" />
+                  <div className="h-20 motion-safe:animate-pulse" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
