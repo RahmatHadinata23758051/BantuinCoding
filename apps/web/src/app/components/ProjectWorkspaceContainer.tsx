@@ -613,8 +613,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const briefText = initialData.description || t('noBrief')
   const parsedBrief: ParsedProjectBrief = parseProjectBrief(initialData.description, initialData.context)
   const briefParagraphs = parsedBrief.paragraphs.length > 0
-    ? [parsedBrief.lead, ...parsedBrief.paragraphs.slice(1)]
-    : [briefText]
+    ? parsedBrief.paragraphs
+    : [parsedBrief.lead || briefText]
 
   useEffect(() => {
     let frame = 0
