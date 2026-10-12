@@ -27,7 +27,6 @@ import {
   ClipboardCheck,
   Copy,
   Download,
-  Pencil,
   FileText,
   Files,
   FolderKanban,
@@ -603,7 +602,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
   const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
-  const [copiedBrief, setCopiedBrief] = useState(false)
   const [isBriefExpanded, setIsBriefExpanded] = useState(false)
   const [isBriefOverflowing, setIsBriefOverflowing] = useState(false)
   const [isHeroVisible, setIsHeroVisible] = useState(true)
@@ -672,14 +670,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
         })
       })
     }
-  }
-
-  const handleCopyBrief = () => {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return
-    void navigator.clipboard.writeText(briefText).then(() => {
-      setCopiedBrief(true)
-      window.setTimeout(() => setCopiedBrief(false), 2000)
-    }).catch(() => setCopiedBrief(false))
   }
 
   const heroMotionPaused = !isHeroVisible || !isDocumentVisible
@@ -1550,11 +1540,6 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   </div>
                   <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--workspace-border-subtle)] pb-4">
                     <h1 className="max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
-                    <div className="flex flex-wrap items-center gap-2" aria-label={t('briefActions')}>
-                      <button type="button" disabled aria-disabled="true" title={t('comingSoon')} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><Pencil aria-hidden="true" className="size-3.5" />{t('briefEdit')}</button>
-                      <button type="button" onClick={handleCopyBrief} className={`inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-primary)] bg-[var(--workspace-paper)] px-3 py-2 text-xs font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)] ${BUTTON_FOCUS_CLASS}`}><Copy aria-hidden="true" className="size-3.5" />{copiedBrief ? t('briefCopied') : t('briefCopy')}</button>
-                      <button type="button" disabled aria-disabled="true" title={t('comingSoon')} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><RefreshCw aria-hidden="true" className="size-3.5" />{t('briefRegenerate')}</button>
-                    </div>
                   </div>
                   {renderHeroBrief()}
                   {briefActionButton && <div className="relative z-20 mt-auto flex justify-start border-t border-[var(--workspace-border-subtle)] pt-5">{briefActionButton}</div>}
