@@ -869,7 +869,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       <div className="flex items-start justify-between gap-3 border-b border-[var(--workspace-border)] pb-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
-            <Image src="/icon.svg" alt="" width={28} height={28} className="size-7 shrink-0 rounded-lg" />
+            <Image src="/favicon.ico" alt="" width={28} height={28} className="size-7 shrink-0 rounded-lg" />
             <p className="text-xl font-semibold tracking-[-0.04em]">bantuin<span className="text-[var(--workspace-primary)]">.</span></p>
           </div>
           <p className="mt-1 truncate text-xs text-[var(--workspace-muted)]">{initialData.name}</p>
