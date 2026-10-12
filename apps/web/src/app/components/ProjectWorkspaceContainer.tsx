@@ -1392,7 +1392,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         </Button>
       </LandingHeader>
 
-      <main className="mx-auto w-full max-w-[1600px] px-4 pb-20 pt-6 sm:px-6 sm:pt-8 lg:px-10 xl:px-12">
+      <main className="mx-auto w-full max-w-[1600px] px-4 pb-36 pt-6 sm:px-6 sm:pb-32 sm:pt-8 lg:px-10 xl:px-12">
         <header className="border-b border-[#dedbd5] pb-6 sm:pb-7">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between xl:gap-10">
             <div className="min-w-0 flex-1">
@@ -1435,7 +1435,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
         <section
           aria-labelledby="next-move-title"
-          className="sticky top-[76px] z-30 mt-4 overflow-hidden rounded-2xl border border-[#3a3833] bg-[#24231f] text-[#fffdfa] shadow-[0_14px_30px_rgba(36,35,31,0.16)] sm:top-[84px]"
+          className="fixed inset-x-4 bottom-4 z-50 mx-auto w-auto max-w-[1600px] overflow-hidden rounded-2xl border border-[#3a3833] bg-[#24231f] text-[#fffdfa] shadow-[0_18px_42px_rgba(36,35,31,0.24)] sm:inset-x-6 lg:inset-x-10 xl:inset-x-12"
         >
           <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4">
             <div className="min-w-0">
