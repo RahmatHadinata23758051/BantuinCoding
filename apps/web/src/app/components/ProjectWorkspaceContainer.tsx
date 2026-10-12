@@ -713,7 +713,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     <div
       id="project-brief-content"
       ref={briefContentRef}
-      className={`min-h-0 flex-1 overflow-hidden ${briefMaskClass}`}
+      className={`mt-6 min-h-0 flex-1 overflow-hidden ${briefMaskClass}`}
     >
       {renderBriefParagraphs()}
     </div>
@@ -1538,7 +1538,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       </span>
                     </div>
                   </div>
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--workspace-border-subtle)] pb-4">
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                     <h1 className="max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
                   </div>
                   {renderHeroBrief()}
