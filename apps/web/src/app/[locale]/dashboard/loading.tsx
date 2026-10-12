@@ -18,7 +18,7 @@ export default async function DashboardLoading() {
             <div className="mx-auto mt-5 h-5 w-full max-w-2xl rounded bg-[#dedbd5] motion-safe:animate-pulse" />
             <div className="mx-auto mt-8 max-w-3xl rounded-[24px] border border-[#dedbd5] bg-[#fffdfa] p-4">
               <div className="h-32 rounded-xl bg-[#f0ece6] motion-safe:animate-pulse" />
-              <div className="mt-4 flex gap-2"><div className="h-7 w-20 rounded-full bg-[#f0ece6] motion-safe:animate-pulse" /><div className="h-7 w-24 rounded-full bg-[#f0ece6] motion-safe:animate-pulse" /><div className="h-7 w-16 rounded-full bg-[#f0ece6] motion-safe:animate-pulse" /></div>
+              <div className="mt-4"><div className="mb-2 h-3 w-24 rounded bg-[#f0ece6] motion-safe:animate-pulse" /><div className="grid grid-cols-2 gap-2 sm:grid-cols-3"><div className="h-9 rounded-xl bg-[#f0ece6] motion-safe:animate-pulse" /><div className="h-9 rounded-xl bg-[#f0ece6] motion-safe:animate-pulse" /><div className="h-9 rounded-xl bg-[#f0ece6] motion-safe:animate-pulse" /></div></div>
               <div className="mt-4 flex justify-between"><div className="h-8 w-24 rounded bg-[#f0ece6] motion-safe:animate-pulse" /><div className="size-12 rounded-full bg-[#dedbd5] motion-safe:animate-pulse" /></div>
             </div>
           </section>
