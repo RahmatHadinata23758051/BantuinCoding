@@ -613,45 +613,30 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     id: WorkspaceSection
     label: string
     value: string
-    detail: string
     tone: ReadinessTone
   }[] = [
     {
       id: 'context',
       label: t('canonicalContext'),
       value: contextReady ? t('available') : t('missing'),
-      detail: contextReady ? t('snapshot', { version: initialData.contextVersion }) : t('reqBeforeGen'),
       tone: contextReady ? 'ready' : 'attention',
     },
     {
       id: 'documents',
       label: t('tabDocuments'),
-      value: t('docsReady', { ready: readyArtifacts.length, total: artifacts.length }),
-      detail: attentionArtifacts.length > 0 ? t('needAttention', { count: attentionArtifacts.length }) : artifacts.length > 0 ? t('readyExportable') : t('noDocsGenerated'),
+      value: attentionArtifacts.length > 0 ? t('needAttention', { count: attentionArtifacts.length }) : readyArtifacts.length > 0 ? t('docsReady', { ready: readyArtifacts.length, total: artifacts.length }) : t('noDocsGenerated'),
       tone: attentionArtifacts.length > 0 ? 'attention' : readyArtifacts.length > 0 ? 'ready' : 'idle',
-    },
-    {
-      id: 'skills',
-      label: t('resolvedSkills'),
-      value: t('selectedCount', { count: initialData.skills.length }),
-      detail: initialData.skills.length > 0 ? t('triggersMapped') : t('noRecommendations'),
-      tone: initialData.skills.length > 0 ? 'ready' : 'idle',
     },
     {
       id: 'backlog',
       label: t('tabBacklog'),
-      value: t('tasksReadyOfTotal', { ready: readyTasks.length, total: allTasks.length }),
-      detail: blockedTasks.length > 0 ? t('blockedAndDone', { blocked: blockedTasks.length, done: doneTasks.length }) : allTasks.length > 0 ? t('completedNoBlocked', { done: doneTasks.length }) : t('noTasksGenerated'),
+      value: blockedTasks.length > 0 ? t('blockedCount', { count: blockedTasks.length }) : allTasks.length > 0 ? t('tasksReadyOfTotal', { ready: readyTasks.length, total: allTasks.length }) : t('noTasksGenerated'),
       tone: blockedTasks.length > 0 ? 'attention' : allTasks.length > 0 ? 'ready' : 'idle',
     },
-    {
-      id: 'export',
-      label: t('zipExport'),
-      value: canExport ? t('available') : t('unavailable'),
-      detail: canExport ? t('docsEligible', { count: readyArtifacts.length }) : t('atLeastOneReq'),
-      tone: canExport ? 'ready' : 'idle',
-    },
   ]
+  const overviewProgress = Math.max(0, Math.min(100, Math.round((overviewStatusItems.filter((item) => item.tone === 'ready').length / overviewStatusItems.length) * 100)))
+  const overviewActionIsAttention = Boolean(genMessage ?? discoveryMessage)
+  const overviewStatusTone: ReadinessTone = overviewActionIsAttention ? 'attention' : overviewProgress === 100 ? 'ready' : 'idle'
   const includesReadme = readyArtifacts.some((artifact) => artifact.path === 'README.md')
   const [isExporting, setIsExporting] = useState(false)
 
@@ -1438,6 +1423,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               ),
             }
 
+  const overviewAction = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? null : nextMove.action
+  const overviewActionTitle = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? t('overviewReadyTitle') : nextMove.title
+  const overviewActionDescription = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? t('overviewReadyDescription') : nextMove.description
+  const overviewActionTab = projectStatus === 'EXPORTABLE' || (canExport && !hasExportedZip) ? 'documents' : nextMove.tab
+
   const generateButton = contextReady ? (
     <div className="flex flex-wrap gap-3">
       <button
@@ -1474,7 +1464,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   return (
     <div className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]" style={WORKSPACE_STYLE}>
       <div className="min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden border-r border-[#dedbd5] bg-[var(--workspace-paper)] lg:flex lg:min-h-screen lg:flex-col lg:px-5 lg:py-6">{workspaceNavigation}</aside>
+        <aside className="hidden lg:block lg:px-3 lg:py-4">
+          <div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
+            <div className="flex min-h-[calc(100vh-3.5rem)] flex-col">{workspaceNavigation}</div>
+          </div>
+        </aside>
         <div className="min-w-0">
           <header className="border-b border-[#dedbd5] bg-[var(--workspace-paper)] px-4 py-4 sm:px-6 lg:px-10">
             <div className="flex items-center justify-between gap-4">
@@ -1500,11 +1494,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               <div className="flex flex-wrap items-start justify-between gap-5">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-[var(--workspace-muted)]"><span className={`rounded-full border border-[#dedbd5] px-3 py-1 font-semibold ${statusTone(projectStatus)}`}>{tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}</span><span>{t('updated', { date: formatDate(initialData.updatedAt, locale) ?? t('unknownDate') })}</span><span>{formatLabel(initialData.classification)}</span><span>{initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}</span></div>
-                  <h1 className="mt-4 max-w-5xl text-3xl font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">{initialData.name}</h1>
+                  <h1 className="mt-4 max-w-5xl text-4xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl">{initialData.name}</h1>
                 </div>
-                {activeTab === 'overview' && <p className="max-w-[18rem] text-right text-xs leading-5 text-[var(--workspace-muted)]">{t('overviewHeaderHint')}</p>}
               </div>
-              <div className="mt-5 max-w-4xl"><p id="project-brief" className={`border-l-2 border-[var(--workspace-primary)] pl-4 text-sm leading-6 text-[var(--workspace-muted)] sm:text-base ${isBriefExpanded ? '' : 'line-clamp-2'}`}>{initialData.description || t('noBrief')}</p>{(initialData.description?.length ?? 0) > 180 && <button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded((expanded) => !expanded)} className={`mt-2 inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{isBriefExpanded ? t('collapseBrief') : t('expandBrief')}</button>}</div>
+              <div className="mt-6 max-w-3xl">
+                <p id="project-brief" className={`max-w-[72ch] text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8 ${isBriefExpanded ? '' : 'line-clamp-2'}`}>{initialData.description || t('noBrief')}</p>
+                {(initialData.description?.length ?? 0) > 180 && <button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded((expanded) => !expanded)} className={`mt-3 inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{isBriefExpanded ? t('collapseBrief') : t('expandBrief')}</button>}
+              </div>
             </header>
 
             {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && <div>{generationProgress}</div>}
@@ -1512,14 +1508,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               <section aria-labelledby="next-move-title" className="border-b border-[#dedbd5] py-7">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 max-w-3xl">
-                    <p className="font-mono text-[10px] font-semibold tracking-[0.08em] text-[var(--workspace-primary)]">{(genMessage ?? discoveryMessage) ? t('overviewAttention') : t('overviewNextStep')}</p>
-                    <h2 id="next-move-title" className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">{nextMove.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">{nextMove.description}</p>
+                    <p className={`font-mono text-[10px] font-semibold tracking-[0.08em] ${overviewStatusTone === 'attention' ? 'text-[var(--workspace-rose)]' : 'text-[var(--workspace-primary)]'}`}>{overviewStatusTone === 'attention' ? t('overviewAttention') : t('overviewNextStep')}</p>
+                    <h2 id="next-move-title" className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">{overviewActionTitle}</h2>
+                    <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">{overviewActionDescription}</p>
                     {(genMessage ?? discoveryMessage) && (
                       <p role={(genMessage ?? discoveryMessage)?.type === 'error' ? 'alert' : 'status'} aria-live={(genMessage ?? discoveryMessage)?.type === 'error' ? 'assertive' : 'polite'} className="mt-4 border-l-2 border-[var(--workspace-rose)] pl-3 text-sm font-semibold leading-6 text-[var(--workspace-rose)]">{(genMessage ?? discoveryMessage)?.text}</p>
                     )}
                   </div>
-                  <div className="shrink-0 lg:pt-1">{nextMove.action}</div>
+                  {overviewAction ? <div className="shrink-0 lg:pt-1">{overviewAction}</div> : <button type="button" onClick={() => selectTab(overviewActionTab)} className={`inline-flex shrink-0 items-center justify-center rounded-full border border-[#dedbd5] px-4 py-2.5 text-sm font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>{t('overviewReviewDocuments')}</button>}
                 </div>
               </section>
             )}
@@ -1550,12 +1546,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             <span className={`mt-0.5 flex size-7 shrink-0 items-center justify-center sm:mt-0 ${item.tone === 'ready' ? 'bg-[var(--workspace-mint-soft)] text-emerald-700' : item.tone === 'attention' ? 'bg-[var(--workspace-yellow-soft)] text-amber-700' : 'bg-black/[0.04] text-[var(--workspace-faint)]'}`}>
                               <Icon aria-hidden="true" className="size-4" />
                             </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-semibold text-[var(--workspace-ink)]">{item.label}</span>
-                              <span className="mt-1 block text-xs leading-5 text-[var(--workspace-muted)]">{item.detail}</span>
-                            </span>
-                            <span className="hidden shrink-0 text-right sm:block"><span className="block font-mono text-xs font-semibold text-[var(--workspace-ink)]">{item.value}</span><span className="mt-1 block text-xs font-semibold text-[var(--workspace-primary)]">{t('openSection')}</span></span>
-                            <ChevronRight aria-hidden="true" className="mt-1 size-4 shrink-0 text-[var(--workspace-faint)] sm:mt-0" />
+                            <span className="min-w-0 flex-1 text-sm font-semibold text-[var(--workspace-ink)]">{item.label}</span>
+                            <span className="shrink-0 text-right font-mono text-xs font-semibold text-[var(--workspace-muted)]">{item.value}</span>
+                            <span className="shrink-0 text-xs font-semibold text-[var(--workspace-primary)]">{t('openSection')}</span>
+                            <ChevronRight aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-faint)]" />
                           </button>
                         </li>
                       )

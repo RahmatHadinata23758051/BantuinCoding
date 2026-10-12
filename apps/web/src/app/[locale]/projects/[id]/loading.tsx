@@ -18,7 +18,8 @@ export default async function ProjectWorkspaceLoading() {
           <div className="h-9 w-24 rounded-full bg-[#dedbd5] motion-safe:animate-pulse" />
         </div>
         <div className="min-h-screen lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <div className="hidden border-r border-[#dedbd5] bg-[#fffdfa] p-6 lg:block">
+          <div className="hidden px-3 py-4 lg:block">
+            <div className="sticky top-4 max-h-[calc(100vh-2rem)] rounded-[24px] border border-white/80 bg-[#fffdfa]/88 p-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] lg:min-h-[calc(100vh-3.5rem)] lg:backdrop-blur-xl">
             <div className="h-7 w-32 rounded bg-[#dedbd5] motion-safe:animate-pulse" />
             <div className="mt-2 h-4 w-40 rounded bg-[#dedbd5] motion-safe:animate-pulse" />
             <div className="mt-10 space-y-2">
@@ -27,6 +28,7 @@ export default async function ProjectWorkspaceLoading() {
               <div className="h-10 rounded-lg bg-[#dedbd5] motion-safe:animate-pulse" />
               <div className="h-10 rounded-lg bg-[#dedbd5] motion-safe:animate-pulse" />
               <div className="h-10 rounded-lg bg-[#dedbd5] motion-safe:animate-pulse" />
+            </div>
             </div>
           </div>
           <div>
