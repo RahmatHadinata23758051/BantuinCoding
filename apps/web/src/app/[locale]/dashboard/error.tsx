@@ -19,16 +19,16 @@ export default function DashboardError({
   }, [error])
 
   return (
-    <main className="min-h-screen bg-[#f6f5f4] px-4 py-12 text-[#111111] sm:px-6">
-      <section role="alert" className="mx-auto max-w-xl rounded-xl border border-black/[0.08] bg-white p-6 sm:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#757575]">{t('workspaceLabel')}</p>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">{t('errorTitle')}</h1>
-        <p className="mt-2 text-sm leading-6 text-[#757575]">{t('errorDesc')}</p>
+    <main className="min-h-screen bg-[#f7f6f3] px-4 py-12 text-[#24231f] sm:px-6">
+      <section role="alert" className="mx-auto max-w-xl rounded-2xl border border-[#dedbd5] bg-[#fffdfa] p-6 sm:p-8">
+        <p className="font-mono text-[10px] tracking-[0.1em] text-[#a66142]">{t('workspaceLabel')}</p>
+        <h1 className="mt-3 text-2xl font-semibold tracking-[-0.05em]">{t('errorTitle')}</h1>
+        <p className="mt-2 text-sm leading-6 text-[#706b64]">{t('errorDesc')}</p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" onClick={reset} className="rounded-lg bg-[#0075de] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#005fb5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]">
+          <button type="button" onClick={reset} className="rounded-full bg-[#a85e3c] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#8e4e32] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24231f]">
             {t('retryDashboard')}
           </button>
-          <Link href="/" className="rounded-lg border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#f6f5f4] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0075de]">
+          <Link href="/" className="rounded-full border border-[#dedbd5] bg-[#fffdfa] px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-[#f0ece6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">
             {tCommon('backToHome')}
           </Link>
         </div>
