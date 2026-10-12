@@ -719,29 +719,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     ? '[mask-image:linear-gradient(to_bottom,black_0%,black_85%,transparent_100%)]'
     : ''
 
-  const localizedStatus = tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)
-  const overviewInformationItems = [
-    { label: t('projectType'), value: localizedClassification },
-    { label: t('settingsLanguage'), value: localizedLanguage },
-    { label: t('projectStatus'), value: localizedStatus },
-    { label: t('updatedLabel'), value: formattedUpdatedDate },
-  ]
-  const renderOverviewInformation = () => (
-    <section aria-labelledby="overview-information-title">
-      <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-4">
-        <h2 id="overview-information-title" className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewInformation')}</h2>
-      </div>
-      <dl className="mt-4 grid overflow-hidden rounded-[18px] border border-[var(--workspace-border-subtle)] bg-[var(--workspace-paper)] sm:grid-cols-2 xl:grid-cols-4">
-        {overviewInformationItems.map((item) => (
-          <div key={item.label} className="border-b border-[var(--workspace-border-subtle)] px-4 py-4 last:border-b-0 sm:[&:nth-child(odd)]:border-r xl:border-b-0 xl:border-r xl:last:border-r-0">
-            <dt className="text-xs font-medium text-[var(--workspace-muted)]">{item.label}</dt>
-            <dd className="mt-1 break-words text-sm font-semibold text-[var(--workspace-ink)]">{item.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  )
-
   const renderHeroBrief = () => (
     <div
       id="project-brief-content"
@@ -1592,7 +1569,6 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 {SECTION_ITEMS.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}</button>)}
               </div>
               <div className={activeTab === 'overview' ? 'space-y-10' : 'hidden'}>
-                {renderOverviewInformation()}
                 {overviewStructuredContent}
                 <section aria-labelledby="overview-status-title" className="border-t border-[var(--workspace-border-subtle)] pt-8">
                   <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-4">
