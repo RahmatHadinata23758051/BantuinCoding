@@ -693,11 +693,11 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
 
   const heroContentClass = isBriefExpanded
     ? 'h-auto'
-    : 'h-[calc(100dvh-3rem)] max-[639px]:h-auto max-[639px]:max-h-[38rem] max-[639px]:overflow-hidden'
+    : 'h-auto max-h-[calc(100dvh-3rem)] max-[639px]:max-h-[38rem] max-[639px]:overflow-hidden'
 
   const renderBriefParagraphs = (className?: string) => (
     <div className={`w-full max-w-none text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base ${className ?? ''}`}>
-      <div className="w-full space-y-5">
+      <div className="w-full space-y-4">
         {briefParagraphs.map((paragraph, index) => (
           <p key={`${index}-${paragraph.slice(0, 12)}`} className="w-full max-w-none text-justify whitespace-pre-line break-words">{paragraph}</p>
         ))}
@@ -713,14 +713,14 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     <div
       id="project-brief-content"
       ref={briefContentRef}
-      className={`mt-6 min-h-0 flex-1 overflow-hidden ${briefMaskClass}`}
+      className={`mt-4 min-h-0 flex-1 overflow-hidden ${briefMaskClass}`}
     >
       {renderBriefParagraphs()}
     </div>
   )
 
   const overviewStructuredContent = (
-    <div className="space-y-10">
+    <div className="space-y-6">
       {parsedBrief.features.length > 0 && <section aria-labelledby="overview-features-title"><h2 id="overview-features-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewFeatures')}</h2><div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{parsedBrief.features.map((feature) => <article key={feature.title} className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4"><h3 className="text-sm font-semibold">{feature.title}</h3>{feature.description && <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">{feature.description}</p>}</article>)}</div></section>}
       {parsedBrief.pageStructure.length > 0 && <section aria-labelledby="overview-structure-title"><h2 id="overview-structure-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewStructure')}</h2><div className="mt-4 flex flex-wrap gap-2">{parsedBrief.pageStructure.map((item) => <span key={item} className="rounded-full border border-[var(--workspace-border)] bg-white/60 px-3 py-1.5 text-sm font-medium text-[var(--workspace-ink)]">{item}</span>)}</div></section>}
       {(parsedBrief.scope.included.length > 0 || parsedBrief.scope.excluded.length > 0) && <section aria-labelledby="overview-scope-title"><h2 id="overview-scope-title" className="text-xl font-semibold tracking-[-0.03em]">{t('overviewScope')}</h2><div className="mt-4 grid gap-4 md:grid-cols-2"><div className="rounded-xl border border-[#cdddcf] bg-[var(--workspace-mint-soft)] p-4"><h3 className="text-sm font-semibold">{t('overviewIncluded')}</h3><ul className="mt-3 space-y-2 text-sm leading-6">{parsedBrief.scope.included.map((item) => <li key={item} className="flex gap-2"><Check aria-hidden="true" className="mt-1 size-4 shrink-0" />{item}</li>)}</ul></div><div className="rounded-xl border border-[#e4c7c0] bg-[var(--workspace-rose-soft)] p-4"><h3 className="text-sm font-semibold">{t('overviewExcluded')}</h3><ul className="mt-3 space-y-2 text-sm leading-6">{parsedBrief.scope.excluded.map((item) => <li key={item} className="flex gap-2"><X aria-hidden="true" className="mt-1 size-4 shrink-0" />{item}</li>)}</ul></div></div></section>}
@@ -1507,7 +1507,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             <header className="border-b border-[var(--workspace-border)] pb-8">
               <div
                 ref={briefCardRef}
-                className={`relative isolate overflow-hidden rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-6 shadow-[0_14px_40px_var(--workspace-card-shadow)] transition-[height] duration-300 ease-out sm:p-8 lg:p-10 ${heroContentClass} ${heroMotionPaused ? 'workspace-motion-paused' : ''}`}
+                className={`relative isolate overflow-hidden rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 shadow-[0_14px_40px_var(--workspace-card-shadow)] transition-[height] duration-300 ease-out sm:p-6 lg:p-8 ${heroContentClass} ${heroMotionPaused ? 'workspace-motion-paused' : ''}`}
               >
                 <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[2.5px] overflow-hidden bg-[var(--workspace-peach)]">
                   <span className="workspace-hero-border absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[var(--workspace-sun)] via-[var(--workspace-primary)] to-[var(--workspace-sun)]" />
@@ -1538,7 +1538,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       </span>
                     </div>
                   </div>
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                     <h1 className="max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
                   </div>
                   {renderHeroBrief()}
@@ -1549,19 +1549,19 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
             {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && <div>{generationProgress}</div>}
 
-            <section className="py-8 sm:py-10"><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
+            <section className="py-5 sm:py-6"><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
               <div className="hidden" aria-hidden="true">
                 {SECTION_ITEMS.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}</button>)}
               </div>
-              <div className={activeTab === 'overview' ? 'space-y-10' : 'hidden'}>
+              <div className={activeTab === 'overview' ? 'space-y-6' : 'hidden'}>
                 {overviewStructuredContent}
-                <section aria-labelledby="overview-status-title" className="border-t border-[var(--workspace-border-subtle)] pt-8">
-                  <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-4">
+                <section aria-labelledby="overview-status-title" className="border-t border-[var(--workspace-border-subtle)] pt-5">
+                  <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-3">
                     <h2 id="overview-status-title" className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewStatusTitle')}</h2>
                     <span className="font-mono text-xs text-[var(--workspace-muted)]">{t('liveData')}</span>
                   </div>
 
-                  <div aria-label={t('overviewStatusTitle')} className="mt-4 overflow-x-auto border-y border-[var(--workspace-border-subtle)] px-2 py-6 sm:px-4 sm:py-8">
+                  <div aria-label={t('overviewStatusTitle')} className="mt-3 overflow-x-auto border-y border-[var(--workspace-border-subtle)] px-2 py-4 sm:px-4 sm:py-5">
                     <ol className="grid min-w-[34rem] grid-cols-3">
                       {overviewStatusItems.map((item, index) => {
                         const Icon = item.tone === 'ready' ? Check : item.tone === 'attention' ? AlertTriangle : CircleDashed
