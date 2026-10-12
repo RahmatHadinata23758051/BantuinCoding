@@ -706,10 +706,10 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     : 'h-[calc(100dvh-3rem)] max-[639px]:h-auto max-[639px]:max-h-[38rem] max-[639px]:overflow-hidden'
 
   const renderBriefParagraphs = (className?: string) => (
-    <div className={`max-w-[65ch] text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base ${className ?? ''}`}>
-      <div className="space-y-5">
+    <div className={`w-full max-w-none text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base ${className ?? ''}`}>
+      <div className="w-full space-y-5">
         {briefParagraphs.map((paragraph, index) => (
-          <p key={`${index}-${paragraph.slice(0, 12)}`} className="max-w-[65ch] text-justify whitespace-pre-line break-words">{paragraph}</p>
+          <p key={`${index}-${paragraph.slice(0, 12)}`} className="w-full max-w-none text-justify whitespace-pre-line break-words">{paragraph}</p>
         ))}
       </div>
     </div>
