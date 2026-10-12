@@ -18,6 +18,26 @@
   --color-signal-blue: #097fe8;
   --color-sky-wash: #62aef0;
   --color-midnight-ink: #02093a;
+  --color-workspace-paper: #fffdfa;
+  --color-workspace-canvas: #f7f6f3;
+  --color-workspace-ink: #24231f;
+  --color-workspace-body: #2c2a26;
+  --color-workspace-muted: #4a463f;
+  --color-workspace-faint: #5c574f;
+  --color-workspace-primary: #a85e3c;
+  --color-workspace-primary-hover: #8e4e32;
+  --color-workspace-border: #dedbd5;
+  --color-workspace-border-muted: #c9c4bc;
+  --color-workspace-coral: #f6b277;
+  --color-workspace-deep: #8e4e32;
+  --color-workspace-mint: #e7eee7;
+  --color-workspace-sun: #f4a261;
+  --color-workspace-peach: #f8d7c2;
+  --color-workspace-rose: #9b4434;
+  --color-workspace-blue-soft: #f0ece6;
+  --color-workspace-yellow-soft: #f8eee6;
+  --color-workspace-mint-soft: #edf2eb;
+  --color-workspace-rose-soft: #f8e9e5;
 
   --font-notioninter: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-lyon-text: Georgia, 'Times New Roman', serif;
@@ -116,7 +136,27 @@ html::-webkit-scrollbar-button {
 body { min-height: 100vh; background: var(--bg-page); color: var(--ink); font-family: var(--font-notioninter); font-feature-settings: "kern" 1, "liga" 1; -webkit-font-smoothing: antialiased; }
 ::selection { background: var(--color-sky-tint); color: var(--ink); }
 *:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { *,::before,::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
+@keyframes workspace-hero-border {
+  0% { transform: translateX(-45%); opacity: 0.35; }
+  50% { transform: translateX(45%); opacity: 0.8; }
+  100% { transform: translateX(-45%); opacity: 0.35; }
+}
+@keyframes workspace-hero-blob {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.18; }
+  50% { transform: translate3d(18px, -14px, 0) scale(1.06); opacity: 0.28; }
+}
+.workspace-hero-border { animation: workspace-hero-border 8s ease-in-out infinite; }
+.workspace-hero-blob { animation: workspace-hero-blob 24s ease-in-out infinite alternate; }
+.workspace-hero-blob-delayed { animation-delay: -9s; }
+.workspace-hero-blob-slow { animation-duration: 28s; animation-delay: -15s; }
+.workspace-motion-paused,
+.workspace-motion-paused .workspace-hero-border,
+.workspace-motion-paused .workspace-hero-blob { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  *,::before,::after { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+  .workspace-hero-border, .workspace-hero-blob, .workspace-hero-blob-delayed, .workspace-hero-blob-slow { animation: none; }
+}
+
 
 @keyframes auth-fade-in {
   from { opacity: 0; }
