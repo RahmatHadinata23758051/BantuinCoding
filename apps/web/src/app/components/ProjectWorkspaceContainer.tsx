@@ -1561,22 +1561,39 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     <span className="font-mono text-xs text-[var(--workspace-muted)]">{t('liveData')}</span>
                   </div>
 
-                  <div aria-label={t('overviewStatusTitle')} className="mt-4 border-y border-[var(--workspace-border-subtle)]">
-                    <ul className="divide-y divide-[var(--workspace-border-subtle)]">
-                      {overviewStatusItems.map((item) => {
-                      const Icon = item.tone === 'ready' ? CheckCircle2 : item.tone === 'attention' ? AlertTriangle : CircleDashed
-                      return (
-                        <li key={item.id}>
-                          <button type="button" onClick={() => selectTab(item.id)} className={`flex w-full items-center gap-3 px-1 py-4 text-left transition-colors hover:bg-[var(--workspace-blue-soft)] sm:px-2 ${BUTTON_FOCUS_CLASS}`}>
-                            <Icon aria-hidden="true" className={`size-4 shrink-0 ${item.tone === 'ready' ? 'text-emerald-700' : item.tone === 'attention' ? 'text-amber-700' : 'text-[var(--workspace-faint)]'}`} />
-                            <span className="min-w-0 flex-1 text-sm font-semibold text-[var(--workspace-ink)]">{item.label}</span>
-                            <span className="shrink-0 text-right text-sm text-[var(--workspace-muted)]">{item.value}</span>
-                            <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-faint)]" />
-                          </button>
-                        </li>
-                      )
-                    })}
-                    </ul>
+                  <div aria-label={t('overviewStatusTitle')} className="mt-4 overflow-x-auto border-y border-[var(--workspace-border-subtle)] px-2 py-6 sm:px-4 sm:py-8">
+                    <ol className="grid min-w-[34rem] grid-cols-3">
+                      {overviewStatusItems.map((item, index) => {
+                        const Icon = item.tone === 'ready' ? Check : item.tone === 'attention' ? AlertTriangle : CircleDashed
+                        const isLast = index === overviewStatusItems.length - 1
+                        const nodeClass = item.tone === 'ready'
+                          ? 'border-[var(--workspace-ink)] bg-[var(--workspace-ink)] text-[var(--workspace-paper)]'
+                          : item.tone === 'attention'
+                            ? 'border-[var(--workspace-primary)] bg-[var(--workspace-yellow-soft)] text-[var(--workspace-primary)]'
+                            : 'border-[var(--workspace-border-muted)] bg-[var(--workspace-canvas)] text-[var(--workspace-faint)]'
+                        const lineClass = item.tone === 'ready'
+                          ? 'bg-[var(--workspace-ink)]'
+                          : 'bg-[var(--workspace-border)]'
+
+                        return (
+                          <li key={item.id} className="relative px-2 sm:px-4">
+                            {!isLast && <span aria-hidden="true" className={`absolute left-[calc(50%+1.5rem)] right-[calc(-50%+1.5rem)] top-6 h-px ${lineClass}`} />}
+                            <button
+                              type="button"
+                              onClick={() => selectTab(item.id)}
+                              aria-current={activeTab === item.id ? 'step' : undefined}
+                              className={`relative z-10 flex w-full flex-col items-center rounded-xl px-2 py-1 text-center transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}
+                            >
+                              <span className={`flex size-12 items-center justify-center rounded-full border-2 ${nodeClass}`}>
+                                <Icon aria-hidden="true" className="size-5" strokeWidth={item.tone === 'ready' ? 2.5 : 2} />
+                              </span>
+                              <span className="mt-4 text-sm font-semibold text-[var(--workspace-ink)]">{item.label}</span>
+                              <span className="mt-1 max-w-[11rem] text-xs leading-5 text-[var(--workspace-muted)]">{item.value}</span>
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ol>
                   </div>
                 </section>
               </div>
