@@ -1491,18 +1491,23 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 </div>
               </div>
               <div className="mt-6 max-w-3xl">
-                <div id="project-brief" className="max-w-[68ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
-                  {isBriefExpanded ? (
-                    <div className="space-y-5">
-                      {briefParagraphs.map((paragraph, index) => (
-                        <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line">{paragraph}</p>
-                      ))}
+                {isBriefExpanded ? (
+                  <div className="rounded-[20px] border border-[#dedbd5] bg-[var(--workspace-paper)] p-6 shadow-[0_8px_22px_rgba(36,35,31,0.035)] sm:p-9">
+                    <div id="project-brief" className="mx-auto max-w-[68ch] break-words text-center text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
+                      <div className="space-y-5">
+                        {briefParagraphs.map((paragraph, index) => (
+                          <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line">{paragraph}</p>
+                        ))}
+                      </div>
                     </div>
-                  ) : (
+                    {(initialData.description?.length ?? 0) > 180 && <div className="mt-6 text-center"><button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded(false)} className={`inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{t('collapseBrief')}</button></div>}
+                  </div>
+                ) : (
+                  <div id="project-brief" className="max-w-[68ch] break-words text-base leading-7 text-[var(--workspace-muted)] sm:text-lg sm:leading-8">
                     <p className="line-clamp-2 whitespace-pre-line">{briefText}</p>
-                  )}
-                </div>
-                {(initialData.description?.length ?? 0) > 180 && <button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded((expanded) => !expanded)} className={`mt-3 inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{isBriefExpanded ? t('collapseBrief') : t('expandBrief')}</button>}
+                    {(initialData.description?.length ?? 0) > 180 && <button type="button" aria-controls="project-brief" aria-expanded={isBriefExpanded} onClick={() => setIsBriefExpanded(true)} className={`mt-3 inline-flex items-center rounded-md px-1 text-xs font-semibold text-[var(--workspace-primary)] underline decoration-[var(--workspace-primary)]/40 underline-offset-4 hover:text-[#8e4e32] ${BUTTON_FOCUS_CLASS}`}>{t('expandBrief')}</button>}
+                  </div>
+                )}
               </div>
             </header>
 
