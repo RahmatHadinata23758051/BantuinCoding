@@ -153,7 +153,9 @@ const WORKSPACE_STYLE = {
   '--workspace-canvas': 'var(--color-workspace-canvas)',
   '--workspace-panel': 'var(--color-workspace-paper)',
   '--workspace-border': 'var(--color-workspace-border)',
+  '--workspace-border-subtle': 'var(--color-workspace-border-subtle)',
   '--workspace-border-muted': 'var(--color-workspace-border-muted)',
+  '--workspace-card-shadow': 'var(--color-workspace-card-shadow)',
   '--workspace-body': 'var(--color-workspace-body)',
   '--workspace-muted': 'var(--color-workspace-muted)',
   '--workspace-faint': 'var(--color-workspace-faint)',
@@ -707,15 +709,38 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     <div className={`max-w-[65ch] text-left text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base ${className ?? ''}`}>
       <div className="space-y-5">
         {briefParagraphs.map((paragraph, index) => (
-          <p key={`${index}-${paragraph.slice(0, 12)}`} className="whitespace-pre-line break-words">{paragraph}</p>
+          <p key={`${index}-${paragraph.slice(0, 12)}`} className="max-w-[65ch] whitespace-pre-line break-words">{paragraph}</p>
         ))}
       </div>
     </div>
   )
 
   const briefMaskClass = !isBriefExpanded && isBriefOverflowing
-    ? '[mask-image:linear-gradient(to_bottom,black_0%,black_76%,transparent_100%)]'
+    ? '[mask-image:linear-gradient(to_bottom,black_0%,black_85%,transparent_100%)]'
     : ''
+
+  const localizedStatus = tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)
+  const overviewInformationItems = [
+    { label: t('projectType'), value: localizedClassification },
+    { label: t('settingsLanguage'), value: localizedLanguage },
+    { label: t('projectStatus'), value: localizedStatus },
+    { label: t('updatedLabel'), value: formattedUpdatedDate },
+  ]
+  const renderOverviewInformation = () => (
+    <section aria-labelledby="overview-information-title">
+      <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-4">
+        <h2 id="overview-information-title" className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewInformation')}</h2>
+      </div>
+      <dl className="mt-4 grid overflow-hidden rounded-[18px] border border-[var(--workspace-border-subtle)] bg-[var(--workspace-paper)] sm:grid-cols-2 xl:grid-cols-4">
+        {overviewInformationItems.map((item) => (
+          <div key={item.label} className="border-b border-[var(--workspace-border-subtle)] px-4 py-4 last:border-b-0 sm:[&:nth-child(odd)]:border-r xl:border-b-0 xl:border-r xl:last:border-r-0">
+            <dt className="text-xs font-medium text-[var(--workspace-muted)]">{item.label}</dt>
+            <dd className="mt-1 break-words text-sm font-semibold text-[var(--workspace-ink)]">{item.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
 
   const renderHeroBrief = () => (
     <div
@@ -1491,8 +1516,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
   return (
     <div className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]" style={WORKSPACE_STYLE}>
-      <div className="min-h-screen gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden h-[calc(100dvh-3rem)] self-start lg:sticky lg:top-6 lg:flex">
+      <div className="min-h-screen items-start gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <aside className="hidden h-[calc(100dvh-3rem)] self-start lg:sticky lg:top-6 lg:flex lg:flex-col">
           <div className="flex h-full w-full flex-col rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
             <div className="flex min-h-0 flex-1 flex-col">{workspaceNavigation}</div>
           </div>
@@ -1511,27 +1536,27 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             {isWorkspaceNavOpen && <div id="workspace-mobile-navigation" className="mt-4 border-t border-[var(--workspace-border)] pt-4"><div className="flex flex-col gap-5">{workspaceNavigation}</div></div>}
           </header>
 
-          <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-8 sm:px-6 lg:px-10 xl:px-14">
+          <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-6 sm:px-6 lg:px-10 lg:pt-0 xl:px-14">
             <header className="border-b border-[var(--workspace-border)] pb-8">
               <div
                 ref={briefCardRef}
-                className={`relative isolate overflow-hidden rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-6 shadow-[0_12px_36px_rgba(36,35,31,0.04)] transition-[height] duration-300 ease-out sm:p-8 lg:p-10 ${heroContentClass} ${heroMotionPaused ? 'workspace-motion-paused' : ''}`}
+                className={`relative isolate overflow-hidden rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-6 shadow-[0_14px_40px_var(--workspace-card-shadow)] transition-[height] duration-300 ease-out sm:p-8 lg:p-10 ${heroContentClass} ${heroMotionPaused ? 'workspace-motion-paused' : ''}`}
               >
-                <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-0 h-px overflow-hidden bg-[var(--workspace-peach)]">
-                  <span className="workspace-hero-border absolute inset-y-0 left-0 w-2/3 bg-[var(--workspace-sun)]" />
+                <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[2.5px] overflow-hidden bg-[var(--workspace-peach)]">
+                  <span className="workspace-hero-border absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[var(--workspace-sun)] via-[var(--workspace-primary)] to-[var(--workspace-sun)]" />
                 </span>
                 <span aria-hidden="true" className="workspace-hero-blob pointer-events-none absolute -right-16 bottom-[-4rem] z-0 size-64 rounded-full bg-[radial-gradient(circle,var(--workspace-peach)_0%,transparent_68%)]" />
                 <span aria-hidden="true" className="workspace-hero-blob workspace-hero-blob-delayed pointer-events-none absolute right-20 bottom-[-5rem] z-0 size-56 rounded-full bg-[radial-gradient(circle,var(--workspace-sun)_0%,transparent_70%)]" />
                 <span aria-hidden="true" className="workspace-hero-blob workspace-hero-blob-slow pointer-events-none absolute right-[-3rem] top-24 z-0 size-48 rounded-full bg-[radial-gradient(circle,var(--workspace-peach)_0%,transparent_72%)]" />
                 <div className="relative z-10 flex h-full flex-col">
-                  <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-center gap-3 text-xs font-semibold text-[var(--workspace-primary)]">
                       <span className="inline-flex size-8 items-center justify-center rounded-full border border-[var(--workspace-peach)] bg-[var(--workspace-paper)]">
                         <FileText aria-hidden="true" className="size-4" />
                       </span>
                       <span>{t('briefLabel')}</span>
                     </div>
-                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--workspace-ink)]">
                         <FolderKanban aria-hidden="true" className="size-3.5" />
                         {localizedClassification}
@@ -1546,17 +1571,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       </span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <h1 className="mt-7 max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
-                    <div className="mt-7 flex items-center gap-2" aria-label={t('briefActions')}>
-                      <span title={t('comingSoon')}><button type="button" disabled aria-disabled="true" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><Pencil aria-hidden="true" className="size-3.5" />{t('briefEdit')}</button></span>
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--workspace-border-subtle)] pb-4">
+                    <h1 className="max-w-5xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl lg:text-[4.5rem]">{initialData.name}</h1>
+                    <div className="flex flex-wrap items-center gap-2" aria-label={t('briefActions')}>
+                      <button type="button" disabled aria-disabled="true" title={t('comingSoon')} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><Pencil aria-hidden="true" className="size-3.5" />{t('briefEdit')}</button>
                       <button type="button" onClick={handleCopyBrief} className={`inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-primary)] bg-[var(--workspace-paper)] px-3 py-2 text-xs font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)] ${BUTTON_FOCUS_CLASS}`}><Copy aria-hidden="true" className="size-3.5" />{copiedBrief ? t('briefCopied') : t('briefCopy')}</button>
-                      <span title={t('comingSoon')}><button type="button" disabled aria-disabled="true" className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><RefreshCw aria-hidden="true" className="size-3.5" />{t('briefRegenerate')}</button></span>
+                      <button type="button" disabled aria-disabled="true" title={t('comingSoon')} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] px-3 py-2 text-xs font-semibold text-[var(--workspace-faint)] disabled:cursor-not-allowed"><RefreshCw aria-hidden="true" className="size-3.5" />{t('briefRegenerate')}</button>
                     </div>
                   </div>
-                  <div className="my-7 border-t border-[var(--workspace-border)]/80 sm:my-8" />
                   {renderHeroBrief()}
-                  {briefActionButton && <div className="relative z-20 mt-auto flex justify-start border-t border-[var(--workspace-border)]/80 pt-5">{briefActionButton}</div>}
+                  {briefActionButton && <div className="relative z-20 mt-auto flex justify-start border-t border-[var(--workspace-border-subtle)] pt-5">{briefActionButton}</div>}
                 </div>
               </div>
             </header>
@@ -1568,15 +1592,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 {SECTION_ITEMS.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}</button>)}
               </div>
               <div className={activeTab === 'overview' ? 'space-y-10' : 'hidden'}>
+                {renderOverviewInformation()}
                 {overviewStructuredContent}
-                <section aria-labelledby="overview-status-title" className="border-t border-black/[0.08] pt-8">
-                  <div className="flex items-end justify-between gap-4 border-b border-black/[0.08] pb-4">
+                <section aria-labelledby="overview-status-title" className="border-t border-[var(--workspace-border-subtle)] pt-8">
+                  <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-4">
                     <h2 id="overview-status-title" className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewStatusTitle')}</h2>
                     <span className="font-mono text-xs text-[var(--workspace-muted)]">{t('liveData')}</span>
                   </div>
 
-                  <div aria-label={t('overviewStatusTitle')} className="mt-4 border-y border-black/[0.08]">
-                    <ul className="divide-y divide-black/[0.08]">
+                  <div aria-label={t('overviewStatusTitle')} className="mt-4 border-y border-[var(--workspace-border-subtle)]">
+                    <ul className="divide-y divide-[var(--workspace-border-subtle)]">
                       {overviewStatusItems.map((item) => {
                       const Icon = item.tone === 'ready' ? CheckCircle2 : item.tone === 'attention' ? AlertTriangle : CircleDashed
                       return (

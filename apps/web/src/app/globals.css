@@ -21,13 +21,15 @@
   --color-workspace-paper: #fffdfa;
   --color-workspace-canvas: #f7f6f3;
   --color-workspace-ink: #24231f;
-  --color-workspace-body: #2c2a26;
+  --color-workspace-body: #181715;
   --color-workspace-muted: #4a463f;
   --color-workspace-faint: #5c574f;
   --color-workspace-primary: #a85e3c;
   --color-workspace-primary-hover: #8e4e32;
   --color-workspace-border: #dedbd5;
+  --color-workspace-border-subtle: #e8e5de;
   --color-workspace-border-muted: #c9c4bc;
+  --color-workspace-card-shadow: rgba(36, 35, 31, 0.08);
   --color-workspace-coral: #f6b277;
   --color-workspace-deep: #8e4e32;
   --color-workspace-mint: #e7eee7;
@@ -137,13 +139,13 @@ body { min-height: 100vh; background: var(--bg-page); color: var(--ink); font-fa
 ::selection { background: var(--color-sky-tint); color: var(--ink); }
 *:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 @keyframes workspace-hero-border {
-  0% { transform: translateX(-45%); opacity: 0.35; }
-  50% { transform: translateX(45%); opacity: 0.8; }
-  100% { transform: translateX(-45%); opacity: 0.35; }
+  0% { transform: translateX(-45%); opacity: 0.6; }
+  50% { transform: translateX(45%); opacity: 1; }
+  100% { transform: translateX(-45%); opacity: 0.6; }
 }
 @keyframes workspace-hero-blob {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.18; }
-  50% { transform: translate3d(18px, -14px, 0) scale(1.06); opacity: 0.28; }
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.34; }
+  50% { transform: translate3d(18px, -14px, 0) scale(1.06); opacity: 0.5; }
 }
 .workspace-hero-border { animation: workspace-hero-border 8s ease-in-out infinite; }
 .workspace-hero-blob { animation: workspace-hero-blob 24s ease-in-out infinite alternate; }
