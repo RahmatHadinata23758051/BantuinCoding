@@ -316,41 +316,6 @@ function EmptyState({
   )
 }
 
-function ReadinessLine({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string
-  value: string
-  detail: string
-  tone: ReadinessTone
-}) {
-  const Icon = tone === 'ready' ? CheckCircle2 : tone === 'attention' ? AlertTriangle : CircleDashed
-
-  return (
-    <li className="grid gap-2 border-t border-black/[0.08] py-3 first:border-t-0 sm:grid-cols-[minmax(10rem,0.75fr)_minmax(9rem,0.6fr)_1fr] sm:items-center">
-      <div className="flex items-center gap-2.5 text-sm font-medium text-[var(--workspace-ink)]">
-        <span
-          className={`flex size-6 shrink-0 items-center justify-center ${
-            tone === 'ready'
-              ? 'bg-[var(--workspace-mint-soft)] text-emerald-700'
-              : tone === 'attention'
-                ? 'bg-[var(--workspace-yellow-soft)] text-amber-700'
-                : 'bg-black/[0.04] text-[var(--workspace-faint)]'
-          }`}
-        >
-          <Icon aria-hidden="true" className="size-3.5" />
-        </span>
-        {label}
-      </div>
-      <span className="font-mono text-xs text-[var(--workspace-ink)]">{value}</span>
-      <span className="text-xs leading-5 text-[var(--workspace-muted)]">{detail}</span>
-    </li>
-  )
-}
-
 function ContextValue({
   value,
   depth = 0,
@@ -1505,9 +1470,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           </header>
 
           <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-6 sm:px-6 lg:px-10 lg:pt-0 xl:px-14">
-            <header className={activeTab === 'overview' ? 'border-b border-[var(--workspace-border)] pb-0' : 'border-b border-[var(--workspace-border)] pb-8'}>
-              <div
-                ref={briefCardRef}
+            {activeTab === 'overview' && (
+              <header className="border-b border-[var(--workspace-border)] pb-0">
+                <div
+                  ref={briefCardRef}
                 className={`relative isolate overflow-hidden rounded-[24px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 shadow-[0_14px_40px_var(--workspace-card-shadow)] transition-[height] duration-300 ease-out sm:p-6 lg:p-8 ${heroContentClass} ${heroMotionPaused ? 'workspace-motion-paused' : ''}`}
               >
                 <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[2.5px] overflow-hidden bg-[var(--workspace-peach)]">
@@ -1546,9 +1512,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   {briefActionButton && <div className="relative z-20 mt-auto flex justify-start border-t border-[var(--workspace-border-subtle)] pt-5">{briefActionButton}</div>}
                 </div>
               </div>
-            </header>
+              </header>
+            )}
 
             {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && <div>{generationProgress}</div>}
+
+            {activeTab !== 'overview' && <h1 className="sr-only">{initialData.name}</h1>}
 
             <section className={activeTab === 'overview' ? 'py-0' : 'py-5 sm:py-6'}><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
               <div className="hidden" aria-hidden="true">
@@ -1600,177 +1569,28 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               </div>
 
               <div className={activeTab === 'context' ? 'space-y-8' : 'hidden'}>
-                <SectionHeading
-                  title={t('docControlRoom')}
-                  description={t('docControlRoomDesc')}
-                />
-
-                <section className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.8fr)]">
-                  <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
-                    <div className="border-l border-[var(--workspace-primary)] pl-4">
-                      <p className="font-mono text-xs font-semibold text-[var(--workspace-ink)]">
-                        {t('nextCheckpoint')}
-                      </p>
-                      <h3 className="mt-2 text-3xl font-semibold leading-none tracking-[-0.05em] sm:text-4xl">
-                        {!contextReady
-                          ? t('stateEstablishContext')
-                          : readyArtifacts.length === 0
-                            ? t('stateGenerateFirst')
-                            : attentionArtifacts.length > 0
-                              ? t('stateResolveWarnings')
-                              : projectStatus === 'EXPORTABLE'
-                                ? t('stateExportable')
-                                : t('stateReviewPack')}
-                      </h3>
-                      <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                        {!contextReady
-                          ? t('descEstablishContext')
-                          : readyArtifacts.length === 0
-                            ? t('descGenerateFirst')
-                            : attentionArtifacts.length > 0
-                              ? t('descResolveWarnings', { count: attentionArtifacts.length })
-                              : projectStatus === 'EXPORTABLE'
-                                ? t('descExportable')
-                                : t('descReviewPack')}
-                      </p>
-                    </div>
-
-                    <dl className="mt-8 grid border-y border-black/[0.08] sm:grid-cols-2">
-                      <div className="border-b border-black/[0.08] py-4 sm:border-r sm:border-black/[0.08] sm:pr-5">
-                        <dt className="font-mono text-xs font-medium text-[var(--workspace-faint)]">
-                          {t('projectType')}
-                        </dt>
-                        <dd className="mt-1 text-sm font-semibold">
-                          {formatLabel(initialData.classification)}
-                        </dd>
-                      </div>
-                      <div className="border-b border-black/[0.08] py-4 sm:pl-5">
-                        <dt className="font-mono text-xs font-medium text-[var(--workspace-faint)]">
-                          {t('language')}
-                        </dt>
-                        <dd className="mt-1 text-sm font-semibold">
-                          {initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')}
-                        </dd>
-                      </div>
-                      <div className="border-b border-black/[0.08] py-4 sm:border-b-0 sm:border-r sm:border-black/[0.08] sm:pr-5">
-                        <dt className="font-mono text-xs font-medium text-[var(--workspace-faint)]">
-                          {t('contextSnapshot')}
-                        </dt>
-                        <dd className="mt-1 text-sm font-semibold">
-                          {t('snapshot', { version: initialData.contextVersion })}
-                        </dd>
-                      </div>
-                      <div className="py-4 sm:pl-5">
-                        <dt className="font-mono text-xs font-medium text-[var(--workspace-faint)]">
-                          {t('created')}
-                        </dt>
-                        <dd className="mt-1 text-sm font-semibold">
-                          {formatDate(initialData.createdAt, locale) ?? t('unknownDate')}
-                        </dd>
-                      </div>
-                    </dl>
+                <div className="flex flex-col gap-3 border-b border-[var(--workspace-border)] pb-6 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--workspace-muted)]">{t('tabContext')}</p>
+                    <h2 className="mt-2 max-w-2xl font-serif text-4xl leading-[0.98] tracking-[-0.04em] text-[var(--workspace-ink)] sm:text-5xl">
+                      {contextReady ? t('contextBriefTitle') : t('contextQuestionsTitle')}
+                    </h2>
                   </div>
-
-                  <section
-                    aria-labelledby="readiness-title"
-                    className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5`}
-                  >
-                    <div className="flex items-center justify-between border-b border-black/[0.08] pb-4">
-                      <h3 id="readiness-title" className="text-xl font-semibold tracking-tight">
-                        {t('actualReadiness')}
-                      </h3>
-                      <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
-                        {t('liveData')}
-                      </span>
-                    </div>
-                    <ul>
-                      <ReadinessLine
-                        label={t("canonicalContext")}
-                        value={contextReady ? t('available') : t('missing')}
-                        detail={
-                          contextReady ? t('snapshot', { version: initialData.contextVersion }) : t('reqBeforeGen')
-                        }
-                        tone={contextReady ? 'ready' : 'idle'}
-                      />
-                      <ReadinessLine
-                        label={t("tabDocuments")}
-                        value={t('docsReady', { ready: readyArtifacts.length, total: artifacts.length })}
-                        detail={
-                          attentionArtifacts.length > 0 ? t('needAttention', { count: attentionArtifacts.length }) : artifacts.length > 0 ? t('readyExportable') : t('noDocsGenerated')
-                        }
-                        tone={
-                          attentionArtifacts.length > 0
-                            ? 'attention'
-                            : readyArtifacts.length > 0
-                              ? 'ready'
-                              : 'idle'
-                        }
-                      />
-                      <ReadinessLine
-                        label={t("resolvedSkills")}
-                        value={t('selectedCount', { count: initialData.skills.length })}
-                        detail={
-                          initialData.skills.length > 0 ? t('triggersMapped') : t('noRecommendations')
-                        }
-                        tone={initialData.skills.length > 0 ? 'ready' : 'idle'}
-                      />
-                      <ReadinessLine
-                        label={t("tabBacklog")}
-                        value={t('tasksReadyOfTotal', { ready: readyTasks.length, total: allTasks.length })}
-                        detail={
-                          blockedTasks.length > 0 ? t('blockedAndDone', { blocked: blockedTasks.length, done: doneTasks.length }) : allTasks.length > 0 ? t('completedNoBlocked', { done: doneTasks.length }) : t('noTasksGenerated')
-                        }
-                        tone={
-                          blockedTasks.length > 0
-                            ? 'attention'
-                            : allTasks.length > 0
-                              ? 'ready'
-                              : 'idle'
-                        }
-                      />
-                      <ReadinessLine
-                        label={t("zipExport")}
-                        value={canExport ? t('available') : t('unavailable')}
-                        detail={
-                          canExport ? t('docsEligible', { count: readyArtifacts.length }) : t('atLeastOneReq')
-                        }
-                        tone={canExport ? 'ready' : 'idle'}
-                      />
-                    </ul>
-                  </section>
-                </section>
-              </div>
-
-              <div className={activeTab === 'context' ? 'space-y-8' : 'hidden'}>
-                <SectionHeading
-                  title={t('canonicalProjectContext')}
-                  description={t('canonicalProjectContextDesc')}
-                  action={
-                    <span
-                      className={`${PANEL_SOFT_CLASS} inline-flex items-center gap-2 px-3 py-2 font-mono text-xs font-semibold text-[var(--workspace-ink)]`}
-                    >
-                      <Braces aria-hidden="true" className="size-4" />
-                      Snapshot v{initialData.contextVersion}
-                    </span>
-                  }
-                />
+                  <span className="font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
+                    {contextReady ? t('contextReadyStatus') : pendingClarifications.length > 0 ? t('contextQuestionsStatus') : t('contextWaitingStatus')}
+                  </span>
+                </div>
 
                 {!contextReady ? (
-                  <section className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
-                    <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6`}>
-                      <div className="border-b border-black/[0.08] pb-5">
-                        <p className="font-mono text-xs font-medium text-[var(--workspace-faint)]">
-                          {t('discoveryInterview')}
-                        </p>
-                        <h3 className="mt-2 text-2xl font-semibold leading-tight tracking-[-0.03em]">
-                          {pendingClarifications.length > 0
-                            ? t('answerOpenDecisions')
-                            : t('contextNotAssembled')}
+                  <section className="mx-auto max-w-4xl">
+                    <div className="border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-6 shadow-[0_10px_28px_rgba(36,35,31,0.045)] sm:p-10">
+                      <div className="border-b border-[var(--workspace-border-subtle)] pb-6">
+                        <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('discoveryInterview')}</p>
+                        <h3 className="mt-3 max-w-2xl font-serif text-3xl leading-tight tracking-[-0.035em] sm:text-4xl">
+                          {pendingClarifications.length > 0 ? t('answerOpenDecisions') : t('contextNotAssembled')}
                         </h3>
-                        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                          {pendingClarifications.length > 0
-                            ? t('answersBecomeConfirmed')
-                            : t('startAnalysisFirst')}
+                        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
+                          {pendingClarifications.length > 0 ? t('answersBecomeConfirmed') : t('startAnalysisFirst')}
                         </p>
                       </div>
 
@@ -1778,7 +1598,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         <p
                           role={discoveryMessage.type === 'error' ? 'alert' : 'status'}
                           aria-live={discoveryMessage.type === 'error' ? 'assertive' : 'polite'}
-                          className={`mt-5 rounded-lg border border-[var(--workspace-border)] p-4 text-sm font-medium leading-5 ${
+                          className={`mt-6 border-l-2 border-[var(--workspace-primary)] px-4 py-3 text-sm leading-6 ${
                             discoveryMessage.type === 'error'
                               ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
                               : 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
@@ -1789,45 +1609,28 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       )}
 
                       {pendingClarifications.length > 0 ? (
-                        <form onSubmit={handleSubmitClarifications} className="mt-6 space-y-6">
+                        <form onSubmit={handleSubmitClarifications} className="mt-8 space-y-8">
                           {pendingClarifications.map((question, index) => (
-                            <div
-                              key={question.id}
-                              className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4"
-                            >
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-2 py-0.5 font-mono text-xs font-medium">
-                                  {t('roundLabel', { round: question.round })}
-                                </span>
-                                <span className="font-mono text-xs font-medium text-[var(--workspace-muted)]">
-                                  {t('questionOf', { current: index + 1, total: pendingClarifications.length })}
-                                </span>
-                              </div>
-                              <label
-                                htmlFor={`answer-${question.id}`}
-                                className="mt-3 block text-base font-semibold leading-6 tracking-tight"
-                              >
-                                {question.question}
-                              </label>
-                              {question.impact && (
-                                <p className="mt-2 border-l-2 border-[var(--workspace-border-muted)] pl-3 text-sm leading-5 text-[var(--workspace-muted)]">
-                                  {t('impact')}: {question.impact}
-                                </p>
-                              )}
-                              <div className="mt-4 space-y-3">
+                            <fieldset key={question.id} className="border-b border-[var(--workspace-border-subtle)] pb-8 last:border-b-0 last:pb-0">
+                              <legend className="w-full">
+                                <span className="font-mono text-xs font-semibold text-[var(--workspace-muted)]">{t('questionOf', { current: index + 1, total: pendingClarifications.length })}</span>
+                                <span className="mt-3 block text-lg font-semibold leading-7 tracking-[-0.02em]">{question.question}</span>
+                              </legend>
+                              {question.impact && <p className="mt-3 border-l-2 border-[var(--workspace-primary)] pl-3 text-sm leading-6 text-[var(--workspace-muted)]">{t('impact')}: {question.impact}</p>}
+                              <div className="mt-5 space-y-3">
                                 {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
-                                  <label key={i} className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3 transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 border border-[var(--workspace-border)] accent-[var(--workspace-ink)]" />
-                                    <span className="text-sm font-bold text-[var(--workspace-ink)]">{opt}</span>
+                                  <label key={i} className={`flex cursor-pointer items-start gap-3 border border-[var(--workspace-border)] p-3 transition-colors hover:bg-[var(--workspace-yellow-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 accent-[var(--workspace-primary)]" />
+                                    <span className="text-sm font-medium text-[var(--workspace-ink)]">{opt}</span>
                                   </label>
                                 ))}
-                                <label className={`flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-blue-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 border border-[var(--workspace-border)] accent-[var(--workspace-ink)]" />
-                                  <span className="text-sm font-semibold text-[var(--workspace-ink)]">{t('autoPick')}</span>
+                                <label className={`flex cursor-pointer items-start gap-3 border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 accent-[var(--workspace-primary)]" />
+                                  <span className="text-sm font-medium text-[var(--workspace-ink)]">{t('autoPick')}</span>
                                 </label>
                                 <div className="pt-2">
-                                  <label className="text-sm font-semibold flex items-center gap-2 mb-2">
-                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 border border-[var(--workspace-border)] accent-[var(--workspace-ink)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
+                                  <label className="mb-2 flex items-center gap-2 text-sm font-medium">
+                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 accent-[var(--workspace-primary)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
                                     {t('otherCustom')}
                                   </label>
                                   <textarea
@@ -1843,120 +1646,45 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                       }
                                     }}
                                     placeholder={t('writeDecision')}
-                                    className={`w-full resize-y rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-3 py-2 text-sm font-medium leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
+                                    className={`w-full resize-y border border-[var(--workspace-border)] bg-white px-3 py-3 text-sm leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
                                   />
                                 </div>
                               </div>
-                            </div>
+                            </fieldset>
                           ))}
-
-                          <button
-                            type="submit"
-                            disabled={isSubmittingAnswers || isAnalyzing}
-                            className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--workspace-primary)] px-4 py-2 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                          >
-                            {isSubmittingAnswers ? (
-                              <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
-                            ) : (
-                              <Check aria-hidden="true" className="size-4" />
-                            )}
+                          <button type="submit" disabled={isSubmittingAnswers || isAnalyzing} className={`inline-flex items-center justify-center gap-2 bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}>
+                            {isSubmittingAnswers ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Check aria-hidden="true" className="size-4" />}
                             {isSubmittingAnswers ? t('savingAnswers') : t('submitAnswersContinue')}
                           </button>
                         </form>
                       ) : (
-                        <div className="mt-6">{discoveryButton}</div>
+                        <div className="mt-8">{discoveryButton}</div>
                       )}
                     </div>
-
-                    <aside className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-5`}>
-                      <h3 className="text-xl font-semibold tracking-[-0.03em]">{t('decisionLedger')}</h3>
-                      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                        {t('decisionLedgerDesc')}
-                      </p>
-
-                      <dl className="mt-5 divide-y divide-[var(--workspace-border)] border-y border-black/[0.08]">
-                        <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
-                          <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                            {t('pending')}
-
-                          </dt>
-                          <dd className="font-mono text-sm font-semibold">{pendingClarifications.length}</dd>
-                        </div>
-                        <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
-                          <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                            {t('answered')}
-
-                          </dt>
-                          <dd className="font-mono text-sm font-semibold">{answeredClarifications.length}</dd>
-                        </div>
-                        <div className="grid grid-cols-[1fr_auto] gap-3 py-3">
-                          <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
-                            {t('contextSnapshot')}
-                          </dt>
-                          <dd className="font-mono text-sm font-semibold">v{initialData.contextVersion}</dd>
-                        </div>
-                      </dl>
-
-                      {answeredClarifications.length > 0 && (
-                        <div className="mt-6 space-y-3">
-                          {answeredClarifications.slice(-4).map((question) => (
-                            <div
-                              key={question.id}
-                              className="border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3 shadow-none"
-                            >
-                              <p className="font-mono text-[0.68rem] font-semibold text-[var(--workspace-faint)]">
-                                {t('answerRound', { round: question.round })}
-                              </p>
-                              <p className="mt-1 text-sm font-semibold leading-5">{question.question}</p>
-                              <p className="mt-2 line-clamp-3 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
-                                {question.answer}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </aside>
                   </section>
                 ) : (
-                  <section aria-label={t('structuredProjectContext')}>
-                    <div
-                      className={`${PANEL_SOFT_CLASS} mb-7 flex flex-wrap items-center gap-x-5 gap-y-2 bg-[var(--workspace-paper)] p-4 font-mono text-xs font-bold text-[var(--workspace-muted)]`}
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-[var(--workspace-border)] bg-[var(--workspace-mint)]" />
-                        {t('confirmedByOwner')}
-                      </span>
-                      <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-[var(--workspace-border)] bg-[var(--workspace-sun)]" />
-                        {t('assumedBySystem')}
-                      </span>
-                      <span className="inline-flex items-center gap-2">
-                        <span className="size-3 border border-[var(--workspace-border)] bg-[var(--workspace-paper)]" />
-                        {t('stillUnknown')}
-                      </span>
-                    </div>
-                    <div
-                      className={`${PANEL_CLASS} divide-y divide-[var(--workspace-border)] bg-[var(--workspace-paper)]`}
-                    >
-                      {Object.entries(initialData.context ?? {}).map(([key, value]) => (
-                        <section
-                          key={key}
-                          className="grid gap-4 p-6 lg:grid-cols-[minmax(12rem,0.28fr)_1fr] lg:gap-10"
-                        >
-                          <div>
-                            <h3 className="text-xl font-semibold tracking-[-0.04em]">
-                              {formatLabel(key)}
-                            </h3>
-                          </div>
-                          <div className="min-w-0 text-sm font-medium leading-6">
-                            {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(value) ? (
-                              <SensitiveContextValue label={contextLabels.sensitiveLabel} />
-                            ) : (
-                              <ContextValue value={value} locale={locale} {...contextLabels} />
-                            )}
-                          </div>
-                        </section>
-                      ))}
+                  <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-4xl">
+                    <div className="border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-6 py-8 shadow-[0_10px_28px_rgba(36,35,31,0.045)] sm:px-12 sm:py-12">
+                      <div className="mb-8 border-b border-[var(--workspace-border-subtle)] pb-6">
+                        <p className="max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">{t('canonicalProjectContextDesc')}</p>
+                        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs font-semibold text-[var(--workspace-muted)]">
+                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-primary)]" />{t('confirmedByOwner')}</span>
+                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-sun)]" />{t('assumedBySystem')}</span>
+                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full border border-[var(--workspace-border)] bg-white" />{t('stillUnknown')}</span>
+                        </div>
+                      </div>
+                      <div className="divide-y divide-[var(--workspace-border-subtle)]">
+                        {Object.entries(initialData.context ?? {}).map(([key, value]) => (
+                          <section key={key} className="relative py-7 first:pt-0 last:pb-0 lg:grid lg:grid-cols-[minmax(11rem,0.3fr)_1fr] lg:gap-10">
+                            <div>
+                              <h3 className="font-serif text-2xl leading-tight tracking-[-0.03em]">{formatLabel(key)}</h3>
+                            </div>
+                            <div className="mt-3 min-w-0 text-justify text-sm leading-7 text-[var(--workspace-body)] lg:mt-0">
+                              {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(value) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={value} locale={locale} {...contextLabels} />}
+                            </div>
+                          </section>
+                        ))}
+                      </div>
                     </div>
                   </section>
                 )}
