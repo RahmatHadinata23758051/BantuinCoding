@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { ArrowRight, Check, Copy, GitBranch, Layers } from 'lucide-react'
+import { Check, Copy, GitBranch, Layers } from 'lucide-react'
 
 import { cn } from '@/lib/ui'
 import { Button, Modal, StatusBadge } from './ui'
@@ -48,25 +48,100 @@ interface BacklogKanbanBoardProps {
   onTaskUpdated?: (task: { id: string; taskKey: string; status: string }) => void
 }
 
-const STATUS_OPTIONS: TaskStatus[] = ['PENDING', 'READY', 'IN_PROGRESS', 'BLOCKED', 'REVIEW', 'DONE']
-const PHASE_WIDTH = 286
-const PHASE_GAP = 32
+type StatusTone = 'neutral' | 'current' | 'pending' | 'success' | 'danger' | 'accent'
 
-const statusTone = (status: TaskStatus) => {
+type NodePoint = {
+  x: number
+  y: number
+}
+
+type TaskNode = {
+  task: KanbanTask
+  column: number
+  x: number
+  y: number
+  input: NodePoint
+  output: NodePoint
+}
+
+type GraphPhase = {
+  id: string
+  name: string
+  description: string | null
+  order: number
+  tasks: KanbanTask[]
+  height: number
+  phaseNode: {
+    x: number
+    y: number
+    width: number
+    height: number
+    output: NodePoint
+  }
+  taskNodes: TaskNode[]
+}
+
+const STATUS_OPTIONS: TaskStatus[] = ['PENDING', 'READY', 'IN_PROGRESS', 'BLOCKED', 'REVIEW', 'DONE']
+const PHASE_NODE_WIDTH = 178
+const PHASE_NODE_HEIGHT = 94
+const TASK_NODE_WIDTH = 236
+const TASK_NODE_HEIGHT = 138
+const TASK_COLUMN_GAP = 84
+const TASK_ROW_GAP = 24
+const PHASE_ROW_GAP = 76
+const GRAPH_PADDING_X = 28
+const GRAPH_PADDING_Y = 32
+const TASK_START_X = GRAPH_PADDING_X + PHASE_NODE_WIDTH + 122
+
+const statusTone = (status: TaskStatus): StatusTone => {
   switch (status) {
     case 'READY':
-      return 'pending' as const
+      return 'pending'
     case 'IN_PROGRESS':
-      return 'accent' as const
+      return 'accent'
     case 'BLOCKED':
-      return 'danger' as const
+      return 'danger'
     case 'REVIEW':
-      return 'current' as const
+      return 'current'
     case 'DONE':
-      return 'success' as const
+      return 'success'
     default:
-      return 'neutral' as const
+      return 'neutral'
   }
+}
+
+const getDependencyColumn = (
+  task: KanbanTask,
+  taskByReference: Map<string, KanbanTask>,
+  columns: Map<string, number>,
+  visiting: Set<string>,
+): number => {
+  const existing = columns.get(task.id)
+  if (existing !== undefined) return existing
+  if (visiting.has(task.id)) return 0
+
+  visiting.add(task.id)
+  const localDependencies = task.dependencies
+    .map((dependency) => taskByReference.get(dependency))
+    .filter((dependency): dependency is KanbanTask => Boolean(dependency && dependency.phaseId === task.phaseId))
+
+  const column =
+    localDependencies.length === 0
+      ? 0
+      : Math.max(
+          ...localDependencies.map((dependency) =>
+            getDependencyColumn(dependency, taskByReference, columns, visiting) + 1,
+          ),
+        )
+  visiting.delete(task.id)
+  columns.set(task.id, column)
+  return column
+}
+
+const edgePath = (source: NodePoint, target: NodePoint) => {
+  const distance = Math.max(38, Math.abs(target.x - source.x) / 2)
+  const direction = target.x >= source.x ? 1 : -1
+  return `M ${source.x} ${source.y} C ${source.x + distance * direction} ${source.y}, ${target.x - distance * direction} ${target.y}, ${target.x} ${target.y}`
 }
 
 export function BacklogKanbanBoard({
@@ -76,8 +151,6 @@ export function BacklogKanbanBoard({
 }: BacklogKanbanBoardProps) {
   const t = useTranslations('Workspace')
   const tCommon = useTranslations('Common')
-  const canvasRef = useRef<HTMLDivElement>(null)
-  const taskRefs = useRef<Record<string, HTMLElement | null>>({})
   const [tasks, setTasks] = useState<KanbanTask[]>(() =>
     phases.flatMap((phase) =>
       phase.tasks.map((task) => ({
@@ -96,7 +169,6 @@ export function BacklogKanbanBoard({
   const [copiedTaskKey, setCopiedTaskKey] = useState<string | null>(null)
   const [boardMessage, setBoardMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [copyMessage, setCopyMessage] = useState<string | null>(null)
-  const [layout, setLayout] = useState<Record<string, { inputX: number; outputX: number; y: number }>>({})
 
   const getStatusLabel = (status: TaskStatus) => {
     const key =
@@ -119,19 +191,7 @@ export function BacklogKanbanBoard({
     })
   }, [searchQuery, selectedPhase, tasks])
 
-  const phasesWithTasks = useMemo(
-    () =>
-      phases
-        .slice()
-        .sort((a, b) => a.order - b.order)
-        .map((phase) => ({
-          ...phase,
-          tasks: filteredTasks.filter((task) => task.phaseId === phase.id),
-        })),
-    [filteredTasks, phases],
-  )
-
-  const visibleTaskLookup = useMemo(() => {
+  const taskByReference = useMemo(() => {
     const lookup = new Map<string, KanbanTask>()
     filteredTasks.forEach((task) => {
       lookup.set(task.id, task)
@@ -140,52 +200,127 @@ export function BacklogKanbanBoard({
     return lookup
   }, [filteredTasks])
 
-  const dependencyEdges = useMemo(
+  const graphPhases = useMemo<GraphPhase[]>(() => {
+    const visiblePhases = phases
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((phase) => ({
+        id: phase.id,
+        name: phase.name,
+        description: phase.description,
+        order: phase.order,
+        tasks: filteredTasks.filter((task) => task.phaseId === phase.id),
+      }))
+      .filter((phase) => phase.tasks.length > 0)
+
+    const graph = visiblePhases.reduce<{ items: GraphPhase[]; top: number }>((accumulator, phase) => {
+      const columns = new Map<string, number>()
+      const phaseTaskLookup = new Map<string, KanbanTask>()
+      phase.tasks.forEach((task) => {
+        phaseTaskLookup.set(task.id, task)
+        phaseTaskLookup.set(task.taskKey, task)
+      })
+      phase.tasks.forEach((task) => {
+        getDependencyColumn(task, phaseTaskLookup, columns, new Set<string>())
+      })
+
+      const columnCount = Math.max(...phase.tasks.map((task) => columns.get(task.id) ?? 0), 0) + 1
+      const tasksByColumn = Array.from({ length: columnCount }, (_, column) =>
+        phase.tasks
+          .filter((task) => (columns.get(task.id) ?? 0) === column)
+          .sort((a, b) => a.phaseOrder - b.phaseOrder || a.taskKey.localeCompare(b.taskKey)),
+      )
+      const columnHeights = tasksByColumn.map(
+        (columnTasks) =>
+          columnTasks.length * TASK_NODE_HEIGHT + Math.max(0, columnTasks.length - 1) * TASK_ROW_GAP,
+      )
+      const height = Math.max(PHASE_NODE_HEIGHT, ...columnHeights) + 28
+      const phaseNodeY = accumulator.top + (height - PHASE_NODE_HEIGHT) / 2
+      const taskNodes = tasksByColumn.flatMap((columnTasks, column) => {
+        const columnHeight = columnHeights[column]
+        const columnTop = accumulator.top + (height - columnHeight) / 2
+        return columnTasks.map((task, index) => {
+          const x = TASK_START_X + column * (TASK_NODE_WIDTH + TASK_COLUMN_GAP)
+          const y = columnTop + index * (TASK_NODE_HEIGHT + TASK_ROW_GAP)
+          return {
+            task,
+            column,
+            x,
+            y,
+            input: { x, y: y + TASK_NODE_HEIGHT / 2 },
+            output: { x: x + TASK_NODE_WIDTH, y: y + TASK_NODE_HEIGHT / 2 },
+          }
+        })
+      })
+
+      const graphPhase: GraphPhase = {
+        ...phase,
+        height,
+        phaseNode: {
+          x: GRAPH_PADDING_X,
+          y: phaseNodeY,
+          width: PHASE_NODE_WIDTH,
+          height: PHASE_NODE_HEIGHT,
+          output: {
+            x: GRAPH_PADDING_X + PHASE_NODE_WIDTH,
+            y: phaseNodeY + PHASE_NODE_HEIGHT / 2,
+          },
+        },
+        taskNodes,
+      }
+
+      return {
+        items: [...accumulator.items, graphPhase],
+        top: accumulator.top + height + PHASE_ROW_GAP,
+      }
+    }, { items: [], top: GRAPH_PADDING_Y })
+
+    return graph.items
+  }, [filteredTasks, phases])
+
+  const taskNodesById = useMemo(() => {
+    const lookup = new Map<string, TaskNode>()
+    graphPhases.forEach((phase) => phase.taskNodes.forEach((node) => lookup.set(node.task.id, node)))
+    return lookup
+  }, [graphPhases])
+
+  const phaseEdges = useMemo(
     () =>
-      filteredTasks.flatMap((task) =>
-        task.dependencies.flatMap((dependency) => {
-          const source = visibleTaskLookup.get(dependency)
-          return source ? [{ sourceId: source.id, targetId: task.id }] : []
-        }),
+      graphPhases.flatMap((phase) =>
+        phase.taskNodes
+          .filter((node) => {
+            const visibleDependencies = node.task.dependencies.filter((dependency) => taskByReference.has(dependency))
+            return node.column === 0 && visibleDependencies.length === 0
+          })
+          .map((node) => ({ source: phase.phaseNode.output, target: node.input, id: `${phase.id}-${node.task.id}` })),
       ),
-    [filteredTasks, visibleTaskLookup],
+    [graphPhases, taskByReference],
   )
 
-  const measureLayout = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const canvasRect = canvas.getBoundingClientRect()
-    const nextLayout: Record<string, { inputX: number; outputX: number; y: number }> = {}
+  const dependencyEdges = useMemo(
+    () =>
+      filteredTasks.flatMap((task) => {
+        const target = taskNodesById.get(task.id)
+        if (!target) return []
+        return task.dependencies.flatMap((dependency) => {
+          const source = taskNodesById.get(taskByReference.get(dependency)?.id ?? '')
+          return source
+            ? [{ source: source.output, target: target.input, id: `${source.task.id}-${target.task.id}` }]
+            : []
+        })
+      }),
+    [filteredTasks, taskByReference, taskNodesById],
+  )
 
-    filteredTasks.forEach((task) => {
-      const element = taskRefs.current[task.id]
-      if (!element) return
-      const rect = element.getBoundingClientRect()
-      nextLayout[task.id] = {
-        inputX: rect.left - canvasRect.left,
-        outputX: rect.right - canvasRect.left,
-        y: rect.top - canvasRect.top + rect.height / 2,
-      }
-    })
-
-    setLayout(nextLayout)
-  }, [filteredTasks])
-
-  useLayoutEffect(() => {
-    const frame = window.requestAnimationFrame(measureLayout)
-    const observer = new ResizeObserver(measureLayout)
-    if (canvasRef.current) observer.observe(canvasRef.current)
-    Object.values(taskRefs.current).forEach((element) => {
-      if (element) observer.observe(element)
-    })
-    window.addEventListener('resize', measureLayout)
-
-    return () => {
-      window.cancelAnimationFrame(frame)
-      observer.disconnect()
-      window.removeEventListener('resize', measureLayout)
-    }
-  }, [measureLayout])
+  const graphWidth = Math.max(
+    960,
+    TASK_START_X +
+      Math.max(1, ...graphPhases.flatMap((phase) => phase.taskNodes.map((node) => node.column + 1))) *
+        (TASK_NODE_WIDTH + TASK_COLUMN_GAP) -
+      TASK_COLUMN_GAP +
+      GRAPH_PADDING_X,
+  )
+  const graphHeight = Math.max(260, (graphPhases.at(-1)?.height ?? 0) + (graphPhases.at(-1)?.phaseNode.y ?? 0) + GRAPH_PADDING_Y)
 
   const buildTaskExecutionPrompt = (taskKey: string) => {
     const task = tasks.find((item) => item.taskKey === taskKey || item.id === taskKey)
@@ -285,10 +420,6 @@ export function BacklogKanbanBoard({
 
   const nextReadyTask = tasks.find((task) => task.status === 'READY')
   const selectedTask = selectedTaskId ? tasks.find((task) => task.id === selectedTaskId) : null
-  const canvasWidth = Math.max(
-    760,
-    phasesWithTasks.length * PHASE_WIDTH + Math.max(0, phasesWithTasks.length - 1) * PHASE_GAP,
-  )
   const taskKeyById = new Map(tasks.map((task) => [task.id, task.taskKey]))
 
   return (
@@ -399,152 +530,129 @@ export function BacklogKanbanBoard({
         ) : (
           <div className="overflow-x-auto overscroll-x-contain" data-lenis-prevent-wheel>
             <div
-              ref={canvasRef}
-              className="relative min-h-[34rem]"
-              style={{ width: `${canvasWidth}px` }}
+              className="relative"
+              role="list"
+              aria-label={t('backlogMapTitle')}
+              style={{ width: `${graphWidth}px`, height: `${graphHeight}px` }}
             >
               <svg
                 className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible"
                 aria-hidden="true"
               >
-                <defs>
-                  <marker id="backlog-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-                    <path d="M0,0 L7,3.5 L0,7 z" fill="var(--workspace-primary)" />
-                  </marker>
-                </defs>
-                {dependencyEdges.map((edge) => {
-                  const source = layout[edge.sourceId]
-                  const target = layout[edge.targetId]
-                  if (!source || !target) return null
-                  const distance = Math.max(28, (target.inputX - source.outputX) / 2)
-                  return (
-                    <path
-                      key={`${edge.sourceId}-${edge.targetId}`}
-                      d={`M ${source.outputX} ${source.y} C ${source.outputX + distance} ${source.y}, ${target.inputX - distance} ${target.y}, ${target.inputX} ${target.y}`}
-                      fill="none"
-                      stroke="var(--workspace-primary)"
-                      strokeOpacity="0.42"
-                      strokeWidth="1.5"
-                      markerEnd="url(#backlog-arrow)"
-                    />
-                  )
-                })}
+                {[...phaseEdges, ...dependencyEdges].map((edge) => (
+                  <path
+                    key={edge.id}
+                    d={edgePath(edge.source, edge.target)}
+                    fill="none"
+                    stroke="var(--workspace-primary)"
+                    strokeLinecap="round"
+                    strokeOpacity="0.48"
+                    strokeWidth="2"
+                  />
+                ))}
               </svg>
 
-              <div className="relative z-10 grid items-start gap-8" style={{ gridTemplateColumns: `repeat(${phasesWithTasks.length}, ${PHASE_WIDTH}px)` }}>
-                {phasesWithTasks.map((phase, phaseIndex) => {
-                  const completed = phase.tasks.filter((task) => task.status === 'DONE').length
-                  return (
-                    <section
-                      key={phase.id}
-                      aria-labelledby={`backlog-phase-${phase.id}`}
-                      className="min-h-[31rem] rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3"
+              {graphPhases.map((phase) => {
+                const completed = phase.tasks.filter((task) => task.status === 'DONE').length
+                return (
+                  <div key={phase.id}>
+                    <div
+                      role="listitem"
+                      className="absolute z-10 flex flex-col justify-center rounded-[1.25rem] border-2 border-[var(--workspace-primary)] bg-[var(--workspace-paper)] px-4 py-3 text-center shadow-sm"
+                      style={{
+                        left: `${phase.phaseNode.x}px`,
+                        top: `${phase.phaseNode.y}px`,
+                        width: `${phase.phaseNode.width}px`,
+                        height: `${phase.phaseNode.height}px`,
+                      }}
                     >
-                      <div className="mb-3 border-b border-[var(--workspace-border-subtle)] pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-mono text-[0.64rem] font-medium text-[var(--workspace-muted)]">
-                              {t('backlogPhaseNumber', { order: phaseIndex + 1 })}
-                            </p>
-                            <h4 id={`backlog-phase-${phase.id}`} className="mt-1 text-sm font-semibold text-[var(--workspace-ink)]">
-                              {phase.name}
-                            </h4>
+                      <span className="font-mono text-[0.62rem] font-medium uppercase text-[var(--workspace-muted)]">
+                        {t('backlogPhaseNumber', { order: phase.order })}
+                      </span>
+                      <span className="mt-1 text-sm font-semibold leading-5 text-[var(--workspace-ink)]">
+                        {phase.name}
+                      </span>
+                      <span className="mt-1 font-mono text-[0.62rem] text-[var(--workspace-muted)]">
+                        {completed}/{phase.tasks.length} {t('backlogDoneLabel')}
+                      </span>
+                    </div>
+
+                    {phase.taskNodes.map((node) => {
+                      const dependencyLabels = node.task.dependencies.map(
+                        (dependency) => taskKeyById.get(dependency) ?? dependency,
+                      )
+                      const isMoving = movingTaskId === node.task.id || movingTaskId === node.task.taskKey
+                      return (
+                        <article
+                          key={node.task.id}
+                          role="listitem"
+                          className={cn(
+                            'absolute z-10 rounded-[1rem] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3 shadow-sm transition-opacity',
+                            isMoving && 'opacity-55',
+                            node.task.status === 'DONE' && 'border-[#9dccb1] bg-[var(--workspace-mint-soft)]/45',
+                          )}
+                          style={{
+                            left: `${node.x}px`,
+                            top: `${node.y}px`,
+                            width: `${TASK_NODE_WIDTH}px`,
+                            height: `${TASK_NODE_HEIGHT}px`,
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-mono text-[0.68rem] font-semibold text-[var(--workspace-primary)]">
+                              {node.task.taskKey}
+                            </span>
+                            <select
+                              value={node.task.status}
+                              disabled={isMoving}
+                              onChange={(event) => {
+                                event.stopPropagation()
+                                void handleUpdateTaskStatus(node.task.id, event.target.value as TaskStatus)
+                              }}
+                              onClick={(event) => event.stopPropagation()}
+                              aria-label={t('backlogMoveTask', { task: node.task.taskKey })}
+                              title={t('backlogMoveTaskTitle')}
+                              className={cn(
+                                'min-h-6 max-w-[8rem] rounded-full border-0 px-2 py-1 text-[0.65rem] font-semibold leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]',
+                                statusTone(node.task.status) === 'neutral' && 'bg-[#f2f1f0] text-[var(--color-ink-black)]',
+                                statusTone(node.task.status) === 'current' && 'bg-[var(--color-notion-blue)] text-white',
+                                statusTone(node.task.status) === 'pending' && 'bg-[var(--electric-yellow-dim)] text-[var(--color-ink-black)]',
+                                statusTone(node.task.status) === 'success' && 'bg-[var(--mint-dim)] text-[#1b6a4e]',
+                                statusTone(node.task.status) === 'danger' && 'bg-[var(--action-red-dim)] text-[var(--color-vermillion)]',
+                                statusTone(node.task.status) === 'accent' && 'bg-[var(--lavender-dim)] text-[var(--color-midnight-ink)]',
+                              )}
+                            >
+                              {STATUS_OPTIONS.map((status) => (
+                                <option key={status} value={status}>
+                                  {getStatusLabel(status)}
+                                </option>
+                              ))}
+                            </select>
                           </div>
-                          <StatusBadge tone={completed === phase.tasks.length && phase.tasks.length > 0 ? 'success' : 'neutral'}>
-                            {completed}/{phase.tasks.length}
-                          </StatusBadge>
-                        </div>
-                        {phase.description && <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--workspace-muted)]">{phase.description}</p>}
-                      </div>
 
-                      <div className="space-y-3" role="list" aria-label={phase.name}>
-                        {phase.tasks.length === 0 ? (
-                          <p className="rounded-[var(--radius-buttons)] border border-dashed border-[var(--workspace-border)] p-3 text-xs text-[var(--workspace-muted)]">
-                            {t('backlogNoMatchingTasks')}
-                          </p>
-                        ) : (
-                          phase.tasks.map((task) => {
-                            const dependencyLabels = task.dependencies.map((dependency) => taskKeyById.get(dependency) ?? dependency)
-                            const isMoving = movingTaskId === task.id || movingTaskId === task.taskKey
-                            return (
-                              <article
-                                key={task.id}
-                                ref={(element) => { taskRefs.current[task.id] = element }}
-                                role="listitem"
-                                className={cn(
-                                  'rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] p-3 transition-opacity',
-                                  isMoving && 'opacity-55',
-                                  task.status === 'DONE' && 'bg-[var(--workspace-mint-soft)]/40',
-                                )}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <span className="font-mono text-[0.68rem] font-semibold text-[var(--workspace-primary)]">
-                                    {task.taskKey}
-                                  </span>
-                                  <select
-                                    value={task.status}
-                                    disabled={isMoving}
-                                    onChange={(event) => {
-                                      event.stopPropagation()
-                                      void handleUpdateTaskStatus(task.id, event.target.value as TaskStatus)
-                                    }}
-                                    onClick={(event) => event.stopPropagation()}
-                                    aria-label={t('backlogMoveTask', { task: task.taskKey })}
-                                    title={t('backlogMoveTaskTitle')}
-                                    className={cn(
-                                      'min-h-6 max-w-[7.5rem] rounded-full border-0 px-2 py-1 text-[0.65rem] font-semibold leading-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]',
-                                      statusTone(task.status) === 'neutral' && 'bg-[#f2f1f0] text-[var(--color-ink-black)]',
-                                      statusTone(task.status) === 'current' && 'bg-[var(--color-notion-blue)] text-white',
-                                      statusTone(task.status) === 'pending' && 'bg-[var(--electric-yellow-dim)] text-[var(--color-ink-black)]',
-                                      statusTone(task.status) === 'success' && 'bg-[var(--mint-dim)] text-[#1b6a4e]',
-                                      statusTone(task.status) === 'danger' && 'bg-[var(--action-red-dim)] text-[var(--color-vermillion)]',
-                                      statusTone(task.status) === 'accent' && 'bg-[var(--lavender-dim)] text-[var(--color-midnight-ink)]',
-                                    )}
-                                  >
-                                    {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{getStatusLabel(status)}</option>)}
-                                  </select>
-                                </div>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTaskId(node.task.id)}
+                            className="mt-2 block w-full truncate text-left text-sm font-semibold leading-5 text-[var(--workspace-ink)] underline decoration-transparent underline-offset-4 transition-colors hover:text-[var(--workspace-primary)] hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
+                          >
+                            {node.task.title}
+                          </button>
+                          <p className="mt-1 line-clamp-2 text-xs leading-4 text-[var(--workspace-muted)]">{node.task.description}</p>
 
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedTaskId(task.id)}
-                                  className="mt-2 block w-full text-left text-sm font-semibold leading-5 text-[var(--workspace-ink)] underline decoration-transparent underline-offset-4 transition-colors hover:text-[var(--workspace-primary)] hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
-                                >
-                                  {task.title}
-                                </button>
-                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--workspace-muted)]">{task.description}</p>
-
-                                <div className="mt-3 flex flex-wrap gap-1.5">
-                                  {dependencyLabels.length > 0 && (
-                                    <span
-                                      className="rounded-full border border-[#dfc777] bg-[var(--workspace-yellow-soft)] px-2 py-1 font-mono text-[0.62rem] font-medium text-[#8a5b00]"
-                                      title={t('backlogDependsOn', { tasks: dependencyLabels.join(', ') })}
-                                    >
-                                      {t('backlogDependsShort', { tasks: dependencyLabels.join(', ') })}
-                                    </span>
-                                  )}
-                                  {task.recommendedSkills.length > 0 && (
-                                    <span className="rounded-full border border-[#a9d9bf] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[0.62rem] font-medium text-[#28734b]">
-                                      {t('backlogSkillShort', { skills: task.recommendedSkills[0] })}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--workspace-border-subtle)] pt-2">
-                                  <span className="text-[0.65rem] text-[var(--workspace-muted)]">
-                                    {task.dependencies.length > 0 ? t('backlogDependencyCount', { count: task.dependencies.length }) : t('backlogNoDependencies')}
-                                  </span>
-                                  <ArrowRight size={14} className="text-[var(--workspace-primary)]" aria-hidden="true" />
-                                </div>
-                              </article>
-                            )
-                          })
-                        )}
-                      </div>
-                    </section>
-                  )
-                })}
-              </div>
+                          {dependencyLabels.length > 0 && (
+                            <span
+                              className="absolute bottom-3 left-3 right-3 truncate font-mono text-[0.62rem] text-[#8a5b00]"
+                              title={t('backlogDependsOn', { tasks: dependencyLabels.join(', ') })}
+                            >
+                              {t('backlogDependsShort', { tasks: dependencyLabels.join(', ') })}
+                            </span>
+                          )}
+                        </article>
+                      )
+                    })}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

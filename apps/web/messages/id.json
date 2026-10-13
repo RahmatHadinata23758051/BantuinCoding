@@ -823,6 +823,7 @@
     "backlogNoMatchingTasks": "Tidak ada tugas yang cocok",
     "backlogDependencyCount": "{count} dependensi",
     "backlogNoDependencies": "Tidak ada dependensi",
+    "backlogDoneLabel": "selesai",
     "backlogDescription": "Deskripsi",
     "generationProgressTitle": "Progres pembuatan dokumen",
     "generationProgressDesc": "Setiap tahap hanya diperbarui setelah permintaan server berhasil. Tidak ada persentase perkiraan.",
