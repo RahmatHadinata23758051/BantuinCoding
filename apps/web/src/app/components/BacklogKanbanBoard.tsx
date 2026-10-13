@@ -226,7 +226,6 @@ export function BacklogKanbanBoard({
     }
   }
 
-  const nextReadyTask = tasks.find((task) => task.status === 'READY')
   const selectedTask = selectedTaskId ? tasks.find((task) => task.id === selectedTaskId) : null
 
   return (
@@ -262,34 +261,6 @@ export function BacklogKanbanBoard({
             className="w-48 rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-3 py-1.5 font-mono text-xs font-medium text-[var(--workspace-ink)] placeholder:text-[var(--workspace-muted)] focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
           />
         </div>
-
-        {nextReadyTask && (
-          <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-buttons)] border border-[#dfc777] bg-[var(--workspace-yellow-soft)] px-3 py-2">
-            <span className="font-mono text-[0.68rem] font-medium uppercase text-[#8a5b00]">
-              {t('backlogNextAction')}:
-            </span>
-            <span className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">
-              {nextReadyTask.taskKey}
-            </span>
-            <span className="max-w-[200px] truncate text-xs font-medium text-[var(--workspace-ink)]">
-              {nextReadyTask.title}
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => copyPrompt(nextReadyTask.taskKey)}
-              className="h-6 gap-1 px-2 text-[0.7rem]"
-              title={t('backlogCopyPrompt')}
-            >
-              {copiedTaskKey === nextReadyTask.taskKey ? (
-                <><Check size={12} aria-hidden="true" /> {t('backlogCopied')}</>
-              ) : (
-                <><Copy size={12} aria-hidden="true" /> {t('backlogCopyPrompt')}</>
-              )}
-            </Button>
-          </div>
-        )}
       </div>
 
       {copyMessage && <p className="sr-only" role="status" aria-live="polite">{copyMessage}</p>}
