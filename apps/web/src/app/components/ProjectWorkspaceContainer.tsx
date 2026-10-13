@@ -263,6 +263,94 @@ function hasContextData(context: Record<string, unknown> | null) {
   return Boolean(context && Object.keys(context).length > 0)
 }
 
+type ContextProvenance = 'confirmed' | 'assumed' | 'unknown'
+type ContextProvenanceCounts = Record<ContextProvenance, number>
+
+const CONTEXT_CATEGORY_DEFINITIONS = [
+  {
+    id: 'intent',
+    labelKey: 'contextCategoryIntent',
+    descriptionKey: 'contextCategoryIntentDesc',
+    keys: ['goals', 'non_goals'],
+  },
+  {
+    id: 'audience',
+    labelKey: 'contextCategoryAudience',
+    descriptionKey: 'contextCategoryAudienceDesc',
+    keys: ['target_users'],
+  },
+  {
+    id: 'experience',
+    labelKey: 'contextCategoryExperience',
+    descriptionKey: 'contextCategoryExperienceDesc',
+    keys: ['design_direction', 'core_entities'],
+  },
+  {
+    id: 'scope',
+    labelKey: 'contextCategoryScope',
+    descriptionKey: 'contextCategoryScopeDesc',
+    keys: ['functional_requirements'],
+  },
+  {
+    id: 'constraints',
+    labelKey: 'contextCategoryConstraints',
+    descriptionKey: 'contextCategoryConstraintsDesc',
+    keys: [
+      'non_functional_requirements',
+      'technical_constraints',
+      'stack_preferences',
+      'security_requirements',
+      'integrations',
+      'deployment_target',
+      'agent_target',
+    ],
+  },
+  {
+    id: 'decisions',
+    labelKey: 'contextCategoryDecisions',
+    descriptionKey: 'contextCategoryDecisionsDesc',
+    keys: ['confirmed_decisions', 'assumptions', 'open_questions'],
+  },
+] as const
+
+function getContextProvenanceCounts(context: Record<string, unknown>, keys: readonly string[]): ContextProvenanceCounts {
+  const counts: ContextProvenanceCounts = { confirmed: 0, assumed: 0, unknown: 0 }
+
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+
+    if (!value || typeof value !== 'object') return
+
+    const record = value as Record<string, unknown>
+    const provenance = record.provenance
+    if (provenance === 'confirmed' || provenance === 'assumed' || provenance === 'unknown') {
+      counts[provenance] += 1
+      return
+    }
+
+    Object.values(record).forEach(visit)
+  }
+
+  keys.forEach((key) => visit(context[key]))
+  return counts
+}
+
+function countContextItems(value: unknown): number {
+  if (value === null || value === undefined || value === '') return 0
+  if (Array.isArray(value)) return value.length
+  if (typeof value !== 'object') return 1
+
+  const record = value as Record<string, unknown>
+  if (record.provenance === 'confirmed' || record.provenance === 'assumed' || record.provenance === 'unknown') {
+    return 1
+  }
+
+  return Object.values(record).reduce<number>((total, nestedValue) => total + countContextItems(nestedValue), 0)
+}
+
 function SectionHeading({
   title,
   description,
@@ -538,6 +626,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     text: string
   } | null>(null)
   const [clarifications, setClarifications] = useState(initialData.clarifications)
+  const [openContextCategory, setOpenContextCategory] = useState<string | null>(null)
   const [projectStatus, setProjectStatus] = useState(initialData.status)
   const sectionTabRefs = useRef(new Map<WorkspaceSection, HTMLButtonElement>())
 
@@ -554,6 +643,22 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const pendingClarifications = clarifications.filter((question) => question.status === 'PENDING')
   const answeredClarifications = clarifications.filter((question) => question.status === 'ANSWERED')
   const contextReady = hasContextData(initialData.context)
+  const contextCategories = CONTEXT_CATEGORY_DEFINITIONS.map((category) => {
+    const categoryKeys = category.keys.filter((key) => Object.prototype.hasOwnProperty.call(initialData.context ?? {}, key))
+    const counts = getContextProvenanceCounts(initialData.context ?? {}, categoryKeys)
+    const itemCount = categoryKeys.reduce((total, key) => total + countContextItems(initialData.context?.[key]), 0)
+
+    return { ...category, categoryKeys, counts, itemCount }
+  }).filter((category) => category.itemCount > 0)
+  const contextProvenanceCounts = contextCategories.reduce<ContextProvenanceCounts>(
+    (total, category) => ({
+      confirmed: total.confirmed + category.counts.confirmed,
+      assumed: total.assumed + category.counts.assumed,
+      unknown: total.unknown + category.counts.unknown,
+    }),
+    { confirmed: 0, assumed: 0, unknown: 0 },
+  )
+  const contextDetailId = (categoryId: string) => `context-category-${categoryId}`
   const requiredArtifacts = initialData.requiredArtifactTypes
     .map((type) => artifacts.find((artifact) => artifact.type === type))
     .filter((artifact): artifact is WorkspaceArtifactItem => Boolean(artifact))
@@ -1663,27 +1768,79 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     </div>
                   </section>
                 ) : (
-                  <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-4xl">
-                    <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-12">
-                      <div className="mb-9 border-b border-[var(--workspace-border-subtle)] pb-7 sm:mb-10">
-                        <p className="max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">{t('canonicalProjectContextDesc')}</p>
-                        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs font-semibold text-[var(--workspace-muted)]">
-                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-primary)]" />{t('confirmedByOwner')}</span>
-                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-sun)]" />{t('assumedBySystem')}</span>
-                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full border border-[var(--workspace-border)] bg-white" />{t('stillUnknown')}</span>
+                  <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-5xl">
+                    <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-10">
+                      <div className="border-b border-[var(--workspace-border-subtle)] pb-8 sm:pb-10">
+                        <div className="max-w-3xl">
+                          <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('contextInterviewSummary')}</p>
+                          <h3 className="mt-3 font-[var(--font-lyon-text)] text-3xl leading-tight tracking-[-0.035em] text-[var(--workspace-ink)] sm:text-4xl">{t('contextSummaryHeading')}</h3>
+                          <div className="mt-5 text-base leading-8 text-[var(--workspace-body)] sm:text-lg">
+                            <ContextValue value={initialData.context?.summary ?? initialData.description ?? t('noBrief')} locale={locale} {...contextLabels} />
+                          </div>
+                        </div>
+                        <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--workspace-border-subtle)] pt-5 font-mono text-xs font-semibold text-[var(--workspace-muted)]">
+                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-primary)]" />{t('confirmedByOwner')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.confirmed}</strong></span>
+                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-sun)]" />{t('assumedBySystem')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.assumed}</strong></span>
+                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full border border-[var(--workspace-border)] bg-white" />{t('stillUnknown')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.unknown}</strong></span>
                         </div>
                       </div>
-                      <div className="divide-y divide-[var(--workspace-border-subtle)]">
-                        {Object.entries(initialData.context ?? {}).map(([key, value]) => (
-                          <section key={key} className="relative py-7 first:pt-0 last:pb-0 lg:grid lg:grid-cols-[minmax(11rem,0.3fr)_1fr] lg:gap-10">
-                            <div>
-                              <h3 className="font-[var(--font-lyon-text)] text-2xl leading-tight tracking-[-0.03em]">{formatLabel(key)}</h3>
-                            </div>
-                            <div className="mt-3 min-w-0 text-justify text-sm leading-7 text-[var(--workspace-body)] lg:mt-0">
-                              {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(value) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={value} locale={locale} {...contextLabels} />}
-                            </div>
-                          </section>
-                        ))}
+
+                      <div className="pt-8 sm:pt-10">
+                        <div className="flex items-end justify-between gap-4">
+                          <div>
+                            <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('contextMapLabel')}</p>
+                            <h3 className="mt-2 font-[var(--font-lyon-text)] text-2xl leading-tight tracking-[-0.03em] text-[var(--workspace-ink)] sm:text-3xl">{t('contextCategoriesHeading')}</h3>
+                          </div>
+                          <span className="hidden font-mono text-xs text-[var(--workspace-muted)] sm:block">{t('contextCategoryCount', { count: contextCategories.length })}</span>
+                        </div>
+
+                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                          {contextCategories.map((category) => {
+                            const isOpen = openContextCategory === category.id
+                            const detailId = contextDetailId(category.id)
+
+                            return (
+                              <article key={category.id} className={`border bg-[var(--workspace-paper)] transition-colors ${isOpen ? 'border-[var(--workspace-primary)]' : 'border-[var(--workspace-border)]'}`}>
+                                <button
+                                  type="button"
+                                  aria-expanded={isOpen}
+                                  aria-controls={detailId}
+                                  onClick={() => setOpenContextCategory(isOpen ? null : category.id)}
+                                  className={`flex w-full items-start justify-between gap-4 p-5 text-left ${BUTTON_FOCUS_CLASS}`}
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block font-[var(--font-lyon-text)] text-2xl leading-tight tracking-[-0.025em] text-[var(--workspace-ink)]">{t(category.labelKey)}</span>
+                                    <span className="mt-2 block text-sm leading-6 text-[var(--workspace-muted)]">{t(category.descriptionKey)}</span>
+                                  </span>
+                                  <ChevronRight aria-hidden="true" className={`mt-1 size-5 shrink-0 text-[var(--workspace-primary)] transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                                </button>
+                                <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--workspace-border-subtle)] px-5 py-3 font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
+                                  <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-primary)]" />{category.counts.confirmed} {t('confirmedShort')}</span>
+                                  <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-sun)]" />{category.counts.assumed} {t('assumedShort')}</span>
+                                  <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full border border-[var(--workspace-border)] bg-white" />{category.counts.unknown} {t('unknownShort')}</span>
+                                </div>
+                                {isOpen && (
+                                  <div id={detailId} className="border-t border-[var(--workspace-border-subtle)] px-5 py-5" role="region" aria-label={t(category.labelKey)}>
+                                    <div className="space-y-6">
+                                      {category.categoryKeys.map((key) => (
+                                        <div key={key} className="border-l-2 border-[var(--workspace-primary)] pl-4">
+                                          <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">{formatLabel(key)}</h4>
+                                          <div className="mt-2 text-sm leading-7 text-[var(--workspace-body)]">
+                                            {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(initialData.context?.[key]) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={initialData.context?.[key]} locale={locale} {...contextLabels} />}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </article>
+                            )
+                          })}
+                        </div>
+
+                        <div className="mt-5 border-l-2 border-[var(--workspace-primary)] bg-[var(--workspace-yellow-soft)] px-4 py-3 text-sm leading-6 text-[var(--workspace-ink)]">
+                          {t('contextOpenQuestionsNotice', { count: contextProvenanceCounts.unknown })}
+                        </div>
                       </div>
                     </div>
                   </section>
