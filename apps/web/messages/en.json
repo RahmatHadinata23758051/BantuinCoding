@@ -1008,6 +1008,7 @@
     "assumedShort": "assumed",
     "unknownShort": "unknown",
     "contextOpenQuestionsNotice": "{count} unresolved items remain visible for the next decision round.",
+    "contextOpenCategory": "Open topic details.",
     "agentLabel": "Agent: {agent}",
     "phaseLabel": "Phase:",
     "allPhases": "All phases ({count})",

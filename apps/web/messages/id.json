@@ -1008,6 +1008,7 @@
     "assumedShort": "asumsi",
     "unknownShort": "belum diketahui",
     "contextOpenQuestionsNotice": "Masih ada {count} hal yang belum terselesaikan untuk putaran keputusan berikutnya.",
+    "contextOpenCategory": "Buka detail topik.",
     "agentLabel": "Agen: {agent}",
     "phaseLabel": "Fase:",
     "allPhases": "Semua fase ({count})",

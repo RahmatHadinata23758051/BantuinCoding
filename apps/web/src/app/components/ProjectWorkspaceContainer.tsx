@@ -658,7 +658,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     }),
     { confirmed: 0, assumed: 0, unknown: 0 },
   )
-  const contextDetailId = (categoryId: string) => `context-category-${categoryId}`
+  const selectedContextCategory = contextCategories.find((category) => category.id === openContextCategory) ?? null
   const requiredArtifacts = initialData.requiredArtifactTypes
     .map((type) => artifacts.find((artifact) => artifact.type === type))
     .filter((artifact): artifact is WorkspaceArtifactItem => Boolean(artifact))
@@ -1677,7 +1677,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 <div className="flex flex-col gap-3 border-b border-[var(--workspace-border)] pb-6 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-[var(--workspace-muted)]">{t('tabContext')}</p>
-                    <h2 className="mt-2 max-w-2xl font-[var(--font-lyon-text)] text-4xl leading-[0.98] tracking-[-0.04em] text-[var(--workspace-ink)] sm:text-5xl">
+                    <h2 className="mt-2 max-w-2xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl">
                       {contextReady ? t('contextBriefTitle') : t('contextQuestionsTitle')}
                     </h2>
                   </div>
@@ -1691,7 +1691,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-10">
                       <div className="border-b border-[var(--workspace-border-subtle)] pb-7">
                         <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('discoveryInterview')}</p>
-                        <h3 className="mt-3 max-w-2xl font-[var(--font-lyon-text)] text-3xl leading-tight tracking-[-0.035em] sm:text-4xl">
+                        <h3 className="mt-3 max-w-2xl text-3xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-4xl">
                           {pendingClarifications.length > 0 ? t('answerOpenDecisions') : t('contextNotAssembled')}
                         </h3>
                         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
@@ -1768,13 +1768,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     </div>
                   </section>
                 ) : (
-                  <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-5xl">
+                  <>
+                    <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-5xl">
                     <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-10">
                       <div className="border-b border-[var(--workspace-border-subtle)] pb-8 sm:pb-10">
                         <div className="max-w-3xl">
                           <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('contextInterviewSummary')}</p>
                           <h3 className="mt-3 font-[var(--font-lyon-text)] text-3xl leading-tight tracking-[-0.035em] text-[var(--workspace-ink)] sm:text-4xl">{t('contextSummaryHeading')}</h3>
-                          <div className="mt-5 text-base leading-8 text-[var(--workspace-body)] sm:text-lg">
+                          <div className="mt-5 rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:p-6 sm:text-base">
                             <ContextValue value={initialData.context?.summary ?? initialData.description ?? t('noBrief')} locale={locale} {...contextLabels} />
                           </div>
                         </div>
@@ -1796,43 +1797,25 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                         <div className="mt-6 grid gap-3 sm:grid-cols-2">
                           {contextCategories.map((category) => {
-                            const isOpen = openContextCategory === category.id
-                            const detailId = contextDetailId(category.id)
-
                             return (
-                              <article key={category.id} className={`border bg-[var(--workspace-paper)] transition-colors ${isOpen ? 'border-[var(--workspace-primary)]' : 'border-[var(--workspace-border)]'}`}>
+                              <article key={category.id} className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 transition-colors hover:border-[var(--workspace-primary)] sm:p-5">
                                 <button
                                   type="button"
-                                  aria-expanded={isOpen}
-                                  aria-controls={detailId}
-                                  onClick={() => setOpenContextCategory(isOpen ? null : category.id)}
-                                  className={`flex w-full items-start justify-between gap-4 p-5 text-left ${BUTTON_FOCUS_CLASS}`}
+                                  aria-label={`${t(category.labelKey)} — ${t('contextOpenCategory')}`}
+                                  onClick={() => setOpenContextCategory(category.id)}
+                                  className={`flex w-full items-start justify-between gap-4 text-left ${BUTTON_FOCUS_CLASS}`}
                                 >
                                   <span className="min-w-0">
-                                    <span className="block font-[var(--font-lyon-text)] text-2xl leading-tight tracking-[-0.025em] text-[var(--workspace-ink)]">{t(category.labelKey)}</span>
-                                    <span className="mt-2 block text-sm leading-6 text-[var(--workspace-muted)]">{t(category.descriptionKey)}</span>
+                                    <span className="block text-xl font-semibold leading-tight tracking-[-0.03em] text-[var(--workspace-ink)] sm:text-2xl">{t(category.labelKey)}</span>
+                                    <span className="mt-2 block text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base">{t(category.descriptionKey)}</span>
                                   </span>
-                                  <ChevronRight aria-hidden="true" className={`mt-1 size-5 shrink-0 text-[var(--workspace-primary)] transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                                  <ChevronRight aria-hidden="true" className="mt-1 size-5 shrink-0 text-[var(--workspace-primary)]" />
                                 </button>
-                                <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--workspace-border-subtle)] px-5 py-3 font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
+                                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--workspace-border-subtle)] pt-3 font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
                                   <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-primary)]" />{category.counts.confirmed} {t('confirmedShort')}</span>
                                   <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-sun)]" />{category.counts.assumed} {t('assumedShort')}</span>
                                   <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full border border-[var(--workspace-border)] bg-white" />{category.counts.unknown} {t('unknownShort')}</span>
                                 </div>
-                                {isOpen && (
-                                  <div id={detailId} className="border-t border-[var(--workspace-border-subtle)] px-5 py-5" role="region" aria-label={t(category.labelKey)}>
-                                    <div className="space-y-6">
-                                      {category.categoryKeys.map((key) => (
-                                        <div key={key} className="border-l-2 border-[var(--workspace-primary)] pl-4">
-                                          <h4 className="font-mono text-xs font-bold text-[var(--workspace-faint)]">{formatLabel(key)}</h4>
-                                          <div className="mt-2 text-sm leading-7 text-[var(--workspace-body)]">
-                                            {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(initialData.context?.[key]) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={initialData.context?.[key]} locale={locale} {...contextLabels} />}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
                               </article>
                             )
                           })}
@@ -1843,7 +1826,37 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         </div>
                       </div>
                     </div>
-                  </section>
+                    </section>
+
+                    <Modal
+                    open={Boolean(selectedContextCategory)}
+                    onClose={() => setOpenContextCategory(null)}
+                    title={selectedContextCategory ? t(selectedContextCategory.labelKey) : ''}
+                    description={selectedContextCategory ? t(selectedContextCategory.descriptionKey) : undefined}
+                    closeLabel={t('closeDialog')}
+                    className="max-w-3xl border-[var(--workspace-border)] bg-[var(--workspace-paper)] shadow-[0_24px_70px_rgba(36,35,31,0.18)]"
+                  >
+                    {selectedContextCategory && (
+                      <div className="space-y-6">
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 border-b border-[var(--workspace-border-subtle)] pb-4 font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
+                          <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-primary)]" />{selectedContextCategory.counts.confirmed} {t('confirmedShort')}</span>
+                          <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-sun)]" />{selectedContextCategory.counts.assumed} {t('assumedShort')}</span>
+                          <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full border border-[var(--workspace-border)] bg-white" />{selectedContextCategory.counts.unknown} {t('unknownShort')}</span>
+                        </div>
+                        <div className="space-y-5">
+                          {selectedContextCategory.categoryKeys.map((key) => (
+                            <section key={key} className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 sm:p-5">
+                              <h3 className="text-sm font-semibold tracking-[-0.02em] text-[var(--workspace-ink)]">{formatLabel(key)}</h3>
+                              <div className="mt-3 text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base">
+                                {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(initialData.context?.[key]) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={initialData.context?.[key]} locale={locale} {...contextLabels} />}
+                              </div>
+                            </section>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    </Modal>
+                  </>
                 )}
               </div>
 
