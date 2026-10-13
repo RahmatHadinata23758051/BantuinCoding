@@ -332,7 +332,7 @@ export function BacklogKanbanBoard({
             <p className="text-sm font-medium text-[var(--workspace-muted)]">{t('backlogNoMatchingTasks')}</p>
           </div>
         ) : (
-          <div className="overflow-x-auto overscroll-x-contain" data-lenis-prevent-wheel>
+          <div className="overflow-x-auto overscroll-x-contain">
             <div
               className="grid min-w-max items-start gap-8 px-2 py-3"
               role="list"
