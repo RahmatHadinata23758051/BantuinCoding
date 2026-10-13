@@ -1885,13 +1885,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     action={generateButton}
                   />
                 ) : (
-                  <div className="[&>div]:rounded-xl [&>div]:border [&>div]:border-black/[0.08] [&>div]:shadow-none">
-                    <MarkdownWorkspace
-                      projectId={initialData.id}
-                      artifacts={artifacts}
-                      onArtifactUpdated={handleArtifactUpdated}
-                    />
-                  </div>
+                  <MarkdownWorkspace
+                    projectId={initialData.id}
+                    artifacts={artifacts}
+                    onArtifactUpdated={handleArtifactUpdated}
+                  />
                 )}
               </div>
 
