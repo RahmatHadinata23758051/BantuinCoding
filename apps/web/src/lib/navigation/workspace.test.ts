@@ -5,6 +5,7 @@ import { parseWorkspaceTab, workspaceHref } from './workspace'
 describe('workspace navigation', () => {
   it('parses valid tabs and defaults invalid values', () => {
     expect(parseWorkspaceTab('documents')).toBe('documents')
+    expect(parseWorkspaceTab('skills')).toBe('overview')
     expect(parseWorkspaceTab('unknown')).toBe('overview')
     expect(parseWorkspaceTab(undefined)).toBe('overview')
   })

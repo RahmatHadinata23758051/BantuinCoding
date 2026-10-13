@@ -2,7 +2,6 @@ export const WORKSPACE_SECTIONS = [
   'overview',
   'context',
   'documents',
-  'skills',
   'backlog',
   'export',
 ] as const

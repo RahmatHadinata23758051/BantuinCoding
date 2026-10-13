@@ -142,7 +142,6 @@ const SECTION_ITEMS: {
   { id: 'overview', labelKey: 'sectionOverview', descriptionKey: 'sectionOverviewDesc', icon: ClipboardCheck },
   { id: 'context', labelKey: 'sectionContext', descriptionKey: 'sectionContextDesc', icon: Braces },
   { id: 'documents', labelKey: 'sectionDocuments', descriptionKey: 'sectionDocumentsDesc', icon: Files },
-  { id: 'skills', labelKey: 'sectionSkills', descriptionKey: 'sectionSkillsDesc', icon: Wrench },
   { id: 'backlog', labelKey: 'sectionBacklog', descriptionKey: 'sectionBacklogDesc', icon: ListChecks },
   { id: 'export', labelKey: 'sectionExport', descriptionKey: 'sectionExportDesc', icon: Package },
 ]
@@ -1890,107 +1889,6 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     artifacts={artifacts}
                     onArtifactUpdated={handleArtifactUpdated}
                   />
-                )}
-              </div>
-
-              <div className={activeTab === 'skills' ? 'space-y-8' : 'hidden'}>
-                <SectionHeading
-                  title={t('resolvedAgentSkills')}
-                  description={t('resolvedAgentSkillsDesc')}
-                  action={
-                    initialData.skills.length > 0 ? (
-                      <span
-                        className={`${PANEL_SOFT_CLASS} rounded-lg px-3 py-2 font-mono text-xs font-semibold text-[var(--workspace-muted)]`}
-                      >
-                        {initialData.skills.length === 1
-                          ? t('recommendationCount', { count: initialData.skills.length })
-                          : t('recommendationCountPlural', { count: initialData.skills.length })}
-                      </span>
-                    ) : undefined
-                  }
-                />
-
-                {initialData.skills.length === 0 ? (
-                  <EmptyState
-                    icon={Wrench}
-                    title={t('noSkillsResolved')}
-                    description={t('noSkillsResolvedDesc')}
-                    action={generateButton}
-                  />
-                ) : (
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    {initialData.skills.map((skill, index) => (
-                      <article
-                        key={skill.id}
-                        className="rounded-xl border border-[var(--workspace-border)] bg-[#fffdfa] p-5 transition-colors hover:border-black/20"
-                      >
-                        <div className="flex min-w-0 flex-col gap-3 border-b border-black/[0.08] pb-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="flex min-w-0 items-start gap-3">
-                            <span
-                              className={`flex size-8 shrink-0 items-center justify-center rounded-lg border border-[var(--workspace-border)] ${index % 2 === 0 ? 'bg-[var(--workspace-sun)]' : 'bg-[var(--workspace-blue-soft)]'}`}
-                              aria-hidden="true"
-                            >
-                              <Wrench className="size-4 text-[var(--workspace-ink)]" />
-                            </span>
-                            <h3 className="min-w-0 break-words text-base font-semibold leading-6 text-[var(--workspace-ink)]">
-                              {skill.name}
-                            </h3>
-                          </div>
-                          <p className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
-                            {skill.source}
-                          </p>
-                        </div>
-
-                        <div className="mt-4 space-y-4">
-                          <div>
-                            <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
-                              {t('purpose')}
-                            </h4>
-                            <p className="mt-1.5 text-sm leading-6 text-[var(--workspace-ink)]">{skill.purpose}</p>
-                          </div>
-                          <div>
-                            <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
-                              {t('trigger')}
-                            </h4>
-                            <p className="mt-1.5 text-sm leading-6 text-[var(--workspace-muted)]">{skill.trigger}</p>
-                          </div>
-
-                          {(skill.metadata?.applicable_phases?.length ||
-                            skill.metadata?.applicable_task_types?.length) && (
-                            <div className="flex flex-wrap gap-2" aria-label={t('purpose')}>
-                              {skill.metadata?.applicable_phases?.map((phase) => (
-                                <span
-                                  key={`phase-${phase}`}
-                                  className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
-                                >
-                                  {phase}
-                                </span>
-                              ))}
-                              {skill.metadata?.applicable_task_types?.map((taskType) => (
-                                <span
-                                  key={`type-${taskType}`}
-                                  className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[11px] font-medium text-[var(--workspace-muted)]"
-                                >
-                                  {formatLabel(taskType)}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-
-                          {skill.metadata?.installation_hint && (
-                            <div className="rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-3">
-                              <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--workspace-faint)]">
-                                {t('setupNote')}
-                              </h4>
-                              <p className="mt-1.5 break-words font-mono text-xs leading-5 text-[var(--workspace-muted)]">
-                                {skill.metadata.installation_hint}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
                 )}
               </div>
 
