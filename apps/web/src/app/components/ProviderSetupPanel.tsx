@@ -14,7 +14,32 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 
 import { cn } from '@/lib/ui'
+import { ProviderLogo } from './icons/ProviderLogos'
 import { Button, Input, Select, StatusBadge } from './ui'
+
+const PROVIDERS = ['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER'] as const
+type Provider = (typeof PROVIDERS)[number]
+
+const providerLogoBackgrounds: Record<Provider, string> = {
+  ANTHROPIC: 'bg-[#f3e8df] text-[#8d4d34]',
+  OPENAI: 'bg-[#e8f1ee] text-[#176b52]',
+  GEMINI: 'bg-[#eee9fb] text-[#624b9b]',
+  OPENROUTER: 'bg-[#f1ece6] text-[#5e5147]',
+}
+
+const warmFocusClass = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-sun-orange)]'
+
+const ghostButtonClass = 'border-0 bg-transparent text-[var(--color-body-text)] hover:bg-[var(--color-paper-warmth)] hover:text-[var(--color-ink-black)]'
+const neutralButtonClass = 'border-[var(--border-subtle)] bg-[var(--color-pure-white)] text-[var(--color-ink-black)] hover:bg-[var(--color-paper-warmth)]'
+const primaryButtonClass = 'bg-[var(--color-ink-black)] text-white hover:bg-[#2b2723]'
+
+function ProviderMark({ provider, size = 22 }: { provider: Provider; size?: number }) {
+  return (
+    <span className={cn('flex shrink-0 items-center justify-center rounded-full', providerLogoBackgrounds[provider])} style={{ width: size + 14, height: size + 14 }}>
+      <ProviderLogo provider={provider} size={size} />
+    </span>
+  )
+}
 
 interface SavedKeyItem {
   id: string
@@ -38,9 +63,6 @@ interface TestResult {
   message?: string
   models?: ModelInfo[]
 }
-
-const PROVIDERS = ['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER'] as const
-type Provider = (typeof PROVIDERS)[number]
 
 const DEFAULT_MODELS: Record<Provider, string> = {
   ANTHROPIC: 'claude-opus-5-5',
@@ -465,16 +487,15 @@ export function ProviderSetupPanel() {
                     onClick={() => selectProvider(providerOption)}
                     aria-pressed={isSelected}
                     className={cn(
-                      'w-full rounded-xl border px-3 py-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-sun-orange)]',
+'w-full rounded-xl border px-3 py-3 text-left transition-colors',
+                      warmFocusClass,
                       isSelected
                         ? 'border-[var(--color-ink-black)] bg-[var(--color-pure-white)]'
                         : 'border-transparent hover:border-[var(--border-subtle)] hover:bg-[var(--color-pure-white)]/70',
                     )}
                   >
                     <span className="flex items-start gap-2.5">
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#f8d9c7] text-xs font-semibold text-[var(--workspace-primary,#a85e3c)]" aria-hidden="true">
-                        {providerOption.slice(0, 1)}
-                      </span>
+                      <ProviderMark provider={providerOption} size={17} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2">
                           <span className="truncate text-xs font-semibold text-[var(--color-ink-black)]">{providerName(providerOption)}</span>
@@ -493,7 +514,10 @@ export function ProviderSetupPanel() {
               <button
                 type="button"
                 onClick={startNewProfile}
-                className="flex w-full items-center gap-2 rounded-xl border border-dashed border-[var(--border-subtle)] px-3 py-3 text-left text-xs font-semibold text-[var(--color-ink-black)] transition-colors hover:border-[var(--color-ink-black)] hover:bg-[var(--color-pure-white)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-sun-orange)]"
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-xl border border-dashed border-[var(--border-subtle)] px-3 py-3 text-left text-xs font-semibold text-[var(--color-ink-black)] transition-colors hover:border-[var(--color-ink-black)] hover:bg-[var(--color-pure-white)]',
+                  warmFocusClass,
+                )}
               >
                 <Plus size={15} aria-hidden="true" />
                 {t('addProvider')}
@@ -505,9 +529,7 @@ export function ProviderSetupPanel() {
         <div className="min-w-0">
           <div className="flex flex-col gap-4 border-b border-[var(--border-subtle)] px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-7 sm:py-6">
             <div className="flex min-w-0 items-start gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f8d9c7] text-sm font-semibold text-[var(--workspace-primary,#a85e3c)]" aria-hidden="true">
-                {provider.slice(0, 1)}
-              </span>
+              <ProviderMark provider={provider} size={24} />
               <div className="min-w-0">
                 <h2 id="provider-setup-heading" className="truncate text-xl font-semibold tracking-[-0.04em] text-[var(--color-ink-black)] sm:text-2xl">
                   {providerName(provider)}
@@ -558,7 +580,7 @@ export function ProviderSetupPanel() {
                       <KeyRound size={14} className="shrink-0 text-[var(--color-faint-text)]" aria-hidden="true" />
                       <span className="truncate">{selectedKey.keyHint ?? t('maskedKey')}</span>
                     </div>
-                    <Button type="button" variant="neutral" size="sm" onClick={() => { setReplacingKey(true); setApiKey(''); setMessage(null) }}>
+                    <Button type="button" variant="neutral" size="sm" className={cn(neutralButtonClass, warmFocusClass)} onClick={() => { setReplacingKey(true); setApiKey(''); setMessage(null) }}>
                       {t('changeKey')}
                     </Button>
                   </div>
@@ -620,18 +642,18 @@ export function ProviderSetupPanel() {
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {selectedKey && !selectedKey.isActive && !replacingKey && (
-                  <Button type="button" variant="neutral" size="sm" onClick={() => void handleActivateKey(selectedKey.id)}>{t('activate')}</Button>
+                  <Button type="button" variant="neutral" size="sm" className={cn(neutralButtonClass, warmFocusClass)} onClick={() => void handleActivateKey(selectedKey.id)}>{t('activate')}</Button>
                 )}
                 {selectedKey && (
-                  <Button type="button" variant="neutral" size="sm" onClick={() => void handleDeleteKey(selectedKey.id, selectedKey.name)} aria-label={t('deleteKey')}>
+                  <Button type="button" variant="neutral" size="sm" className={cn(neutralButtonClass, warmFocusClass, 'hover:bg-[#fff1ee] hover:text-[var(--color-vermillion)]')} onClick={() => void handleDeleteKey(selectedKey.id, selectedKey.name)} aria-label={t('deleteKey')}>
                     <Trash2 size={14} aria-hidden="true" />
                   </Button>
                 )}
-                <Button type="button" variant="neutral" size="sm" onClick={handleCancel}>{t('cancel')}</Button>
-                <Button type="button" variant="neutral" size="sm" onClick={() => void handleTestConnection()} disabled={testing || (!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)}>
+                <Button type="button" variant="neutral" size="sm" className={cn(ghostButtonClass, warmFocusClass)} onClick={handleCancel}>{t('cancel')}</Button>
+                <Button type="button" variant="neutral" size="sm" className={cn(neutralButtonClass, warmFocusClass)} onClick={() => void handleTestConnection()} disabled={testing || (!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)}>
                   {testing ? t('testing') : t('testConnection')}
                 </Button>
-                <Button type="submit" variant="primary" size="sm" disabled={loading || (!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)}>
+                <Button type="submit" variant="primary" size="sm" className={cn(primaryButtonClass, warmFocusClass)} disabled={loading || (!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)}>
                   {loading ? t('saving') : selectedKey && !replacingKey ? t('saveChanges') : t('saveEncrypt')}
                 </Button>
               </div>
