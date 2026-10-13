@@ -1572,7 +1572,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 <div className="flex flex-col gap-3 border-b border-[var(--workspace-border)] pb-6 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <p className="text-sm font-medium text-[var(--workspace-muted)]">{t('tabContext')}</p>
-                    <h2 className="mt-2 max-w-2xl font-serif text-4xl leading-[0.98] tracking-[-0.04em] text-[var(--workspace-ink)] sm:text-5xl">
+                    <h2 className="mt-2 max-w-2xl font-[var(--font-lyon-text)] text-4xl leading-[0.98] tracking-[-0.04em] text-[var(--workspace-ink)] sm:text-5xl">
                       {contextReady ? t('contextBriefTitle') : t('contextQuestionsTitle')}
                     </h2>
                   </div>
@@ -1583,10 +1583,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                 {!contextReady ? (
                   <section className="mx-auto max-w-4xl">
-                    <div className="border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-6 shadow-[0_10px_28px_rgba(36,35,31,0.045)] sm:p-10">
-                      <div className="border-b border-[var(--workspace-border-subtle)] pb-6">
+                    <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-10">
+                      <div className="border-b border-[var(--workspace-border-subtle)] pb-7">
                         <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('discoveryInterview')}</p>
-                        <h3 className="mt-3 max-w-2xl font-serif text-3xl leading-tight tracking-[-0.035em] sm:text-4xl">
+                        <h3 className="mt-3 max-w-2xl font-[var(--font-lyon-text)] text-3xl leading-tight tracking-[-0.035em] sm:text-4xl">
                           {pendingClarifications.length > 0 ? t('answerOpenDecisions') : t('contextNotAssembled')}
                         </h3>
                         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
@@ -1664,8 +1664,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   </section>
                 ) : (
                   <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-4xl">
-                    <div className="border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-6 py-8 shadow-[0_10px_28px_rgba(36,35,31,0.045)] sm:px-12 sm:py-12">
-                      <div className="mb-8 border-b border-[var(--workspace-border-subtle)] pb-6">
+                    <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-12">
+                      <div className="mb-9 border-b border-[var(--workspace-border-subtle)] pb-7 sm:mb-10">
                         <p className="max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">{t('canonicalProjectContextDesc')}</p>
                         <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs font-semibold text-[var(--workspace-muted)]">
                           <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-primary)]" />{t('confirmedByOwner')}</span>
@@ -1677,7 +1677,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         {Object.entries(initialData.context ?? {}).map(([key, value]) => (
                           <section key={key} className="relative py-7 first:pt-0 last:pb-0 lg:grid lg:grid-cols-[minmax(11rem,0.3fr)_1fr] lg:gap-10">
                             <div>
-                              <h3 className="font-serif text-2xl leading-tight tracking-[-0.03em]">{formatLabel(key)}</h3>
+                              <h3 className="font-[var(--font-lyon-text)] text-2xl leading-tight tracking-[-0.03em]">{formatLabel(key)}</h3>
                             </div>
                             <div className="mt-3 min-w-0 text-justify text-sm leading-7 text-[var(--workspace-body)] lg:mt-0">
                               {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(value) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={value} locale={locale} {...contextLabels} />}
