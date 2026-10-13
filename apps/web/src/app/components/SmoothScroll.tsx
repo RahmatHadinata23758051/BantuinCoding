@@ -17,6 +17,7 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
       autoRaf: false,
       duration: 1.05,
       smoothWheel: true,
+      allowNestedScroll: true,
       syncTouch: false,
     })
 
