@@ -248,7 +248,6 @@ export function MarkdownWorkspace({
       aria-label={t('markdownWorkspace')}
     >
       <aside
-        data-lenis-prevent
         className="flex min-h-0 w-full flex-col overflow-hidden border-b border-[var(--workspace-border)] bg-[var(--workspace-canvas)] lg:h-full lg:max-h-full lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r"
       >
         <div className="flex shrink-0 items-start gap-3 border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-4">
@@ -408,10 +407,10 @@ export function MarkdownWorkspace({
                 <span className="font-mono text-xs text-[var(--workspace-muted)]">{content.length.toLocaleString()} chars</span>
               </div>
               <textarea
-                data-lenis-prevent
+                data-lenis-prevent-wheel
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
-                className="min-h-0 flex-1 resize-none overscroll-contain bg-[var(--workspace-paper)] px-4 py-5 font-mono text-sm leading-7 text-[var(--workspace-body)] caret-[var(--workspace-primary)] placeholder:text-[var(--workspace-muted)] focus:bg-[var(--workspace-canvas)] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[var(--workspace-primary)] sm:px-6"
+                className="pointer-events-auto min-h-0 flex-1 cursor-text resize-none select-text overscroll-contain bg-[var(--workspace-paper)] px-4 py-5 font-mono text-sm leading-7 text-[var(--workspace-body)] caret-[var(--workspace-primary)] placeholder:text-[var(--workspace-muted)] focus:bg-[var(--workspace-canvas)] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[var(--workspace-primary)] sm:px-6"
                 placeholder={t('markdownWritePlaceholder')}
                 aria-label={tCommon('markdownSourceContent')}
                 spellCheck={false}
