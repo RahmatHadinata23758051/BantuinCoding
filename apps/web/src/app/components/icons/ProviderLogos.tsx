@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 import { cn } from '@/lib/ui'
 
 type Provider = 'ANTHROPIC' | 'OPENAI' | 'GEMINI' | 'OPENROUTER'
@@ -21,21 +23,14 @@ export function ProviderLogo({ provider, size = 24, className }: ProviderLogoPro
   const iconPath = providerIconPaths[provider]
 
   return (
-    <span
+    <Image
+      src={iconPath}
+      alt=""
+      width={size}
+      height={size}
       aria-hidden="true"
-      className={cn('block shrink-0 bg-current', className)}
-      style={{
-        width: size,
-        height: size,
-        maskImage: `url(${iconPath})`,
-        maskPosition: 'center',
-        maskRepeat: 'no-repeat',
-        maskSize: 'contain',
-        WebkitMaskImage: `url(${iconPath})`,
-        WebkitMaskPosition: 'center',
-        WebkitMaskRepeat: 'no-repeat',
-        WebkitMaskSize: 'contain',
-      }}
+      className={cn('shrink-0', className)}
+      unoptimized
     />
   )
 }
