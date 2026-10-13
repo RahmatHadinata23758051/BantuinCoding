@@ -50,17 +50,34 @@ const viewModes: Array<{
 function getStatusDotClass(status: string) {
   switch (status) {
     case 'READY':
-      return 'bg-[#62b894]'
+      return 'bg-[var(--workspace-mint)]'
     case 'MODIFIED':
-      return 'bg-[#0075de]'
+      return 'bg-[var(--workspace-primary)]'
     case 'OUTDATED':
-      return 'bg-[#ffb110]'
+      return 'bg-[var(--workspace-sun)]'
     case 'FAILED':
-      return 'bg-[#e32d14]'
+      return 'bg-[var(--workspace-rose)]'
     case 'GENERATING':
-      return 'bg-[#0075de] motion-safe:animate-pulse-dot'
+      return 'bg-[var(--workspace-primary)] motion-safe:animate-pulse-dot'
     default:
-      return 'bg-[#757575]'
+      return 'bg-[var(--workspace-muted)]'
+  }
+}
+
+function getStatusBadgeClass(status: string) {
+  switch (status) {
+    case 'READY':
+      return 'border border-[var(--workspace-border)] bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
+    case 'MODIFIED':
+      return 'border border-[var(--workspace-primary)]/20 bg-[var(--workspace-yellow-soft)] text-[var(--workspace-deep)]'
+    case 'OUTDATED':
+      return 'border border-[var(--workspace-sun)]/30 bg-[var(--workspace-peach)] text-[var(--workspace-ink)]'
+    case 'FAILED':
+      return 'border border-[var(--workspace-rose)]/20 bg-[var(--workspace-rose-soft)] text-[var(--workspace-rose)]'
+    case 'GENERATING':
+      return 'border border-[var(--workspace-primary)]/20 bg-[var(--workspace-blue-soft)] text-[var(--workspace-deep)]'
+    default:
+      return 'border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] text-[var(--workspace-muted)]'
   }
 }
 
@@ -120,7 +137,6 @@ export function MarkdownWorkspace({
 
   const activeArtifact = artifacts.find((artifact) => artifact.type === selectedType) || artifacts[0]
   const [content, setContent] = useState<string>(activeArtifact?.content || '')
-
   const renderedPreview = useMemo(() => renderMarkdownToHtml(content), [content])
 
   const handleSelectArtifact = (artifact: WorkspaceArtifactItem) => {
@@ -211,32 +227,32 @@ export function MarkdownWorkspace({
 
   if (artifacts.length === 0) {
     return (
-      <Panel className="p-8 text-center" aria-label={t('markdownWorkspace')}>
+      <Panel
+        className="border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-8 text-center text-[var(--workspace-ink)]"
+        aria-label={t('markdownWorkspace')}
+      >
         <div className="mx-auto flex max-w-md flex-col items-center gap-3">
-          <FileText className="size-9 text-[#757575]" aria-hidden="true" />
-          <p className="text-sm font-semibold leading-6 text-[#757575]">
-            {t('markdownEmpty')}
-          </p>
+          <FileText className="size-9 text-[var(--workspace-muted)]" aria-hidden="true" />
+          <p className="text-sm font-semibold leading-6 text-[var(--workspace-muted)]">{t('markdownEmpty')}</p>
         </div>
       </Panel>
     )
   }
 
   const badge = activeArtifact ? getArtifactStatusBadgeStyle(activeArtifact.status) : null
+  const badgeClassName = getStatusBadgeClass(activeArtifact?.status || '')
 
   return (
     <section
-      className="flex min-h-[600px] w-full flex-col overflow-hidden rounded-xl border border-black/10 bg-white text-[var(--ink)] sm:min-h-[760px] lg:h-[760px] lg:flex-row"
+      className="flex min-h-[600px] w-full flex-col overflow-hidden rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)] sm:min-h-[760px] lg:h-[760px] lg:flex-row"
       aria-label={t('markdownWorkspace')}
     >
-      <aside className="border-b border-black/10 bg-[#f6f5f4] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r">
-        <div className="flex items-start gap-3 border-b border-black/10 bg-white px-4 py-4">
-          <PanelLeft className="mt-0.5 size-5 flex-shrink-0 text-[#0075de]" aria-hidden="true" />
+      <aside className="border-b border-[var(--workspace-border)] bg-[var(--workspace-canvas)] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r">
+        <div className="flex items-start gap-3 border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-4">
+          <PanelLeft className="mt-0.5 size-5 flex-shrink-0 text-[var(--workspace-primary)]" aria-hidden="true" />
           <div className="min-w-0">
-            <h2 className="text-base font-semibold tracking-[-0.02em]">{t('markdownDocuments')}</h2>
-            <p className="mt-1 text-xs leading-5 text-[#615d59]">
-              {t('markdownDocumentsDesc')}
-            </p>
+            <h2 className="text-base font-semibold tracking-[-0.02em] text-[var(--workspace-ink)]">{t('markdownDocuments')}</h2>
+            <p className="mt-1 text-xs leading-5 text-[var(--workspace-muted)]">{t('markdownDocumentsDesc')}</p>
           </div>
         </div>
 
@@ -255,26 +271,19 @@ export function MarkdownWorkspace({
                 onClick={() => handleSelectArtifact(artifact)}
                 aria-current={isSelected ? 'page' : undefined}
                 className={cn(
-                  'min-w-[15rem] rounded-lg border border-black/10 px-3 py-3 text-left transition-colors lg:min-w-0',
+                  'min-w-[15rem] rounded-xl border border-[var(--workspace-border)] px-3 py-3 text-left transition-colors lg:min-w-0',
                   isSelected
-                    ? 'bg-[#e6f3fe] text-[var(--ink)] ring-1 ring-[#0075de]/20'
-                    : 'bg-white text-[var(--ink)] hover:bg-[#f6f5f4]',
+                    ? 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)] ring-1 ring-[var(--workspace-primary)]/20'
+                    : 'bg-[var(--workspace-paper)] text-[var(--workspace-ink)] hover:bg-[var(--workspace-canvas)]',
                 )}
               >
                 <span className="flex items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block truncate font-mono text-sm font-medium leading-5">
-                      {artifact.path}
-                    </span>
-                    <span className="mt-1 block truncate text-xs leading-5 text-[#757575]">
-                      {artifactBadge.label}
-                    </span>
+                    <span className="block truncate font-mono text-sm font-medium leading-5">{artifact.path}</span>
+                    <span className="mt-1 block truncate text-xs leading-5 text-[var(--workspace-muted)]">{artifactBadge.label}</span>
                   </span>
                   <span
-                    className={cn(
-                      'mt-1 size-2.5 flex-shrink-0 rounded-full',
-                      getStatusDotClass(artifact.status),
-                    )}
+                    className={cn('mt-1 size-2.5 flex-shrink-0 rounded-full', getStatusDotClass(artifact.status))}
                     title={artifactBadge.label}
                     aria-label={artifactBadge.label}
                   />
@@ -285,31 +294,22 @@ export function MarkdownWorkspace({
         </nav>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f6f5f4]">
-        <header className="border-b border-black/10 bg-white">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--workspace-canvas)]">
+        <header className="border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)]">
           <div className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:justify-between lg:px-5">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate font-mono text-base font-medium tracking-tight">
-                  {activeArtifact?.path}
-                </h1>
-                {activeArtifact && <StatusBadge tone={statusTone(activeArtifact.status)}>{badge?.label}</StatusBadge>}
+                <h1 className="truncate font-mono text-base font-medium tracking-tight text-[var(--workspace-ink)]">{activeArtifact?.path}</h1>
+                {activeArtifact && <StatusBadge className={badgeClassName} tone={statusTone(activeArtifact.status)}>{badge?.label}</StatusBadge>}
               </div>
-              <p className="mt-1 text-xs leading-5 text-[#757575]">
-                {activeArtifact
-                  ? t('updated', { date: formatUpdatedAt(activeArtifact.updatedAt) })
-                  : t('markdownNoArtifact')}
+              <p className="mt-1 text-xs leading-5 text-[var(--workspace-muted)]">
+                {activeArtifact ? t('updated', { date: formatUpdatedAt(activeArtifact.updatedAt) }) : t('markdownNoArtifact')}
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
               <p
-                className={cn(
-                  'min-h-5 text-xs leading-5',
-                  saveMessageType === 'error'
-                    ? 'text-[#e32d14]'
-                    : 'text-[#757575]',
-                )}
+                className={cn('min-h-5 text-xs leading-5', saveMessageType === 'error' ? 'text-[var(--workspace-rose)]' : 'text-[var(--workspace-muted)]')}
                 role={saveMessageType === 'error' ? 'alert' : 'status'}
                 aria-live={saveMessageType === 'error' ? 'assertive' : 'polite'}
               >
@@ -323,20 +323,16 @@ export function MarkdownWorkspace({
                     onClick={handleRegenerate}
                     disabled={isRegenerating || isSaving}
                     variant="secondary"
-                    className="gap-2"
+                    className="gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)]"
                     aria-busy={isRegenerating}
                   >
-                    {isRegenerating ? (
-                      <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" />
-                    ) : (
-                      <RefreshCw className="size-4" aria-hidden="true" />
-                    )}
+                    {isRegenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
                     {isRegenerating ? t('markdownRegenerating') : t('markdownRegenerate')}
                   </Button>
                 )}
 
                 <div
-                  className="grid grid-cols-3 rounded-lg border border-black/10 bg-[#f6f5f4] p-1"
+                  className="grid grid-cols-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] p-1"
                   role="group"
                   aria-label={tCommon('workspaceViewMode')}
                 >
@@ -352,8 +348,8 @@ export function MarkdownWorkspace({
                         className={cn(
                           'inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-3 py-2 text-xs font-medium transition-colors sm:min-w-24',
                           isActive
-                            ? 'border-[#0075de]/20 bg-white text-[#0075de]'
-                            : 'text-[#757575] hover:bg-white hover:text-[var(--ink)]',
+                            ? 'border-[var(--workspace-primary)]/20 bg-[var(--workspace-paper)] text-[var(--workspace-primary)]'
+                            : 'text-[var(--workspace-muted)] hover:bg-[var(--workspace-paper)] hover:text-[var(--workspace-ink)]',
                         )}
                       >
                         <Icon className="size-3.5" aria-hidden="true" />
@@ -363,14 +359,14 @@ export function MarkdownWorkspace({
                   })}
                 </div>
 
-                <Button type="button" onClick={handleSave} disabled={isSaving} variant="success">
-                  {isSaving ? (
-                    <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" />
-                  ) : saveMessageType === 'status' && saveMessage ? (
-                    <CheckCircle2 className="size-4" aria-hidden="true" />
-                  ) : (
-                    <Save className="size-4" aria-hidden="true" />
-                  )}
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  variant="success"
+                  className="bg-[var(--workspace-mint-soft)] text-[var(--workspace-deep)] hover:bg-[var(--workspace-mint)]"
+                >
+                  {isSaving ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : saveMessageType === 'status' && saveMessage ? <CheckCircle2 className="size-4" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
                   {isSaving ? t('markdownSaving') : t('markdownSave')}
                 </Button>
               </div>
@@ -378,32 +374,23 @@ export function MarkdownWorkspace({
           </div>
         </header>
 
-        <div
-          className={cn(
-            'grid min-h-0 flex-1 overflow-hidden',
-            activeTab === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1',
-          )}
-        >
+        <div className={cn('grid min-h-0 flex-1 overflow-hidden', activeTab === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1')}>
           {(activeTab === 'editor' || activeTab === 'split') && (
             <section
               className={cn(
-                'flex min-h-[360px] flex-col overflow-hidden bg-[#f6f5f4] text-[var(--ink)]',
-                activeTab === 'split' && 'border-b border-black/10 lg:border-b-0 lg:border-r',
+                'flex min-h-[360px] flex-col overflow-hidden bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]',
+                activeTab === 'split' && 'border-b border-[var(--workspace-border)] lg:border-b-0 lg:border-r',
               )}
               aria-labelledby="markdown-editor-title"
             >
-              <div className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-2.5">
-                <h2 id="markdown-editor-title" className="text-sm font-semibold">
-                  {t('markdownSource')}
-                </h2>
-                <span className="font-mono text-xs text-[#757575]">
-                  {content.length.toLocaleString()} chars
-                </span>
+              <div className="flex items-center justify-between border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-2.5">
+                <h2 id="markdown-editor-title" className="text-sm font-semibold text-[var(--workspace-ink)]">{t('markdownSource')}</h2>
+                <span className="font-mono text-xs text-[var(--workspace-muted)]">{content.length.toLocaleString()} chars</span>
               </div>
               <textarea
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
-                className="min-h-0 flex-1 resize-none bg-white px-4 py-5 font-mono text-sm leading-7 text-[var(--ink)] caret-[#0075de] placeholder:text-[#757575] focus:bg-[#f6f5f4] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[#0075de] sm:px-6"
+                className="min-h-0 flex-1 resize-none bg-[var(--workspace-paper)] px-4 py-5 font-mono text-sm leading-7 text-[var(--workspace-body)] caret-[var(--workspace-primary)] placeholder:text-[var(--workspace-muted)] focus:bg-[var(--workspace-canvas)] focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-[var(--workspace-primary)] sm:px-6"
                 placeholder={t('markdownWritePlaceholder')}
                 aria-label={tCommon('markdownSourceContent')}
                 spellCheck={false}
@@ -412,24 +399,15 @@ export function MarkdownWorkspace({
           )}
 
           {(activeTab === 'preview' || activeTab === 'split') && (
-            <section
-              className="flex min-h-[360px] flex-col overflow-hidden bg-[#f6f5f4]"
-              aria-labelledby="markdown-preview-title"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 bg-[#e6f3fe] px-4 py-2.5">
-                <h2 id="markdown-preview-title" className="text-sm font-semibold">
-                  {t('markdownPreview')}
-                </h2>
-                <span className="text-xs text-[#757575]">
-                  {t('markdownUnsafeStripped')}
-                </span>
+            <section className="flex min-h-[360px] flex-col overflow-hidden bg-[var(--workspace-canvas)]" aria-labelledby="markdown-preview-title">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-2.5">
+                <h2 id="markdown-preview-title" className="text-sm font-semibold text-[var(--workspace-ink)]">{t('markdownPreview')}</h2>
+                <span className="text-xs text-[var(--workspace-muted)]">{t('markdownUnsafeStripped')}</span>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 <article
-                  className="prose-doc max-w-none border border-black/10 bg-white p-5 sm:p-8"
-                  dangerouslySetInnerHTML={{
-                    __html: renderedPreview,
-                  }}
+                  className="prose-doc max-w-none border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 sm:p-8"
+                  dangerouslySetInnerHTML={{ __html: renderedPreview }}
                 />
               </div>
             </section>
