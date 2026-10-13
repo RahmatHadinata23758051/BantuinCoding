@@ -912,7 +912,7 @@
     "purpose": "Tujuan",
     "setupNote": "Catatan pengaturan",
     "implementationBacklog": "Backlog implementasi",
-    "implementationBacklogDesc": "Papan Kanban interaktif. Seret tugas antar kolom atau gunakan aksi cepat untuk melacak progres agen koding.",
+    "implementationBacklogDesc": "Peta dependensi horizontal. Ikuti tugas implementasi dari kiri ke kanan dan buka setiap node untuk melihat detailnya.",
     "readyCountShort": "{count} siap",
     "doneCount": "{count} selesai",
     "blockedCount": "{count} terblokir",
