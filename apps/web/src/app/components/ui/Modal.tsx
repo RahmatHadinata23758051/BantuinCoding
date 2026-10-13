@@ -30,13 +30,29 @@ export function Modal({
 
   useEffect(() => {
     if (!open) return
+
     previousFocusRef.current = document.activeElement as HTMLElement | null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflow = html.style.overflow
+    const previousBodyOverflow = body.style.overflow
+    const previousHtmlOverscrollBehavior = html.style.overscrollBehavior
+    const previousBodyOverscrollBehavior = body.style.overscrollBehavior
+
+    // The document element can be the scroll root, so lock both roots while
+    // the dialog owns scrolling.
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    html.style.overscrollBehavior = 'none'
+    body.style.overscrollBehavior = 'none'
     closeButtonRef.current?.focus()
 
     return () => {
-      document.body.style.overflow = previousOverflow
+      html.style.overflow = previousHtmlOverflow
+      body.style.overflow = previousBodyOverflow
+      html.style.overscrollBehavior = previousHtmlOverscrollBehavior
+      body.style.overscrollBehavior = previousBodyOverscrollBehavior
       previousFocusRef.current?.focus()
     }
   }, [open])
@@ -81,12 +97,13 @@ export function Modal({
       <Panel
         role="dialog"
         aria-modal="true"
+        data-lenis-prevent
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
-        className={cn('relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-200', className)}
+        className={cn('relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden overscroll-contain shadow-sm motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:duration-200', className)}
         {...props}
       >
-        <PanelHeader className="flex items-center justify-between">
+        <PanelHeader className="shrink-0">
           <div>
             <h2 id={titleId} className="text-lg font-semibold tracking-tight text-[var(--color-ink-black)]">
               {title}
@@ -103,7 +120,7 @@ export function Modal({
             <X size={16} aria-hidden="true" />
           </button>
         </PanelHeader>
-        <PanelBody>{children}</PanelBody>
+        <PanelBody className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</PanelBody>
       </Panel>
     </div>
   )
