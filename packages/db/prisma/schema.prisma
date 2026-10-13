@@ -54,8 +54,11 @@ model Project {
   userId         String   @map("user_id")
   name           String
   rawIdea        String   @map("raw_idea") // The original user-supplied idea text
-  classification String   @default("OTHER") @map("classification")
-  targetAgent    String   @default("OTHER") @map("target_agent")
+  classification       String   @default("OTHER") @map("classification")
+  classificationStatus String   @default("READY") @map("classification_status")
+  classificationError  String?  @map("classification_error") @db.VarChar(120)
+  classificationAttempt Int     @default(0) @map("classification_attempt")
+  targetAgent          String   @default("OTHER") @map("target_agent")
   language       String   @default("id") @map("language")
   status         String   @default("DRAFT") @map("status")
   createdAt      DateTime @default(now()) @map("created_at")
