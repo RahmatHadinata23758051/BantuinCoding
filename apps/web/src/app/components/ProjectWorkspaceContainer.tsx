@@ -1,6 +1,5 @@
 'use client'
 
-import dynamic from 'next/dynamic'
 import { Link } from '@/i18n/routing'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
@@ -47,13 +46,8 @@ import {
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
 import { BrandLogo } from '@/app/components/BrandLogo'
-import { PackHandoffVisual } from '@/app/components/PackHandoffVisual'
 import { parseProjectBrief, type ParsedProjectBrief } from '@/lib/projects/brief-parser'
 
-const PackHandoffWebGL = dynamic(
-  () => import('@/app/components/PackHandoffWebGL').then((module) => module.PackHandoffWebGL),
-  { ssr: false },
-)
 import { Modal, Input, Select, Button } from '@/app/components/ui'
 import {
   GENERATION_STAGES,
@@ -1950,34 +1944,113 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     action={generateButton}
                   />
                 ) : (
-                  <div className="space-y-8">
-                    {/* One-Shot Kickoff Prompt Card */}
-                    <section aria-label={t('oneShotAgentPrompt')} className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-6 sm:p-8`}>
-                      <div className="flex flex-col gap-5 border-b border-black/[0.08] pb-6 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="flex size-10 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] text-[var(--workspace-deep)]">
+                  <div className="grid items-stretch gap-6 lg:grid-cols-2">
+                    <section aria-labelledby="pack-export-title" className={`${PANEL_CLASS} flex min-h-full flex-col overflow-hidden`}>
+                      <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-yellow-soft)] p-5 sm:p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3">
+                            <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
+                              <Package aria-hidden="true" className="size-5" />
+                            </span>
+                            <div>
+                              <h3 id="pack-export-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
+                                {t('bootstrapPack')}
+                              </h3>
+                              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
+                                {t('preparedForUniversal')}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="shrink-0 font-mono text-xs font-semibold text-[var(--workspace-ink)]">
+                            {t('filesCount', { count: readyArtifacts.length + (includesReadme ? 0 : 1) })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-1 flex-col bg-[var(--workspace-paper)]">
+                        <div className="border-b border-[var(--workspace-border-subtle)] p-5 sm:p-6">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <h4 className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
+                              {t('archiveManifest')}
+                            </h4>
+                            <span className="font-mono text-xs font-semibold text-[var(--workspace-ink)]">
+                              {canExport ? t('readyToDownload') : t('notReady')}
+                            </span>
+                          </div>
+                          <ul className="divide-y divide-[var(--workspace-border-subtle)] border-y border-[var(--workspace-border-subtle)]">
+                            {readyArtifacts.map((artifact) => (
+                              <li key={artifact.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <FileText aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-ink)]" />
+                                  <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">{artifact.path}</span>
+                                </div>
+                                <span className={`w-fit rounded-full px-2 py-0.5 font-mono text-xs font-medium ${statusTone(artifact.status)}`}>
+                                  {tStatus(artifact.status as Parameters<typeof tStatus>[0]) ?? formatStatus(artifact.status)}
+                                </span>
+                              </li>
+                            ))}
+                            {!includesReadme && (
+                              <li className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <FileText aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-ink)]" />
+                                  <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">README.md</span>
+                                </div>
+                                <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">{t('addedDuringExport')}</span>
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+
+                        <div className="mt-auto p-5 sm:p-6">
+                          <div className="space-y-2 border-y border-[var(--workspace-border-subtle)] py-4 text-sm font-medium text-[var(--workspace-body)]">
+                            <div className="flex items-start gap-3">
+                              <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
+                              <span>{t('contentScanned')}</span>
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
+                              <span>{t('controlledFilenames')}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleDownloadZip}
+                            disabled={isExporting}
+                            aria-busy={isExporting}
+                            className={`mt-5 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                          >
+                            {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
+                            {isExporting ? t('validatingPack') : t('downloadZipPack')}
+                          </button>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section aria-labelledby="kickoff-prompt-title" className={`${PANEL_CLASS} flex min-h-full flex-col overflow-hidden bg-[var(--workspace-paper)]`}>
+                      <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-blue-soft)] p-5 sm:p-6">
+                        <div className="flex items-start gap-3">
+                          <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
                             <Wrench aria-hidden="true" className="size-5" />
                           </span>
                           <div>
-                            <h3 className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">{t('oneShotAgentPrompt')}</h3>
-                            <p className="text-xs font-semibold text-[var(--workspace-muted)]">
+                            <h3 id="kickoff-prompt-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
+                              {t('oneShotAgentPrompt')}
+                            </h3>
+                            <p className="mt-1 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
                               {t('oneShotAgentPromptDesc')}
                             </p>
                           </div>
                         </div>
-
                       </div>
 
-                      {/* Prompt Output Box */}
-                      <div className="mt-5 relative">
-                        <pre className="max-h-80 overflow-y-auto border border-[var(--workspace-border)] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] shadow-none whitespace-pre-wrap">
+                      <div className="flex flex-1 flex-col p-5 sm:p-6">
+                        <pre className="min-h-0 max-h-[32rem] flex-1 overflow-y-auto overscroll-contain border border-[var(--workspace-border)] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] whitespace-pre-wrap">
                           {generateOneShotKickoffPrompt()}
                         </pre>
-
                         <button
                           type="button"
                           onClick={handleCopyOneShotPrompt}
-                          className={`mt-4 inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
+                          className={`mt-5 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
                         >
                           {copiedPrompt ? (
                             <>
@@ -1993,115 +2066,6 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         </button>
                       </div>
                     </section>
-
-                    {/* Download ZIP & Manifest Grid */}
-                    <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_23rem]">
-                      <section aria-labelledby="manifest-title" className={PANEL_CLASS}>
-                        <div className="flex items-center justify-between border-b border-black/[0.08] bg-[var(--workspace-yellow-soft)] p-5">
-                          <h3 id="manifest-title" className="text-2xl font-semibold tracking-[-0.05em]">
-                            {t('archiveManifest')}
-                          </h3>
-                          <span className="font-mono text-xs font-semibold text-[var(--workspace-ink)]">
-                            {t('filesCount', { count: readyArtifacts.length + (includesReadme ? 0 : 1) })}
-                          </span>
-                        </div>
-                        <ul className="bg-[var(--workspace-paper)] divide-y divide-[var(--workspace-border)]">
-                          {readyArtifacts.map((artifact) => (
-                            <li
-                              key={artifact.id}
-                              className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-center"
-                            >
-                              <div className="flex min-w-0 items-center gap-3">
-                                <FileText
-                                  aria-hidden="true"
-                                  className="size-4 shrink-0 text-[var(--workspace-ink)]"
-                                />
-                                <span className="truncate font-mono text-sm font-bold">
-                                  {artifact.path}
-                                </span>
-                              </div>
-                              <span
-                                className={`w-fit rounded-full px-2 py-0.5 font-mono text-xs font-medium ${statusTone(artifact.status)}`}
-                              >
-                                {tStatus(artifact.status as Parameters<typeof tStatus>[0]) ?? formatStatus(artifact.status)}
-                              </span>
-                            </li>
-                          ))}
-                          {!includesReadme && (
-                            <li className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                              <div className="flex min-w-0 items-center gap-3">
-                                <FileText
-                                  aria-hidden="true"
-                                  className="size-4 shrink-0 text-[var(--workspace-ink)]"
-                                />
-                                <span className="truncate font-mono text-sm font-bold">
-                                  README.md
-                                </span>
-                              </div>
-                              <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">
-                                {t('addedDuringExport')}
-                              </span>
-                            </li>
-                          )}
-                        </ul>
-                      </section>
-
-                      <aside
-                        className={`${PANEL_CLASS} bg-[var(--workspace-blue-soft)] p-6 flex flex-col justify-between`}
-                      >
-                        <div>
-                          <PackHandoffVisual
-                            className="mb-7"
-                            labels={{
-                              ariaLabel: t('packHandoffVisualLabel'),
-                              packageLabel: t('packHandoffPackageLabel'),
-                              packageMeta: t('packHandoffPackageMeta'),
-                              documentLabel: t('packHandoffDocumentLabel'),
-                              documentMeta: t('packHandoffDocumentMeta'),
-                              handoffLabel: t('packHandoffAgentLabel'),
-                              handoffMeta: t('packHandoffAgentMeta'),
-                              connectorLabel: t('packHandoffConnectorLabel'),
-                            }}
-                          />
-                          <PackHandoffWebGL
-                            className="mt-6"
-                            ariaLabel={t('packHandoffVisualLabel')}
-                            description={`${t('packHandoffPackageLabel')} ${t('packHandoffConnectorLabel')} ${t('packHandoffAgentLabel')}`}
-                          />
-                          <span className="flex size-12 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] shadow-none">
-                            <Package aria-hidden="true" className="size-6" />
-                          </span>
-                          <h3 className="mt-6 text-3xl font-semibold leading-none tracking-[-0.05em]">
-                            {t('bootstrapPack')}
-                          </h3>
-                          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--workspace-muted)]">
-                            {t('preparedForUniversal')}
-                          </p>
-
-                          <div className="mt-6 space-y-2 border-y border-black/[0.08] py-4 text-sm font-medium">
-                            <div className="flex items-center gap-3">
-                              <ShieldCheck aria-hidden="true" className="size-4" />
-                              {t('contentScanned')}
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <CheckCircle2 aria-hidden="true" className="size-4" />
-                              {t('controlledFilenames')}
-                            </div>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleDownloadZip}
-                          disabled={isExporting}
-                          aria-busy={isExporting}
-                          className={`mt-6 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                        >
-                          {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
-                          {isExporting ? t('validatingPack') : t('downloadZipPack')}
-                        </button>
-                      </aside>
-                    </div>
                   </div>
                 )}
               </div>
