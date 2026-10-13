@@ -48,8 +48,8 @@ export default async function ProviderSettingsPage() {
         </div>
       </TopBar>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-12 pt-8 sm:px-7 sm:pb-16 sm:pt-12 lg:px-10 lg:pt-14">
-        <header className="flex flex-col gap-6 border-b border-[var(--border-subtle)] pb-8 lg:flex-row lg:items-end lg:justify-between">
+      <main className="mx-auto w-full max-w-6xl px-4 pb-12 pt-5 sm:px-7 sm:pb-16 sm:pt-7 lg:px-10 lg:pt-7">
+        <header className="flex flex-col gap-6 pb-0 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--workspace-primary,#a85e3c)]">
               {t('caption')}
@@ -67,7 +67,7 @@ export default async function ProviderSettingsPage() {
           </div>
         </header>
 
-        <section aria-labelledby="provider-connection-heading" className="mt-8">
+        <section aria-labelledby="provider-connection-heading" className="mt-6">
           <h2 id="provider-connection-heading" className="sr-only">{t('aiProvider')}</h2>
           <ProviderSetupPanel />
         </section>
