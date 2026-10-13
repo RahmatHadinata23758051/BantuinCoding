@@ -823,6 +823,7 @@
     "backlogNoMatchingTasks": "No matching tasks",
     "backlogDependencyCount": "{count} dependencies",
     "backlogNoDependencies": "No dependencies",
+    "backlogDoneLabel": "done",
     "backlogDescription": "Description",
     "generationProgressTitle": "Generation progress",
     "generationProgressDesc": "Each stage reports only after its server request succeeds. No estimated percentages are shown.",
