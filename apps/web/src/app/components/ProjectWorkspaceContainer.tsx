@@ -932,9 +932,17 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       <div className="flex items-start justify-between gap-3 border-b border-[var(--workspace-border)] pb-5">
         <div className="min-w-0">
           <BrandLogo imageSize={28} textClassName="text-xl font-semibold tracking-[-0.04em]" />
-          <p className="mt-1 truncate text-xs text-[var(--workspace-muted)]">{initialData.name}</p>
+          <p
+            className="mt-1 truncate text-xs text-[var(--workspace-muted)]"
+            title={initialData.name}
+          >
+            {initialData.name}
+          </p>
         </div>
-        <span className={`rounded-full border border-[var(--workspace-border)] px-2.5 py-1 text-[10px] font-semibold ${statusTone(projectStatus)}`}>
+        <span
+          className={`max-w-[6.5rem] shrink-0 rounded-full border border-[var(--workspace-border)] px-3 py-1.5 text-center text-xs font-semibold leading-4 ${statusTone(projectStatus)}`}
+          title={tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
+        >
           {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
         </span>
       </div>
@@ -1925,7 +1933,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   description={t('exportAgentPromptDesc')}
                   action={
                     <span
-                      className={`rounded-full px-2.5 py-0.5 font-mono text-xs font-medium ${
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold leading-4 ${
                         canExport
                           ? 'border-[var(--workspace-ink)] bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
                           : 'border-[var(--workspace-ink)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)]'
@@ -1961,7 +1969,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                               </p>
                             </div>
                           </div>
-                          <span className="shrink-0 font-mono text-xs font-semibold text-[var(--workspace-ink)]">
+                          <span className="shrink-0 text-xs font-semibold text-[var(--workspace-ink)]">
                             {t('filesCount', { count: readyArtifacts.length + (includesReadme ? 0 : 1) })}
                           </span>
                         </div>
@@ -1970,10 +1978,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       <div className="flex flex-1 flex-col bg-[var(--workspace-paper)]">
                         <div className="border-b border-[var(--workspace-border-subtle)] p-5 sm:p-6">
                           <div className="mb-3 flex items-center justify-between gap-3">
-                            <h4 className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
+                            <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
                               {t('archiveManifest')}
                             </h4>
-                            <span className="font-mono text-xs font-semibold text-[var(--workspace-ink)]">
+                            <span className="text-xs font-semibold text-[var(--workspace-ink)]">
                               {canExport ? t('readyToDownload') : t('notReady')}
                             </span>
                           </div>
@@ -1984,7 +1992,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                   <FileText aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-ink)]" />
                                   <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">{artifact.path}</span>
                                 </div>
-                                <span className={`w-fit rounded-full px-2 py-0.5 font-mono text-xs font-medium ${statusTone(artifact.status)}`}>
+                                <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${statusTone(artifact.status)}`}>
                                   {tStatus(artifact.status as Parameters<typeof tStatus>[0]) ?? formatStatus(artifact.status)}
                                 </span>
                               </li>
@@ -1995,7 +2003,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                                   <FileText aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-ink)]" />
                                   <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">README.md</span>
                                 </div>
-                                <span className="font-mono text-xs font-bold text-[var(--workspace-muted)]">{t('addedDuringExport')}</span>
+                                <span className="text-xs font-bold text-[var(--workspace-muted)]">{t('addedDuringExport')}</span>
                               </li>
                             )}
                           </ul>
@@ -2017,7 +2025,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             onClick={handleDownloadZip}
                             disabled={isExporting}
                             aria-busy={isExporting}
-                            className={`mt-5 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-3 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                            className={`mt-5 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-3 text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
                           >
                             {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
                             {isExporting ? t('validatingPack') : t('downloadZipPack')}
@@ -2047,23 +2055,39 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         <pre className="min-h-0 max-h-[32rem] flex-1 overflow-y-auto overscroll-contain border border-[var(--workspace-border)] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] whitespace-pre-wrap">
                           {generateOneShotKickoffPrompt()}
                         </pre>
-                        <button
-                          type="button"
-                          onClick={handleCopyOneShotPrompt}
-                          className={`mt-5 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-5 py-3 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
-                        >
-                          {copiedPrompt ? (
-                            <>
-                              <Check aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-                              {t('promptCopiedToClipboard')}
-                            </>
-                          ) : (
-                            <>
-                              <Copy aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-                              {t('copyAgentKickoffPrompt')}
-                            </>
-                          )}
-                        </button>
+                        <div className="mt-auto pt-5">
+                          <button
+                            type="button"
+                            onClick={handleCopyOneShotPrompt}
+                            className={`inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-5 py-3 text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
+                          >
+                            {copiedPrompt ? (
+                              <>
+                                <Check aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
+                                {t('promptCopiedToClipboard')}
+                              </>
+                            ) : (
+                              <>
+                                <Copy aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
+                                {t('copyAgentKickoffPrompt')}
+                              </>
+                            )}
+                          </button>
+                          <ol className="mt-5 grid gap-3 border-t border-[var(--workspace-border-subtle)] pt-5 sm:grid-cols-3">
+                            <li className="flex gap-3 text-sm leading-5 text-[var(--workspace-body)]">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--workspace-yellow-soft)] text-xs font-bold text-[var(--workspace-ink)]">1</span>
+                              <span>{t('exportStepDownload')}</span>
+                            </li>
+                            <li className="flex gap-3 text-sm leading-5 text-[var(--workspace-body)]">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--workspace-yellow-soft)] text-xs font-bold text-[var(--workspace-ink)]">2</span>
+                              <span>{t('exportStepExtract')}</span>
+                            </li>
+                            <li className="flex gap-3 text-sm leading-5 text-[var(--workspace-body)]">
+                              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--workspace-yellow-soft)] text-xs font-bold text-[var(--workspace-ink)]">3</span>
+                              <span>{t('exportStepPaste')}</span>
+                            </li>
+                          </ol>
+                        </div>
                       </div>
                     </section>
                   </div>
