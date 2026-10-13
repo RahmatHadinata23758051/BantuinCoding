@@ -50,7 +50,7 @@ const viewModes: Array<{
 function getStatusDotClass(status: string) {
   switch (status) {
     case 'READY':
-      return 'bg-[var(--workspace-mint)]'
+      return 'bg-[var(--pass-teal)]'
     case 'MODIFIED':
       return 'bg-[var(--workspace-primary)]'
     case 'OUTDATED':
@@ -67,7 +67,7 @@ function getStatusDotClass(status: string) {
 function getStatusBadgeClass(status: string) {
   switch (status) {
     case 'READY':
-      return 'border border-[var(--workspace-border)] bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
+      return 'border border-[#2d8d6b]/30 bg-[var(--workspace-mint-soft)] text-[#1b6a4e]'
     case 'MODIFIED':
       return 'border border-[var(--workspace-primary)]/20 bg-[var(--workspace-yellow-soft)] text-[var(--workspace-deep)]'
     case 'OUTDATED':
@@ -247,7 +247,10 @@ export function MarkdownWorkspace({
       className="flex min-h-[600px] w-full flex-col overflow-hidden rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)] sm:min-h-[760px] lg:h-[760px] lg:flex-row"
       aria-label={t('markdownWorkspace')}
     >
-      <aside className="flex min-h-0 w-full flex-col border-b border-[var(--workspace-border)] bg-[var(--workspace-canvas)] lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r">
+      <aside
+        data-lenis-prevent
+        className="flex min-h-0 w-full flex-col overflow-hidden border-b border-[var(--workspace-border)] bg-[var(--workspace-canvas)] lg:h-full lg:max-h-full lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r"
+      >
         <div className="flex shrink-0 items-start gap-3 border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-4">
           <PanelLeft className="mt-0.5 size-5 flex-shrink-0 text-[var(--workspace-primary)]" aria-hidden="true" />
           <div className="min-w-0">
@@ -280,8 +283,17 @@ export function MarkdownWorkspace({
               >
                 <span className="flex w-full items-start justify-between gap-3">
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-mono text-sm font-medium leading-5">{artifact.path}</span>
-                    <span className="mt-1 block truncate text-xs leading-5 text-[var(--workspace-muted)]">{artifactBadge.label}</span>
+                    <span className="block truncate font-mono text-sm font-medium leading-5 text-[var(--workspace-ink)]">{artifact.path}</span>
+                    <span
+                      className={cn(
+                        'mt-1 block truncate text-xs leading-5',
+                        isSelected
+                          ? 'font-medium text-[var(--workspace-deep)]'
+                          : 'text-[var(--workspace-muted)]',
+                      )}
+                    >
+                      {artifactBadge.label}
+                    </span>
                   </span>
                   <span
                     className={cn('mt-1 size-2.5 flex-shrink-0 rounded-full', getStatusDotClass(artifact.status))}
@@ -296,44 +308,37 @@ export function MarkdownWorkspace({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[var(--workspace-canvas)]">
-        <header className="border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)]">
-          <div className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:justify-between lg:px-5">
+        <header className="border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate font-mono text-base font-medium tracking-tight text-[var(--workspace-ink)]">{activeArtifact?.path}</h1>
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <h1 className="min-w-0 max-w-full truncate font-mono text-base font-semibold tracking-tight text-[var(--workspace-ink)]">{activeArtifact?.path}</h1>
                 {activeArtifact && <StatusBadge className={badgeClassName} tone={statusTone(activeArtifact.status)}>{badge?.label}</StatusBadge>}
+                <span className="text-xs text-[var(--workspace-muted)]">
+                  {activeArtifact ? t('updated', { date: formatUpdatedAt(activeArtifact.updatedAt) }) : t('markdownNoArtifact')}
+                </span>
               </div>
-              <p className="mt-1 text-xs leading-5 text-[var(--workspace-muted)]">
-                {activeArtifact ? t('updated', { date: formatUpdatedAt(activeArtifact.updatedAt) }) : t('markdownNoArtifact')}
-              </p>
             </div>
 
-            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:justify-end">
-              <p
-                className={cn('min-h-5 text-xs leading-5', saveMessageType === 'error' ? 'text-[var(--workspace-rose)]' : 'text-[var(--workspace-muted)]')}
-                role={saveMessageType === 'error' ? 'alert' : 'status'}
-                aria-live={saveMessageType === 'error' ? 'assertive' : 'polite'}
-              >
-                {saveMessage || t('markdownEditsLocal')}
-              </p>
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+              {saveMessage && (
+                <span
+                  className={cn(
+                    'rounded-md px-2 py-1 text-xs font-medium',
+                    saveMessageType === 'error'
+                      ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-rose)]'
+                      : 'bg-[var(--workspace-mint-soft)] text-[#1b6a4e]',
+                  )}
+                  role={saveMessageType === 'error' ? 'alert' : 'status'}
+                  aria-live={saveMessageType === 'error' ? 'assertive' : 'polite'}
+                >
+                  {saveMessage}
+                </span>
+              )}
 
-              <div className="flex flex-wrap items-center gap-2">
-                {activeArtifact && (
-                  <Button
-                    type="button"
-                    onClick={handleRegenerate}
-                    disabled={isRegenerating || isSaving}
-                    variant="secondary"
-                    className="gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)]"
-                    aria-busy={isRegenerating}
-                  >
-                    {isRegenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
-                    {isRegenerating ? t('markdownRegenerating') : t('markdownRegenerate')}
-                  </Button>
-                )}
-
+              <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
                 <div
-                  className="grid grid-cols-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] p-1"
+                  className="grid min-w-0 flex-1 grid-cols-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] p-1 sm:flex-none"
                   role="group"
                   aria-label={tCommon('workspaceViewMode')}
                 >
@@ -347,7 +352,7 @@ export function MarkdownWorkspace({
                         onClick={() => setActiveTab(id)}
                         aria-pressed={isActive}
                         className={cn(
-                          'inline-flex items-center justify-center gap-2 rounded-md border border-transparent px-3 py-2 text-xs font-medium transition-colors sm:min-w-24',
+                          'inline-flex items-center justify-center gap-1.5 rounded-md border border-transparent px-2.5 py-2 text-xs font-medium transition-colors sm:min-w-24 sm:gap-2 sm:px-3',
                           isActive
                             ? 'border-[var(--workspace-primary)]/20 bg-[var(--workspace-paper)] text-[var(--workspace-primary)]'
                             : 'text-[var(--workspace-muted)] hover:bg-[var(--workspace-paper)] hover:text-[var(--workspace-ink)]',
@@ -359,6 +364,20 @@ export function MarkdownWorkspace({
                     )
                   })}
                 </div>
+
+                {activeArtifact && (
+                  <Button
+                    type="button"
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating || isSaving}
+                    variant="secondary"
+                    className="gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)]"
+                    aria-busy={isRegenerating}
+                  >
+                    {isRegenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                    {isRegenerating ? t('markdownRegenerating') : t('markdownRegenerate')}
+                  </Button>
+                )}
 
                 <Button
                   type="button"
