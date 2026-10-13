@@ -912,7 +912,7 @@
     "purpose": "Purpose",
     "setupNote": "Setup note",
     "implementationBacklog": "Implementation backlog",
-    "implementationBacklogDesc": "Interactive Kanban board. Drag tasks across columns or use quick actions to track coding agent progress.",
+    "implementationBacklogDesc": "Horizontal dependency map. Follow implementation tasks from left to right and open each node for its details.",
     "readyCountShort": "{count} ready",
     "doneCount": "{count} done",
     "blockedCount": "{count} blocked",
