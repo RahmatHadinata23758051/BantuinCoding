@@ -259,8 +259,7 @@ export function MarkdownWorkspace({
         </div>
 
         <nav
-          data-lenis-prevent
-          className="flex min-h-0 min-w-0 flex-1 gap-3 overscroll-contain overflow-x-auto p-3 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
+          className="flex min-h-0 min-w-0 flex-1 gap-3 overflow-x-auto p-3 lg:flex-col lg:overflow-x-hidden lg:overflow-y-auto"
           aria-label={t('markdownArtifacts')}
         >
           {artifacts.map((artifact) => {
