@@ -512,7 +512,7 @@ function ContextValue({
     if (isProvenance) {
       return (
         <span
-          className={`inline-flex rounded-full px-2 py-0.5 font-mono text-xs font-medium ${
+          className={`inline-flex rounded-full px-2 py-0.5 font-sans text-xs font-semibold ${
             value.toLowerCase() === 'confirmed'
               ? 'bg-[var(--workspace-mint-soft)] text-emerald-800'
               : value.toLowerCase() === 'assumed'
@@ -569,7 +569,7 @@ function ContextValue({
       <ol className="space-y-3">
         {value.map((item, index) => (
           <li key={index} className="border-l border-[var(--workspace-border-muted)] pl-3">
-            <span className="mb-2 block font-mono text-xs font-bold text-[var(--workspace-faint)]">
+            <span className="mb-2 block font-sans text-xs font-semibold text-[var(--workspace-muted)]">
               {entryLabel(index + 1)}
             </span>
             <ContextValue
@@ -607,7 +607,7 @@ function ContextValue({
                 : 'grid gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(10rem,0.35fr)_1fr] sm:gap-6'
             }
           >
-            <dt className="font-mono text-xs font-bold text-[var(--workspace-faint)]">
+            <dt className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">
               {formatLabel(key)}
             </dt>
             <dd className="min-w-0 text-sm font-medium leading-6 text-[var(--workspace-ink)]">
@@ -829,10 +829,10 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     : 'h-auto max-h-[calc(100dvh-3rem)] max-[639px]:max-h-[38rem] max-[639px]:overflow-hidden'
 
   const renderBriefParagraphs = (className?: string) => (
-    <div className={`w-full max-w-none text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base ${className ?? ''}`}>
+    <div className={`w-full max-w-none text-left text-[15px] leading-7 text-[var(--workspace-body)] sm:text-base ${className ?? ''}`}>
       <div className="w-full space-y-4">
         {briefParagraphs.map((paragraph, index) => (
-          <p key={`${index}-${paragraph.slice(0, 12)}`} className="w-full max-w-none text-justify whitespace-pre-line break-words">{paragraph}</p>
+          <p key={`${index}-${paragraph.slice(0, 12)}`} className="w-full max-w-none whitespace-pre-line break-words">{paragraph}</p>
         ))}
       </div>
     </div>
@@ -1496,18 +1496,18 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     >
       <div className="flex items-start justify-between gap-3 border-b border-black/[0.08] pb-3">
         <div>
-          <h2 id="generation-progress-title" className="font-mono text-xs font-semibold">
+          <h2 id="generation-progress-title" className="font-sans text-xs font-semibold">
             {t('generationProgressTitle')}
           </h2>
           <p className="mt-1 text-xs leading-5 text-[var(--workspace-muted)]">
             {t('generationProgressDesc')}
           </p>
         </div>
-        <span className="font-mono text-xs font-medium text-[var(--workspace-muted)]">
+        <span className="font-sans text-xs font-medium text-[var(--workspace-muted)]">
           {generationOperation ? t(generationOperation === 'retry' ? 'generationRetrying' : 'generationRunning') : t('generationIdle')}
         </span>
       </div>
-      <div className="mt-3 flex items-center justify-between gap-3 font-mono text-xs font-medium">
+      <div className="mt-3 flex items-center justify-between gap-3 font-sans text-xs font-medium">
         <span>{generationPercentage}%</span>
         <span>{t('generationProgressStep', { current: generationStep, total: GENERATION_STAGES.length })}</span>
       </div>
@@ -1545,7 +1545,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 </p>
                 {stage.error && <p className="mt-1 text-xs font-medium text-[var(--workspace-rose)]">{stage.error}</p>}
               </div>
-              <span className="font-mono text-[0.68rem] font-medium">{generationStatusLabel(stage.status)}</span>
+              <span className="font-sans text-xs font-semibold">{generationStatusLabel(stage.status)}</span>
             </li>
           )
         })}
@@ -1602,7 +1602,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         type="button"
         onClick={handleGenerateAll}
         disabled={isGenerating}
-        className={`inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2.5 font-mono text-sm font-semibold text-white shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+        className={`inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2.5 font-sans text-sm font-semibold text-white shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
       >
         {isGenerating ? (
           <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
@@ -1618,7 +1618,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           type="button"
           onClick={handleRegenerateFailed}
           disabled={isGenerating}
-          className={`inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-4 py-2.5 font-mono text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+          className={`inline-flex items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-4 py-2.5 font-sans text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
         >
           <RefreshCw aria-hidden="true" className="size-4" />
           {t('retryFailed', { count: attentionArtifacts.length })}
@@ -1701,7 +1701,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 <section aria-labelledby="overview-status-title" className="border-t border-[var(--workspace-border-subtle)] pt-5">
                   <div className="flex items-end justify-between gap-4 border-b border-[var(--workspace-border-subtle)] pb-3">
                     <h2 id="overview-status-title" className="text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">{t('overviewStatusTitle')}</h2>
-                    <span className="font-mono text-xs text-[var(--workspace-muted)]">{t('liveData')}</span>
+                    <span className="font-sans text-xs font-medium text-[var(--workspace-muted)]">{t('liveData')}</span>
                   </div>
 
                   <div aria-label={t('overviewStatusTitle')} className="mt-3 overflow-x-auto border-y border-[var(--workspace-border-subtle)] px-2 py-4 sm:px-4 sm:py-5">
@@ -1742,24 +1742,23 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               </div>
 
               <div className={activeTab === 'context' ? 'space-y-8' : 'hidden'}>
-                <div className="flex flex-col gap-3 border-b border-[var(--workspace-border)] pb-6 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--workspace-muted)]">{t('tabContext')}</p>
-                    <h2 className="mt-2 max-w-2xl text-4xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-5xl">
-                      {contextReady ? t('contextBriefTitle') : t('contextQuestionsTitle')}
-                    </h2>
-                  </div>
-                  <span className="font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
-                    {contextReady ? t('contextReadyStatus') : pendingClarifications.length > 0 ? t('contextQuestionsStatus') : t('contextWaitingStatus')}
-                  </span>
-                </div>
+                <SectionHeading
+                  title={contextReady ? t('contextBriefTitle') : t('contextQuestionsTitle')}
+                  description={t('tabContext')}
+                  divided={false}
+                  action={
+                    <span className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-2 text-sm font-semibold text-[var(--workspace-muted)]">
+                      {contextReady ? t('contextReadyStatus') : pendingClarifications.length > 0 ? t('contextQuestionsStatus') : t('contextWaitingStatus')}
+                    </span>
+                  }
+                />
 
                 {!contextReady ? (
                   <section className="mx-auto max-w-4xl">
-                    <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-10">
+                    <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5 sm:p-8`}>
                       <div className="border-b border-[var(--workspace-border-subtle)] pb-7">
-                        <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('discoveryInterview')}</p>
-                        <h3 className="mt-3 max-w-2xl text-3xl font-semibold leading-[1.02] tracking-[-0.055em] text-[var(--workspace-ink)] sm:text-4xl">
+                        <p className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">{t('discoveryInterview')}</p>
+                        <h3 className="mt-3 max-w-2xl text-2xl font-semibold leading-tight tracking-tight text-[var(--workspace-ink)] sm:text-3xl">
                           {pendingClarifications.length > 0 ? t('answerOpenDecisions') : t('contextNotAssembled')}
                         </h3>
                         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
@@ -1786,7 +1785,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           {pendingClarifications.map((question, index) => (
                             <fieldset key={question.id} className="border-b border-[var(--workspace-border-subtle)] pb-8 last:border-b-0 last:pb-0">
                               <legend className="w-full">
-                                <span className="font-mono text-xs font-semibold text-[var(--workspace-muted)]">{t('questionOf', { current: index + 1, total: pendingClarifications.length })}</span>
+                                <span className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('questionOf', { current: index + 1, total: pendingClarifications.length })}</span>
                                 <span className="mt-3 block text-lg font-semibold leading-7 tracking-[-0.02em]">{question.question}</span>
                               </legend>
                               {question.impact && <p className="mt-3 border-l-2 border-[var(--workspace-primary)] pl-3 text-sm leading-6 text-[var(--workspace-muted)]">{t('impact')}: {question.impact}</p>}
@@ -1837,49 +1836,59 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   </section>
                 ) : (
                   <>
-                    <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-5xl">
-                    <div className="border-y border-[var(--workspace-border)] bg-transparent py-8 sm:py-10">
-                      <div className="border-b border-[var(--workspace-border-subtle)] pb-8 sm:pb-10">
-                        <div className="max-w-3xl">
-                          <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('contextInterviewSummary')}</p>
-                          <h3 className="mt-3 font-[var(--font-lyon-text)] text-3xl leading-tight tracking-[-0.035em] text-[var(--workspace-ink)] sm:text-4xl">{t('contextSummaryHeading')}</h3>
-                          <div className="mt-5 rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:p-6 sm:text-base">
+                    <section aria-label={t('structuredProjectContext')} className="mx-auto max-w-5xl space-y-8">
+                      <div className={`${PANEL_CLASS} overflow-hidden bg-[var(--workspace-paper)]`}>
+                        <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-yellow-soft)] p-5 sm:p-6">
+                          <p className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">{t('contextInterviewSummary')}</p>
+                          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--workspace-ink)] sm:text-3xl">{t('contextSummaryHeading')}</h3>
+                        </div>
+                        <div className="p-5 sm:p-6">
+                          <div className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] p-5 text-left text-sm leading-relaxed text-[var(--workspace-body)] sm:p-6 sm:text-base sm:leading-7">
                             <ContextValue value={initialData.context?.summary ?? initialData.description ?? t('noBrief')} locale={locale} {...contextLabels} />
                           </div>
-                        </div>
-                        <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-[var(--workspace-border-subtle)] pt-5 font-mono text-xs font-semibold text-[var(--workspace-muted)]">
-                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-primary)]" />{t('confirmedByOwner')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.confirmed}</strong></span>
-                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[var(--workspace-sun)]" />{t('assumedBySystem')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.assumed}</strong></span>
-                          <span className="inline-flex items-center gap-2"><span className="size-2 rounded-full border border-[var(--workspace-border)] bg-white" />{t('stillUnknown')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.unknown}</strong></span>
+                          <div className="mt-6 flex flex-wrap items-center gap-2.5 font-sans text-xs font-semibold">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2d8d6b]/30 bg-[var(--workspace-mint-soft)] px-3 py-1.5 text-[#1b6a4e]">
+                              <span className="size-1.5 rounded-full bg-[#1b6a4e]" />
+                              {t('confirmedByOwner')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.confirmed}</strong>
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-sun)]/40 bg-[var(--workspace-yellow-soft)] px-3 py-1.5 text-[var(--workspace-deep)]">
+                              <span className="size-1.5 rounded-full bg-[var(--workspace-sun)]" />
+                              {t('assumedBySystem')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.assumed}</strong>
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-3 py-1.5 text-[var(--workspace-muted)]">
+                              <span className="size-1.5 rounded-full border border-[var(--workspace-border)] bg-white" />
+                              {t('stillUnknown')} <strong className="text-[var(--workspace-ink)]">{contextProvenanceCounts.unknown}</strong>
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="pt-8 sm:pt-10">
+                      <div>
                         <div className="flex items-end justify-between gap-4">
                           <div>
-                            <p className="font-mono text-xs font-semibold text-[var(--workspace-primary)]">{t('contextMapLabel')}</p>
-                            <h3 className="mt-2 font-[var(--font-lyon-text)] text-2xl leading-tight tracking-[-0.03em] text-[var(--workspace-ink)] sm:text-3xl">{t('contextCategoriesHeading')}</h3>
+                            <p className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">{t('contextMapLabel')}</p>
+                            <h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--workspace-ink)] sm:text-2xl">{t('contextCategoriesHeading')}</h3>
                           </div>
-                          <span className="hidden font-mono text-xs text-[var(--workspace-muted)] sm:block">{t('contextCategoryCount', { count: contextCategories.length })}</span>
+                          <span className="hidden font-sans text-xs font-semibold text-[var(--workspace-muted)] sm:block">{t('contextCategoryCount', { count: contextCategories.length })}</span>
                         </div>
 
-                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                        <div className="mt-6 grid gap-4 sm:grid-cols-2">
                           {contextCategories.map((category) => {
                             return (
-                              <article key={category.id} className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 transition-colors hover:border-[var(--workspace-primary)] sm:p-5">
+                              <article key={category.id} className={`${PANEL_CLASS} flex flex-col justify-between bg-[var(--workspace-paper)] p-5 transition-colors hover:border-[var(--workspace-primary)]`}>
                                 <button
                                   type="button"
                                   aria-label={`${t(category.labelKey)} — ${t('contextOpenCategory')}`}
                                   onClick={() => setOpenContextCategory(category.id)}
                                   className={`flex w-full items-start justify-between gap-4 text-left ${BUTTON_FOCUS_CLASS}`}
                                 >
-                                  <span className="min-w-0">
-                                    <span className="block text-xl font-semibold leading-tight tracking-[-0.03em] text-[var(--workspace-ink)] sm:text-2xl">{t(category.labelKey)}</span>
-                                    <span className="mt-2 block text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base">{t(category.descriptionKey)}</span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-lg font-semibold tracking-tight text-[var(--workspace-ink)] sm:text-xl">{t(category.labelKey)}</span>
+                                    <span className="mt-2 block text-left text-sm leading-relaxed text-[var(--workspace-muted)]">{t(category.descriptionKey)}</span>
                                   </span>
                                   <ChevronRight aria-hidden="true" className="mt-1 size-5 shrink-0 text-[var(--workspace-primary)]" />
                                 </button>
-                                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--workspace-border-subtle)] pt-3 font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
+                                <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--workspace-border-subtle)] pt-3.5 font-sans text-xs font-semibold text-[var(--workspace-muted)]">
                                   <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-primary)]" />{category.counts.confirmed} {t('confirmedShort')}</span>
                                   <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-sun)]" />{category.counts.assumed} {t('assumedShort')}</span>
                                   <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full border border-[var(--workspace-border)] bg-white" />{category.counts.unknown} {t('unknownShort')}</span>
@@ -1889,11 +1898,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                           })}
                         </div>
 
-                        <div className="mt-5 border-l-2 border-[var(--workspace-primary)] bg-[var(--workspace-yellow-soft)] px-4 py-3 text-sm leading-6 text-[var(--workspace-ink)]">
+                        <div className="mt-6 border-l-2 border-[var(--workspace-primary)] bg-[var(--workspace-yellow-soft)] px-4 py-3 font-sans text-sm leading-6 text-[var(--workspace-ink)]">
                           {t('contextOpenQuestionsNotice', { count: contextProvenanceCounts.unknown })}
                         </div>
                       </div>
-                    </div>
                     </section>
 
                     <Modal
@@ -1906,16 +1914,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   >
                     {selectedContextCategory && (
                       <div className="space-y-6">
-                        <div className="flex flex-wrap gap-x-4 gap-y-2 border-b border-[var(--workspace-border-subtle)] pb-4 font-mono text-[0.68rem] font-semibold text-[var(--workspace-muted)]">
-                          <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-primary)]" />{selectedContextCategory.counts.confirmed} {t('confirmedShort')}</span>
-                          <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full bg-[var(--workspace-sun)]" />{selectedContextCategory.counts.assumed} {t('assumedShort')}</span>
-                          <span className="inline-flex items-center gap-1.5"><span className="size-1.5 rounded-full border border-[var(--workspace-border)] bg-white" />{selectedContextCategory.counts.unknown} {t('unknownShort')}</span>
+                        <div className="flex flex-wrap gap-2 border-b border-[var(--workspace-border-subtle)] pb-4 font-sans text-xs font-semibold text-[var(--workspace-muted)]">
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2d8d6b]/30 bg-[var(--workspace-mint-soft)] px-2.5 py-1 text-[#1b6a4e]"><span className="size-1.5 rounded-full bg-[#1b6a4e]" />{selectedContextCategory.counts.confirmed} {t('confirmedShort')}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-sun)]/40 bg-[var(--workspace-yellow-soft)] px-2.5 py-1 text-[var(--workspace-deep)]"><span className="size-1.5 rounded-full bg-[var(--workspace-sun)]" />{selectedContextCategory.counts.assumed} {t('assumedShort')}</span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-2.5 py-1 text-[var(--workspace-muted)]"><span className="size-1.5 rounded-full border border-[var(--workspace-border)] bg-white" />{selectedContextCategory.counts.unknown} {t('unknownShort')}</span>
                         </div>
                         <div className="space-y-5">
                           {selectedContextCategory.categoryKeys.map((key) => (
                             <section key={key} className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 sm:p-5">
                               <h3 className="text-sm font-semibold tracking-[-0.02em] text-[var(--workspace-ink)]">{formatLabel(key)}</h3>
-                              <div className="mt-3 text-justify text-[15px] leading-[1.7] text-[var(--workspace-body)] sm:text-base">
+                              <div className="mt-3 text-left text-sm leading-relaxed text-[var(--workspace-body)] sm:text-base sm:leading-7">
                                 {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(initialData.context?.[key]) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={initialData.context?.[key]} locale={locale} {...contextLabels} />}
                               </div>
                             </section>
@@ -1932,10 +1940,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 <SectionHeading
                   title={t('generatedDocuments')}
                   description={t('generatedDocumentsDesc')}
+                  divided={false}
                   action={
                     artifacts.length > 0 ? (
                       <div
-                        className={`${PANEL_SOFT_CLASS} flex items-center gap-3 px-3 py-2 font-mono text-xs font-semibold text-[var(--workspace-ink)]`}
+                        className={`${PANEL_SOFT_CLASS} flex items-center gap-3 px-3 py-2 font-sans text-xs font-semibold text-[var(--workspace-ink)]`}
                       >
                         <span>{t('readyCount', { count: readyArtifacts.length })}</span>
                         <span aria-hidden="true">/</span>
@@ -1965,10 +1974,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 <SectionHeading
                   title={t('implementationBacklog')}
                   description={t('implementationBacklogDesc')}
+                  divided={false}
                   action={
                     allTasks.length > 0 ? (
                       <div
-                        className={`${PANEL_SOFT_CLASS} flex flex-wrap items-center gap-4 px-3 py-2 font-mono text-xs font-semibold text-[var(--workspace-ink)]`}
+                        className={`${PANEL_SOFT_CLASS} flex flex-wrap items-center gap-4 px-3 py-2 font-sans text-xs font-semibold text-[var(--workspace-ink)]`}
                       >
                         <span>{t('readyCountShort', { count: readyTasks.length })}</span>
                         <span>{t('doneCount', { count: doneTasks.length })}</span>

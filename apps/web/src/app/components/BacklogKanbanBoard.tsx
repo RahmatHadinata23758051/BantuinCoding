@@ -241,7 +241,7 @@ export function BacklogKanbanBoard({
               id="phase-filter"
               value={selectedPhase}
               onChange={(event) => setSelectedPhase(event.target.value)}
-              className="rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-2.5 py-1.5 font-mono text-xs font-medium text-[var(--workspace-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
+              className="rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-2.5 py-1.5 font-sans text-xs font-medium text-[var(--workspace-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
             >
               <option value="ALL">{t('allPhases', { count: phases.length })}</option>
               {phases.map((phase) => (
@@ -258,7 +258,7 @@ export function BacklogKanbanBoard({
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder={t('backlogSearch')}
             aria-label={t('backlogSearch')}
-            className="w-48 rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-3 py-1.5 font-mono text-xs font-medium text-[var(--workspace-ink)] placeholder:text-[var(--workspace-muted)] focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
+            className="w-48 rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-3 py-1.5 font-sans text-xs font-medium text-[var(--workspace-ink)] placeholder:text-[var(--workspace-muted)] focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
           />
         </div>
       </div>
@@ -293,7 +293,7 @@ export function BacklogKanbanBoard({
             <h3 className="text-sm font-semibold text-[var(--workspace-ink)]">{t('backlogMapTitle')}</h3>
             <p className="mt-1 text-xs text-[var(--workspace-muted)]">{t('backlogMapDescription')}</p>
           </div>
-          <span className="font-mono text-[0.68rem] font-medium text-[var(--workspace-muted)]">
+          <span className="font-sans text-xs font-medium text-[var(--workspace-muted)]">
             {t('backlogMapHint')}
           </span>
         </div>
@@ -315,13 +315,13 @@ export function BacklogKanbanBoard({
                 return (
                   <section key={phase.id} role="listitem" aria-labelledby={`backlog-phase-${phase.id}`} className="space-y-4">
                     <div className="flex min-h-24 flex-col justify-center rounded-[1.25rem] border-2 border-[var(--workspace-primary)] bg-[var(--workspace-paper)] px-4 py-3 text-center shadow-sm">
-                      <span className="font-mono text-[0.62rem] font-medium uppercase text-[var(--workspace-muted)]">
+                      <span className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">
                         {t('backlogPhaseNumber', { order: phase.order })}
                       </span>
                       <h4 id={`backlog-phase-${phase.id}`} className="mt-1 text-sm font-semibold leading-5 text-[var(--workspace-ink)]">
                         {phase.name}
                       </h4>
-                      <span className="mt-1 font-mono text-[0.62rem] text-[var(--workspace-muted)]">
+                      <span className="mt-1 font-sans text-xs font-medium text-[var(--workspace-muted)]">
                         {completed}/{phase.tasks.length} {t('backlogDoneLabel')}
                       </span>
                     </div>
@@ -392,14 +392,14 @@ export function BacklogKanbanBoard({
                                 <div className="mt-3 flex flex-wrap gap-1.5">
                                   {dependencyLabels.length > 0 && (
                                     <span
-                                      className="rounded-full border border-[#dfc777] bg-[var(--workspace-yellow-soft)] px-2 py-1 font-mono text-[0.62rem] font-medium text-[#8a5b00]"
+                                      className="rounded-full border border-[#dfc777] bg-[var(--workspace-yellow-soft)] px-2 py-1 font-sans text-[0.68rem] font-medium text-[#8a5b00]"
                                       title={t('backlogDependsOn', { tasks: dependencyLabels.join(', ') })}
                                     >
                                       {t('backlogDependsShort', { tasks: dependencyLabels.join(', ') })}
                                     </span>
                                   )}
                                   {task.recommendedSkills.length > 0 && (
-                                    <span className="rounded-full border border-[#a9d9bf] bg-[var(--workspace-mint-soft)] px-2 py-1 font-mono text-[0.62rem] font-medium text-[#28734b]">
+                                    <span className="rounded-full border border-[#a9d9bf] bg-[var(--workspace-mint-soft)] px-2 py-1 font-sans text-[0.68rem] font-medium text-[#28734b]">
                                       {t('backlogSkillShort', { skills: task.recommendedSkills[0] })}
                                     </span>
                                   )}
@@ -430,17 +430,17 @@ export function BacklogKanbanBoard({
           <div className="space-y-5 text-sm text-[var(--workspace-body)]">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge tone={statusTone(selectedTask.status)}>{getStatusLabel(selectedTask.status)}</StatusBadge>
-              <span className="font-mono text-xs text-[var(--workspace-muted)]">{selectedTask.phaseName}</span>
+              <span className="font-sans text-xs font-medium text-[var(--workspace-muted)]">{selectedTask.phaseName}</span>
             </div>
 
             <div>
-              <h3 className="font-mono text-xs font-medium text-[var(--workspace-muted)]">{t('backlogDescription')}</h3>
+              <h3 className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('backlogDescription')}</h3>
               <p className="mt-1 leading-6">{selectedTask.description}</p>
             </div>
 
             {selectedTask.acceptanceCriteria.length > 0 && (
               <div>
-                <h3 className="font-mono text-xs font-medium text-[var(--workspace-muted)]">{t('backlogAcceptanceCriteria')}</h3>
+                <h3 className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('backlogAcceptanceCriteria')}</h3>
                 <ul className="mt-2 list-disc space-y-1 pl-5 leading-5">
                   {selectedTask.acceptanceCriteria.map((criterion) => <li key={criterion}>{criterion}</li>)}
                 </ul>
@@ -449,27 +449,27 @@ export function BacklogKanbanBoard({
 
             {selectedTask.definitionOfDone && (
               <div>
-                <h3 className="font-mono text-xs font-medium text-[var(--workspace-muted)]">{t('backlogDefinitionOfDone')}</h3>
+                <h3 className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('backlogDefinitionOfDone')}</h3>
                 <p className="mt-1 leading-6">{selectedTask.definitionOfDone}</p>
               </div>
             )}
 
             {selectedTask.relevantDocs.length > 0 && (
               <div>
-                <h3 className="font-mono text-xs font-medium text-[var(--workspace-muted)]">{t('backlogRelevantDocs')}</h3>
+                <h3 className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('backlogRelevantDocs')}</h3>
                 <p className="mt-1 font-mono text-xs leading-5 text-[var(--workspace-primary)]">{selectedTask.relevantDocs.join(', ')}</p>
               </div>
             )}
 
             {selectedTask.recommendedSkills.length > 0 && (
               <div>
-                <h3 className="font-mono text-xs font-medium text-[var(--workspace-muted)]">{t('backlogSkill', { skills: '' }).replace(/: $/, ':')}</h3>
+                <h3 className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('backlogSkill', { skills: '' }).replace(/: $/, ':')}</h3>
                 <p className="mt-1 leading-5">{selectedTask.recommendedSkills.join(', ')}</p>
               </div>
             )}
 
             <div>
-              <h3 className="font-mono text-xs font-medium text-[var(--workspace-muted)]">{t('backlogDependsOn', { tasks: '' }).replace(/: $/, ':')}</h3>
+              <h3 className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('backlogDependsOn', { tasks: '' }).replace(/: $/, ':')}</h3>
               <p className="mt-1 leading-5">
                 {selectedTask.dependencies.length > 0
                   ? selectedTask.dependencies.map((dependency) => taskKeyById.get(dependency) ?? dependency).join(', ')
