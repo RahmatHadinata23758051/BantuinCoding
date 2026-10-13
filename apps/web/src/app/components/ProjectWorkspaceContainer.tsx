@@ -19,8 +19,8 @@ import {
   Braces,
   CalendarDays,
   Check,
-  CheckCircle2,
   ChevronRight,
+  FileCheck,
   Circle,
   CircleDashed,
   ClipboardCheck,
@@ -32,7 +32,7 @@ import {
   Languages,
   ListChecks,
   Loader2,
-  Menu,
+  Lock,
   MessageSquareText,
   Package,
   Play,
@@ -40,7 +40,8 @@ import {
   X,
   ScanText,
   ShieldCheck,
-  Wrench,
+  SlidersHorizontal,
+  Terminal,
   type LucideIcon,
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
@@ -348,13 +349,15 @@ function SectionHeading({
   title,
   description,
   action,
+  divided = true,
 }: {
   title: string
   description: string
   action?: ReactNode
+  divided?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-black/[0.08] pb-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className={`flex flex-col gap-3 pb-5 sm:flex-row sm:items-end sm:justify-between ${divided ? 'border-b border-black/[0.08]' : ''}`}>
       <div>
         <h2 className="max-w-3xl text-2xl font-semibold tracking-tight text-[var(--workspace-ink)] sm:text-3xl">
           {title}
@@ -366,6 +369,74 @@ function SectionHeading({
       {action}
     </div>
   )
+}
+
+function getExportArtifactDescriptionKey(type: string):
+  | 'fileDescAgent'
+  | 'fileDescBacklog'
+  | 'fileDescPrd'
+  | 'fileDescDesign'
+  | 'fileDescArchitecture'
+  | 'fileDescGeneric' {
+  switch (type) {
+    case 'AGENT':
+      return 'fileDescAgent'
+    case 'BACKLOG':
+      return 'fileDescBacklog'
+    case 'PRD':
+      return 'fileDescPrd'
+    case 'DESIGN':
+      return 'fileDescDesign'
+    case 'ARCHITECTURE':
+      return 'fileDescArchitecture'
+    default:
+      return 'fileDescGeneric'
+  }
+}
+
+function renderPromptPreviewContent(promptText: string) {
+  const lines = promptText.split('\n')
+  return lines.map((line, index) => {
+    if (line.startsWith('# ')) {
+      return (
+        <div key={index} className="font-bold text-amber-300 text-sm py-0.5">
+          {line}
+        </div>
+      )
+    }
+    if (line.startsWith('## ')) {
+      return (
+        <div key={index} className="font-semibold text-amber-200 text-xs pt-3 pb-1">
+          {line}
+        </div>
+      )
+    }
+    const numberedMatch = line.match(/^(\d+\.\s)(.*)$/)
+    if (numberedMatch) {
+      return (
+        <div key={index} className="flex items-start text-xs text-neutral-200 pl-2 py-0.5">
+          <span className="font-semibold text-sky-300 shrink-0 w-6">{numberedMatch[1]}</span>
+          <span className="min-w-0">{numberedMatch[2]}</span>
+        </div>
+      )
+    }
+    if (line.startsWith('- ')) {
+      return (
+        <div key={index} className="flex items-start text-xs text-neutral-200 pl-2 py-0.5">
+          <span className="text-neutral-400 shrink-0 mr-2">•</span>
+          <span className="min-w-0">{line.slice(2)}</span>
+        </div>
+      )
+    }
+    if (!line.trim()) {
+      return <div key={index} className="h-2" />
+    }
+    return (
+      <div key={index} className="text-xs text-neutral-300 py-0.5">
+        {line}
+      </div>
+    )
+  })
 }
 
 function EmptyState({
@@ -592,7 +663,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   }
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
-  const [isWorkspaceNavOpen, setIsWorkspaceNavOpen] = useState(false)
   const [projectName, setProjectName] = useState(initialData.name)
   const [projectLang, setProjectLang] = useState(initialData.language || 'id')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
@@ -664,7 +734,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     (projectStatus === 'READY' || projectStatus === 'EXPORTABLE') &&
     initialData.requiredArtifactTypes.length > 0 &&
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
-  const [hasExportedZip, setHasExportedZip] = useState(initialData.status === 'EXPORTABLE')
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [isBriefExpanded, setIsBriefExpanded] = useState(false)
   const [isBriefOverflowing, setIsBriefOverflowing] = useState(false)
@@ -835,8 +904,11 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
       tone: blockedTasks.length > 0 ? 'attention' : allTasks.length > 0 ? 'ready' : 'idle',
     },
   ]
-  const includesReadme = readyArtifacts.some((artifact) => artifact.path === 'README.md')
+  const exportManifestArtifacts = readyRequiredArtifacts
+  const includesReadme = exportManifestArtifacts.some((artifact) => artifact.path === 'README.md')
+  const exportFileCount = exportManifestArtifacts.length + (includesReadme ? 0 : 1)
   const [isExporting, setIsExporting] = useState(false)
+  const [isDownloadComplete, setIsDownloadComplete] = useState(false)
 
   const handleDownloadZip = async () => {
     if (isExporting) return
@@ -849,7 +921,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
         // Validation demotes EXPORTABLE projects back to READY on the server.
         // Keep the export desk in sync so it does not claim the stale pack is complete.
         setProjectStatus('READY')
-        setHasExportedZip(false)
         throw new Error(t('consistencyIssues'))
       }
       const download = await fetch(`/api/projects/${initialData.id}/export`)
@@ -871,7 +942,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
       anchor.remove()
       URL.revokeObjectURL(objectUrl)
 
-      setHasExportedZip(true)
+      setIsDownloadComplete(true)
+      setTimeout(() => setIsDownloadComplete(false), 2000)
       setProjectStatus('EXPORTABLE')
     } catch (error) {
       setGenMessage({
@@ -929,31 +1001,28 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
   const workspaceNavigation = (
     <>
-      <div className="flex items-start justify-between gap-3 border-b border-[var(--workspace-border)] pb-5">
-        <div className="min-w-0">
-          <BrandLogo imageSize={28} textClassName="text-xl font-semibold tracking-[-0.04em]" />
-          <p
-            className="mt-1 truncate text-xs text-[var(--workspace-muted)]"
-            title={initialData.name}
+      <div className="min-w-0 border-b border-[var(--workspace-border)] pb-5">
+        <BrandLogo imageSize={28} textClassName="text-xl font-semibold tracking-[-0.04em]" />
+        <p className="mt-1 truncate text-xs text-[var(--workspace-muted)]" title={initialData.name}>
+          {initialData.name}
+        </p>
+        {projectStatus !== 'EXPORTABLE' && (
+          <span
+            className={`mt-3 inline-flex max-w-full rounded-full border border-[var(--workspace-border)] px-3 py-1.5 text-center text-xs font-semibold leading-4 ${statusTone(projectStatus)}`}
+            title={tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
           >
-            {initialData.name}
-          </p>
-        </div>
-        <span
-          className={`max-w-[6.5rem] shrink-0 rounded-full border border-[var(--workspace-border)] px-3 py-1.5 text-center text-xs font-semibold leading-4 ${statusTone(projectStatus)}`}
-          title={tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
-        >
-          {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
-        </span>
+            {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
+          </span>
+        )}
       </div>
       <div className="mt-6">
-        <Link href="/dashboard" onClick={() => setIsWorkspaceNavOpen(false)} className={`inline-flex items-center gap-2 text-sm font-semibold text-[var(--workspace-muted)] transition-colors hover:text-[var(--workspace-primary)] ${BUTTON_FOCUS_CLASS}`}>
+        <Link href="/dashboard" className={`inline-flex items-center gap-2 text-sm font-semibold text-[var(--workspace-muted)] transition-colors hover:text-[var(--workspace-primary)] ${BUTTON_FOCUS_CLASS}`}>
           <ArrowLeft aria-hidden="true" className="size-4" />
           {t('backProjects')}
         </Link>
       </div>
       <div className="mt-8">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--workspace-faint)]">{t('workspaceSections')}</p>
+        <p className="text-xs font-bold text-[var(--workspace-muted)]">{t('workspaceSections')}</p>
         <nav aria-label={t('workspaceSections')} className="mt-3 space-y-1">
           {SECTION_ITEMS.map((section) => {
             const Icon = section.icon
@@ -970,14 +1039,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 role="tab"
                 tabIndex={isActive ? 0 : -1}
                 aria-selected={isActive}
+                aria-current={isActive ? 'page' : undefined}
                 aria-controls={getSectionPanelId(section.id)}
                 onClick={() => {
                   selectTab(section.id)
-                  setIsWorkspaceNavOpen(false)
                 }}
                 onKeyDown={(event) => handleSectionKeyDown(event, section.id)}
                 title={t(section.descriptionKey as Parameters<typeof t>[0])}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${BUTTON_FOCUS_CLASS} ${isActive ? 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]' : 'text-[var(--workspace-muted)] hover:bg-[var(--workspace-blue-soft)] hover:text-[var(--workspace-ink)]'}`}
+                className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${BUTTON_FOCUS_CLASS} ${isActive ? 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]' : 'text-[var(--workspace-muted)] hover:bg-[var(--workspace-blue-soft)] hover:text-[var(--workspace-ink)]'}`}
               >
                 <Icon aria-hidden="true" className="size-4" />
                 {t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}
@@ -987,9 +1056,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         </nav>
       </div>
       <div className="mt-auto border-t border-[var(--workspace-border)] pt-5">
-        <Button size="sm" variant="neutral" onClick={() => { setIsSettingsOpen(true); setIsWorkspaceNavOpen(false) }} className="w-full justify-start border-[var(--workspace-border)] px-3 text-xs font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-blue-soft)]">
-          <Wrench className="size-3.5" /> {t('settings')}
-        </Button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsSettingsOpen(true)
+          }}
+          className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-3 py-2.5 text-left text-sm font-semibold text-[var(--workspace-ink)] transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}
+        >
+          <SlidersHorizontal aria-hidden="true" className="size-4" />
+          <span>{t('projectSettings')}</span>
+        </button>
       </div>
     </>
   )
@@ -1556,26 +1632,17 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   return (
     <div className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]" style={WORKSPACE_STYLE}>
       <div className="min-h-screen items-start gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden h-[calc(100dvh-3rem)] self-start lg:sticky lg:top-6 lg:flex lg:flex-col">
-          <div className="flex h-full w-full flex-col rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
-            <div className="flex min-h-0 flex-1 flex-col">{workspaceNavigation}</div>
+        <aside className="hidden self-start lg:flex lg:flex-col">
+          <div className="w-full rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
+            <div className="flex flex-col">{workspaceNavigation}</div>
           </div>
         </aside>
         <div className="min-w-0">
-          <div className="lg:hidden">
-            {/* Mobile navigation remains in normal document flow so it does not cover the brief. */}
-          </div>
-          <header className="border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-4 sm:px-6 lg:hidden">
-            <div className="flex items-center justify-between gap-4">
-              <button type="button" aria-expanded={isWorkspaceNavOpen} aria-controls="workspace-mobile-navigation" onClick={() => setIsWorkspaceNavOpen((open) => !open)} className={`inline-flex items-center gap-2 rounded-lg border border-[var(--workspace-border)] px-3 py-2 text-sm font-semibold ${BUTTON_FOCUS_CLASS}`}>
-                {isWorkspaceNavOpen ? <X aria-hidden="true" className="size-4" /> : <Menu aria-hidden="true" className="size-4" />}
-                <span>{t(`tab${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}` as Parameters<typeof t>[0])}</span>
-              </button>
-            </div>
-            {isWorkspaceNavOpen && <div id="workspace-mobile-navigation" className="mt-4 border-t border-[var(--workspace-border)] pt-4"><div className="flex flex-col gap-5">{workspaceNavigation}</div></div>}
-          </header>
+          <aside className="mb-6 rounded-[20px] border border-white/80 bg-[var(--workspace-paper)]/90 px-4 py-4 shadow-[0_8px_22px_rgba(36,35,31,0.06)] lg:hidden">
+            <div className="flex flex-col">{workspaceNavigation}</div>
+          </aside>
 
-          <main className="mx-auto w-full max-w-[1500px] px-4 pb-20 pt-6 sm:px-6 lg:px-10 lg:pt-0 xl:px-14">
+          <main className="mx-auto w-full max-w-[1500px] px-0 pb-20 pt-2 sm:px-2 lg:px-10 lg:pt-0 xl:px-14">
             {activeTab === 'overview' && (
               <header className="border-b border-[var(--workspace-border)] pb-0">
                 <div
@@ -1931,18 +1998,27 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 <SectionHeading
                   title={t('exportAgentPrompt')}
                   description={t('exportAgentPromptDesc')}
+                  divided={false}
                   action={
                     <span
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold leading-4 ${
+                      className={`inline-flex min-h-11 shrink-0 items-center gap-2 self-start rounded-full border px-4 py-2 text-sm font-semibold sm:self-auto ${
                         canExport
-                          ? 'border-[var(--workspace-ink)] bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
-                          : 'border-[var(--workspace-ink)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)]'
+                          ? 'border-[#2d8d6b]/35 bg-[var(--workspace-mint-soft)] text-[#1b6a4e]'
+                          : 'border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-muted)]'
                       }`}
                     >
-                      {canExport ? (hasExportedZip ? t('exportCompleted') : t('readyToDownload')) : t('notReady')}
+                      {canExport && <Check aria-hidden="true" className="size-4" />}
+                      {canExport
+                        ? t('readyToDownloadFiles', { count: exportFileCount })
+                        : t('notReady')}
                     </span>
                   }
                 />
+                {genMessage?.type === 'error' && (
+                  <p role="alert" className="-mt-4 text-sm font-medium text-[var(--workspace-rose)]">
+                    {genMessage.text}
+                  </p>
+                )}
 
                 {!canExport ? (
                   <EmptyState
@@ -1952,144 +2028,199 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     action={generateButton}
                   />
                 ) : (
-                  <div className="grid items-stretch gap-6 lg:grid-cols-2">
-                    <section aria-labelledby="pack-export-title" className={`${PANEL_CLASS} flex min-h-full flex-col overflow-hidden`}>
-                      <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-yellow-soft)] p-5 sm:p-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-start gap-3">
-                            <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
-                              <Package aria-hidden="true" className="size-5" />
-                            </span>
-                            <div>
-                              <h3 id="pack-export-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
-                                {t('bootstrapPack')}
-                              </h3>
-                              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
-                                {t('preparedForUniversal')}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="shrink-0 text-xs font-semibold text-[var(--workspace-ink)]">
-                            {t('filesCount', { count: readyArtifacts.length + (includesReadme ? 0 : 1) })}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-1 flex-col bg-[var(--workspace-paper)]">
-                        <div className="border-b border-[var(--workspace-border-subtle)] p-5 sm:p-6">
-                          <div className="mb-3 flex items-center justify-between gap-3">
-                            <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
-                              {t('archiveManifest')}
-                            </h4>
-                            <span className="text-xs font-semibold text-[var(--workspace-ink)]">
-                              {canExport ? t('readyToDownload') : t('notReady')}
-                            </span>
-                          </div>
-                          <ul className="divide-y divide-[var(--workspace-border-subtle)] border-y border-[var(--workspace-border-subtle)]">
-                            {readyArtifacts.map((artifact) => (
-                              <li key={artifact.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                                <div className="flex min-w-0 items-center gap-3">
-                                  <FileText aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-ink)]" />
-                                  <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">{artifact.path}</span>
-                                </div>
-                                <span className={`w-fit rounded-full px-2 py-0.5 text-xs font-medium ${statusTone(artifact.status)}`}>
-                                  {tStatus(artifact.status as Parameters<typeof tStatus>[0]) ?? formatStatus(artifact.status)}
-                                </span>
-                              </li>
-                            ))}
-                            {!includesReadme && (
-                              <li className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                                <div className="flex min-w-0 items-center gap-3">
-                                  <FileText aria-hidden="true" className="size-4 shrink-0 text-[var(--workspace-ink)]" />
-                                  <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">README.md</span>
-                                </div>
-                                <span className="text-xs font-bold text-[var(--workspace-muted)]">{t('addedDuringExport')}</span>
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-
-                        <div className="mt-auto p-5 sm:p-6">
-                          <div className="space-y-2 border-y border-[var(--workspace-border-subtle)] py-4 text-sm font-medium text-[var(--workspace-body)]">
+                  <div className="space-y-6">
+                    <div className="grid items-stretch gap-6 lg:grid-cols-2">
+                      <section aria-labelledby="pack-export-title" className={`${PANEL_CLASS} flex h-full flex-col overflow-hidden`}>
+                        <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-yellow-soft)] p-5 sm:p-6">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-start gap-3">
-                              <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
-                              <span>{t('contentScanned')}</span>
+                              <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
+                                <Package aria-hidden="true" className="size-5" />
+                              </span>
+                              <div>
+                                <h3 id="pack-export-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
+                                  {t('bootstrapPack')}
+                                </h3>
+                                <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
+                                  {t('preparedForUniversal')}
+                                </p>
+                              </div>
                             </div>
+                            <button
+                              type="button"
+                              onClick={handleDownloadZip}
+                              disabled={isExporting}
+                              aria-busy={isExporting}
+                              aria-label={isExporting ? t('validatingPack') : isDownloadComplete ? t('downloaded') : t('downloadZipPack')}
+                              className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-ink)] px-4 py-2.5 text-sm font-semibold text-white shadow-none transition-colors hover:bg-black disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                            >
+                              {isExporting ? (
+                                <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
+                              ) : isDownloadComplete ? (
+                                <Check aria-hidden="true" className="size-4 text-emerald-400" />
+                              ) : (
+                                <Download aria-hidden="true" className="size-4" />
+                              )}
+                              <span>
+                                {isExporting
+                                  ? t('validatingPack')
+                                  : isDownloadComplete
+                                    ? t('downloaded')
+                                    : t('downloadZipPack')}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-1 flex-col bg-[var(--workspace-paper)]">
+                          <div className="flex-1 p-5 sm:p-6">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                              <h4 className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
+                                {t('archiveContents')}
+                              </h4>
+                              <span className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">
+                                {t('filesCount', { count: exportFileCount })}
+                              </span>
+                            </div>
+                            <ul className="divide-y divide-[var(--workspace-border-subtle)] border-y border-[var(--workspace-border-subtle)]">
+                              {exportManifestArtifacts.map((artifact) => (
+                                <li key={artifact.id} className="flex items-start gap-3 py-3">
+                                  <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">
+                                      {artifact.path}
+                                    </p>
+                                    <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
+                                      {t(getExportArtifactDescriptionKey(artifact.type))}
+                                    </p>
+                                  </div>
+                                </li>
+                              ))}
+                              {!includesReadme && (
+                                <li className="flex items-start gap-3 py-3">
+                                  <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">
+                                        README.md
+                                      </span>
+                                      <span className="rounded border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--workspace-ink)]">
+                                        {t('addedDuringExport')}
+                                      </span>
+                                    </div>
+                                    <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
+                                      {t('fileDescReadme')}
+                                    </p>
+                                  </div>
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+
+                          <div className="mt-auto border-t border-[var(--workspace-border-subtle)] bg-[var(--workspace-paper)] p-5 sm:p-6">
+                            <div className="space-y-2.5 font-sans text-xs text-[var(--workspace-muted)]">
+                              <div className="flex items-start gap-2.5">
+                                <Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                                <span>{t('assuranceSecrets')}</span>
+                              </div>
+                              <div className="flex items-start gap-2.5">
+                                <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                                <span>{t('assuranceScanned')}</span>
+                              </div>
+                              <div className="flex items-start gap-2.5">
+                                <FileCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                                <span>{t('assuranceFilenames')}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section aria-labelledby="kickoff-prompt-title" className={`${PANEL_CLASS} flex h-full flex-col overflow-hidden bg-[var(--workspace-paper)]`}>
+                        <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-blue-soft)] p-5 sm:p-6">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-start gap-3">
-                              <CheckCircle2 aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
-                              <span>{t('controlledFilenames')}</span>
+                              <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
+                                <Terminal aria-hidden="true" className="size-5" />
+                              </span>
+                              <div>
+                                <h3 id="kickoff-prompt-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
+                                  {t('oneShotAgentPrompt')}
+                                </h3>
+                                <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
+                                  {t('oneShotAgentPromptDesc')}
+                                </p>
+                              </div>
                             </div>
+                            <button
+                              type="button"
+                              onClick={handleCopyOneShotPrompt}
+                              aria-label={copiedPrompt ? t('copied') : t('copyPrompt')}
+                              className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-2.5 text-sm font-semibold text-[var(--workspace-ink)] shadow-none transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}
+                            >
+                              {copiedPrompt ? (
+                                <>
+                                  <Check aria-hidden="true" className="size-4 text-emerald-600" />
+                                  <span>{t('copied')}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
+                                  <span>{t('copyPrompt')}</span>
+                                </>
+                              )}
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={handleDownloadZip}
-                            disabled={isExporting}
-                            aria-busy={isExporting}
-                            className={`mt-5 inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-3 text-sm font-semibold text-white shadow-none hover:shadow-none disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                          >
-                            {isExporting ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Download aria-hidden="true" className="size-4" />}
-                            {isExporting ? t('validatingPack') : t('downloadZipPack')}
-                          </button>
                         </div>
-                      </div>
-                    </section>
 
-                    <section aria-labelledby="kickoff-prompt-title" className={`${PANEL_CLASS} flex min-h-full flex-col overflow-hidden bg-[var(--workspace-paper)]`}>
-                      <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-blue-soft)] p-5 sm:p-6">
-                        <div className="flex items-start gap-3">
-                          <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
-                            <Wrench aria-hidden="true" className="size-5" />
+                        <div className="flex flex-1 flex-col p-5 sm:p-6">
+                          <p className="mb-2 font-sans text-xs text-[var(--workspace-muted)]">
+                            {t('promptPreviewCaption')}
+                          </p>
+                          <div
+                            role="region"
+                            aria-label={t('promptPreviewRegionLabel')}
+                            tabIndex={0}
+                            className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-black/20 bg-[#18181b] p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--workspace-primary)]"
+                            style={{ maxHeight: '440px', minHeight: '340px' }}
+                          >
+                            {renderPromptPreviewContent(generateOneShotKickoffPrompt())}
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+
+                    <div className="rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 sm:p-6 shadow-[0_8px_22px_rgba(36,35,31,0.06)]">
+                      <h4 className="mb-4 font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
+                        {t('howToUse')}
+                      </h4>
+                      <ol className="grid gap-4 sm:grid-cols-3">
+                        <li className="flex items-start gap-3">
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] font-sans text-xs font-bold text-[var(--workspace-ink)]">
+                            1
                           </span>
-                          <div>
-                            <h3 id="kickoff-prompt-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
-                              {t('oneShotAgentPrompt')}
-                            </h3>
-                            <p className="mt-1 text-sm font-semibold leading-5 text-[var(--workspace-muted)]">
-                              {t('oneShotAgentPromptDesc')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-1 flex-col p-5 sm:p-6">
-                        <pre className="min-h-0 max-h-[32rem] flex-1 overflow-y-auto overscroll-contain border border-[var(--workspace-border)] bg-[var(--workspace-ink)] p-4 font-mono text-xs font-medium leading-relaxed text-[var(--workspace-paper)] whitespace-pre-wrap">
-                          {generateOneShotKickoffPrompt()}
-                        </pre>
-                        <div className="mt-auto pt-5">
-                          <button
-                            type="button"
-                            onClick={handleCopyOneShotPrompt}
-                            className={`inline-flex w-full items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-5 py-3 text-sm font-semibold text-[var(--workspace-ink)] shadow-none hover:shadow-none ${BUTTON_FOCUS_CLASS}`}
-                          >
-                            {copiedPrompt ? (
-                              <>
-                                <Check aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-                                {t('promptCopiedToClipboard')}
-                              </>
-                            ) : (
-                              <>
-                                <Copy aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-                                {t('copyAgentKickoffPrompt')}
-                              </>
-                            )}
-                          </button>
-                          <ol className="mt-5 grid gap-3 border-t border-[var(--workspace-border-subtle)] pt-5 sm:grid-cols-3">
-                            <li className="flex gap-3 text-sm leading-5 text-[var(--workspace-body)]">
-                              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--workspace-yellow-soft)] text-xs font-bold text-[var(--workspace-ink)]">1</span>
-                              <span>{t('exportStepDownload')}</span>
-                            </li>
-                            <li className="flex gap-3 text-sm leading-5 text-[var(--workspace-body)]">
-                              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--workspace-yellow-soft)] text-xs font-bold text-[var(--workspace-ink)]">2</span>
-                              <span>{t('exportStepExtract')}</span>
-                            </li>
-                            <li className="flex gap-3 text-sm leading-5 text-[var(--workspace-body)]">
-                              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--workspace-yellow-soft)] text-xs font-bold text-[var(--workspace-ink)]">3</span>
-                              <span>{t('exportStepPaste')}</span>
-                            </li>
-                          </ol>
-                        </div>
-                      </div>
-                    </section>
+                          <p className="font-sans text-sm font-semibold text-[var(--workspace-ink)]">
+                            {t('exportStepDownload')}
+                          </p>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] font-sans text-xs font-bold text-[var(--workspace-ink)]">
+                            2
+                          </span>
+                          <p className="font-sans text-sm font-semibold text-[var(--workspace-ink)]">
+                            {t('exportStepExtract')}
+                          </p>
+                        </li>
+                        <li className="flex items-start gap-3">
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] font-sans text-xs font-bold text-[var(--workspace-ink)]">
+                            3
+                          </span>
+                          <p className="font-sans text-sm font-semibold text-[var(--workspace-ink)]">
+                            {t('exportStepPaste')}
+                          </p>
+                        </li>
+                      </ol>
+                    </div>
                   </div>
                 )}
               </div>
