@@ -145,11 +145,11 @@ export function validateRuleBasedConsistency(
 
   // Rule 2: Backlog Doc References Check
   if (backlog) {
-    const docRefs = backlog.match(/[A-Z0-9_\-]+\.md/gi) || []
-    const existingPaths = new Set(artifacts.map((a) => a.path))
+    const docRefs = new Set(backlog.match(/[A-Z0-9_\-]+\.md/gi) || [])
+    const existingPaths = new Set(artifacts.map((a) => a.path.toLowerCase()))
 
     for (const ref of docRefs) {
-      if (!existingPaths.has(ref) && ref !== 'BACKLOG.md' && ref !== 'README.md') {
+      if (!existingPaths.has(ref.toLowerCase()) && ref.toLowerCase() !== 'backlog.md' && ref.toLowerCase() !== 'readme.md') {
         issues.push({
           severity: 'MEDIUM',
           category: 'INVALID_BACKLOG_DOC_REF',

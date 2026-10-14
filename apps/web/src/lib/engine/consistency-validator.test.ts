@@ -67,6 +67,23 @@ describe('Rule-Based Consistency Validator', () => {
     expect(report.issues.some((i) => i.category === 'INVALID_BACKLOG_DOC_REF')).toBe(true)
   })
 
+  it('matches existing document references case-insensitively', () => {
+    const report = validateRuleBasedConsistency([
+      { type: 'BACKLOG', path: 'BACKLOG.md', content: 'Relevant Docs: Architecture.md, Architecture.md' },
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: '# Architecture' },
+    ])
+
+    expect(report.issues).toEqual([])
+  })
+
+  it('reports repeated missing document references only once', () => {
+    const report = validateRuleBasedConsistency([
+      { type: 'BACKLOG', path: 'BACKLOG.md', content: 'Relevant Docs: UNKNOWN.md, UNKNOWN.md' },
+    ])
+
+    expect(report.issues.filter((issue) => issue.category === 'INVALID_BACKLOG_DOC_REF')).toHaveLength(1)
+  })
+
   it('blocks secret-containing artifacts and reports no matched secret values', () => {
     const report = validateRuleBasedConsistency([
       {
