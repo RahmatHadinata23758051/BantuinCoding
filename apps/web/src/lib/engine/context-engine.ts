@@ -11,10 +11,6 @@ import {
 import type { ContextProvenance } from '@repo/types'
 import { getCurrentRequirementAnalysis } from '@/lib/engine/analysis-store'
 import { updateProject } from '@/lib/projects/project-service'
-import {
-  ASSUMPTION_CONFIRMATION_QUESTION,
-  isAssumptionConfirmationAccepted,
-} from '@/lib/engine/clarification-engine'
 
 export interface GenerateContextOptions {
   userId: string
@@ -243,22 +239,6 @@ export async function generateCanonicalContext({
   )
   if (pendingQuestions.length > 0) {
     throw new Error('Answer pending clarification questions before generating context.')
-  }
-
-  const maxRoundReached = project.clarificationQuestions.some(
-    (question) => question.round > 3,
-  )
-  if (maxRoundReached) {
-    const acceptedAssumptionPath = project.clarificationQuestions.some(
-      (question) =>
-        question.round > 3 &&
-        question.question === ASSUMPTION_CONFIRMATION_QUESTION &&
-        question.status === 'ANSWERED' &&
-        isAssumptionConfirmationAccepted(question.answer),
-    )
-    if (!acceptedAssumptionPath) {
-      throw new Error('Confirm unresolved items as explicit assumptions before generating context.')
-    }
   }
 
   const currentAnalysis = await getCurrentRequirementAnalysis(projectId)

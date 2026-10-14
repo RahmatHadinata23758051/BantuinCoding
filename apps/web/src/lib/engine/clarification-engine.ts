@@ -10,33 +10,6 @@ import {
 import { getCurrentRequirementAnalysis } from '@/lib/engine/analysis-store'
 import { updateProject } from '@/lib/projects/project-service'
 
-export const ASSUMPTION_CONFIRMATION_QUESTION =
-  'Confirm that unresolved items may proceed as explicit assumptions?'
-export const ASSUMPTION_CONFIRMATION_ACCEPTED = 'Proceed with explicit assumptions'
-
-export function isAssumptionConfirmationAccepted(answer: string | null | undefined): boolean {
-  if (!answer) return false
-  const normalized = answer
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  if (/\b(no|not|don t|do not|decline|reject|stop|batal|tidak)\b/.test(normalized)) return false
-
-  const canonical = ASSUMPTION_CONFIRMATION_ACCEPTED.toLowerCase()
-  // Accept "[AUTO]" or any variation as confirmation to proceed with assumptions
-  return (
-    normalized === canonical ||
-    normalized === 'auto' ||
-    normalized.includes('auto') ||
-    answer.trim() === '[AUTO]' ||
-    /\b(yes|confirm|confirmed|proceed|continue|accept|accepted|ok|oke|setuju|lanjut|siap|iya|y)\b/.test(
-      normalized,
-    )
-  )
-}
-
 const clarificationGenerationInFlight = new Map<string, Promise<ClarificationRoundResult>>()
 
 export interface GenerateClarificationsOptions {
@@ -95,57 +68,13 @@ export async function generateClarificationRound({
           ? Math.max(...existingQuestions.map((q) => q.round)) + 1
           : 1
 
-      // Max 3 rounds of clarification. Reaching the limit is not the same as
-      // sufficient context: the user must explicitly confirm unresolved assumptions
-      // before context generation may continue.
+      // Max 3 rounds of clarification.
+      // Under NAT-38: Skip synthetic assumption confirmation question.
+      // Once clarification questions are answered up to the round limit,
+      // proceed directly to canonical context generation without creating
+      // synthetic confirmation questions.
       if (currentRound > 3) {
-        // Check if assumption-confirmation question already exists
-        const existingAssumptionQuestion = existingQuestions.find(
-          (q) => q.round > 3 && q.question === ASSUMPTION_CONFIRMATION_QUESTION,
-        )
-        if (existingAssumptionQuestion) {
-          const mappedQuestion = {
-            question: existingAssumptionQuestion.question,
-            impact: existingAssumptionQuestion.impact ?? '',
-            suggested_options: [ASSUMPTION_CONFIRMATION_ACCEPTED, 'Do not proceed'],
-          }
-          if (existingAssumptionQuestion.status === 'PENDING') {
-            return { questions: [mappedQuestion], is_context_sufficient: false }
-          }
-          if (existingAssumptionQuestion.status === 'ANSWERED') {
-            const accepted = isAssumptionConfirmationAccepted(existingAssumptionQuestion.answer)
-            if (accepted) {
-              return { questions: [], is_context_sufficient: true }
-            }
-            throw new Error('Assumption confirmation was not accepted. Cannot proceed to context generation.')
-          }
-        }
-
-        const assumptionQuestion = {
-          question: ASSUMPTION_CONFIRMATION_QUESTION,
-          impact: 'Unresolved high-impact decisions will remain marked as assumptions or unknowns in the canonical context.',
-          suggested_options: [ASSUMPTION_CONFIRMATION_ACCEPTED, 'Do not proceed'],
-        }
-
-        await db.$transaction(async (tx) => {
-          const pendingCount = await tx.clarificationQuestion.count({
-            where: { projectId, status: 'PENDING' },
-          })
-          if (pendingCount > 0) {
-            throw new Error('Answer pending clarification questions before generating a new round.')
-          }
-          await tx.clarificationQuestion.createMany({
-            data: [{
-              projectId,
-              round: currentRound,
-              question: assumptionQuestion.question,
-              impact: assumptionQuestion.impact,
-              status: 'PENDING',
-            }],
-          })
-        }, { isolationLevel: 'Serializable' })
-
-        return { questions: [assumptionQuestion], is_context_sufficient: false }
+        return { questions: [], is_context_sufficient: true }
       }
 
       const providerConfig = getProviderConfig(userId)
@@ -199,9 +128,7 @@ export async function generateClarificationRound({
           })
           const transactionRound = (latest?.round ?? 0) + 1
           if (transactionRound > 3) {
-            throw new Error(
-              'Clarification round limit reached. Confirm unresolved items as explicit assumptions before generating context.',
-            )
+            throw new Error('Clarification round limit reached. Proceed to context generation.')
           }
 
           await tx.clarificationQuestion.createMany({

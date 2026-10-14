@@ -172,7 +172,7 @@ describe('Clarification Engine — generateClarificationRound', () => {
     expect(db.clarificationQuestion.createMany).not.toHaveBeenCalled()
   })
 
-  it('requires explicit assumption confirmation after the round limit', async () => {
+  it('marks context sufficient without synthetic assumption confirmation after the round limit', async () => {
     const { db } = await import('@repo/db')
     const { createProvider } = await import('@/lib/ai/provider')
     const { updateProject } = await import('@/lib/projects/project-service')
@@ -183,15 +183,12 @@ describe('Clarification Engine — generateClarificationRound', () => {
       })),
     } as never)
 
-    vi.mocked(db.clarificationQuestion.count).mockResolvedValueOnce(0)
     const result = await generateClarificationRound({ userId: 'u-1', projectId: 'p-1' })
 
-    expect(result.is_context_sufficient).toBe(false)
-    expect(result.questions[0]?.question).toContain('explicit assumptions')
+    expect(result.is_context_sufficient).toBe(true)
+    expect(result.questions).toHaveLength(0)
     expect(createProvider).not.toHaveBeenCalled()
-    expect(db.clarificationQuestion.createMany).toHaveBeenCalledWith({
-      data: [expect.objectContaining({ projectId: 'p-1', round: 4, status: 'PENDING' })],
-    })
+    expect(db.clarificationQuestion.createMany).not.toHaveBeenCalled()
     expect(updateProject).not.toHaveBeenCalledWith('u-1', 'p-1', { status: 'CONTEXT_READY' })
   })
 

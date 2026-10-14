@@ -237,8 +237,9 @@ describe('Context Engine — generateCanonicalContext', () => {
     expect(mockGenerate.mock.calls[0]?.[0]).toContain('"known_facts":[]')
   })
 
-  it('requires explicit acceptance when a round-limit assumption question exists', async () => {
+  it('generates context when only a legacy assumption-confirmation answer exists', async () => {
     const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
     const { createProvider } = await import('@/lib/ai/provider')
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
       id: 'p-1', userId: 'u-1', name: 'Test', rawIdea: 'Idea',
@@ -249,9 +250,49 @@ describe('Context Engine — generateCanonicalContext', () => {
         answer: 'Do not proceed',
       }],
     } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC', model: 'test-model', apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({
+        project_name: 'Test', summary: 'Summary', target_users: [], goals: [], non_goals: [],
+        functional_requirements: [], non_functional_requirements: [], core_entities: [],
+        technical_constraints: [],
+        stack_preferences: {
+          frontend: { value: 'Unknown', provenance: 'unknown' },
+          backend: { value: 'Unknown', provenance: 'unknown' },
+          database: { value: 'Unknown', provenance: 'unknown' },
+          styling: { value: 'Unknown', provenance: 'unknown' },
+        },
+        design_direction: { value: 'Unknown', provenance: 'unknown' },
+        security_requirements: [], integrations: [],
+        deployment_target: { value: 'Unknown', provenance: 'unknown' },
+        agent_target: 'CLAUDE_CODE', confirmed_decisions: [], open_questions: [], assumptions: [],
+      }),
+    })
+
+    await expect(generateCanonicalContext({ userId: 'u-1', projectId: 'p-1' })).resolves.toMatchObject({
+      version: 1,
+      context: { project_name: 'Test' },
+    })
+    expect(createProvider).toHaveBeenCalledOnce()
+  })
+
+  it('does not generate context while real clarification questions remain pending', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test', rawIdea: 'Idea',
+      clarificationQuestions: [{
+        id: 'q-pending', round: 3, status: 'PENDING',
+        question: 'Which database should the application use?', answer: null,
+      }],
+    } as never)
 
     await expect(generateCanonicalContext({ userId: 'u-1', projectId: 'p-1' }))
-      .rejects.toThrow('Confirm unresolved items as explicit assumptions')
+      .rejects.toThrow('Answer pending clarification questions')
     expect(createProvider).not.toHaveBeenCalled()
   })
 
