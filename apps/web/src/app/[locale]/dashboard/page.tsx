@@ -1,6 +1,7 @@
 import { ArrowUpRight, ChevronRight, KeyRound, LogOut } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { Link } from '@/i18n/routing'
 
 import { LandingHeader } from '@/app/components/LandingHeader'
@@ -62,15 +63,18 @@ async function createProjectFromPrompt(formData: FormData) {
   if (!userId) redirect('/login')
 
   const rawIdea = String(formData.get('prompt') ?? '').trim()
-  const classification = String(formData.get('classification') ?? 'OTHER')
   const language = formData.get('language') === 'id' ? 'id' : 'en'
 
   const project = await createProject(userId, {
     name: deriveProjectName(rawIdea),
     rawIdea,
-    classification: classification as never,
     targetAgent: 'OTHER',
     language,
+  })
+
+  after(async () => {
+    const { classifyProject } = await import('@/lib/projects/classifier-service')
+    await classifyProject({ userId, projectId: project.id })
   })
 
   redirect(`/projects/${project.id}`)
@@ -137,11 +141,23 @@ export default async function DashboardPage() {
             <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {projects.map((project) => {
                 const tone = STATUS_TONE[project.status] ?? 'neutral'
+                const isPendingClassification = project.classificationStatus === 'PENDING'
+                const isFailedClassification = project.classificationStatus === 'FAILED'
                 const classificationKey = CLASSIFICATION_KEYS[project.classification as keyof typeof CLASSIFICATION_KEYS] ?? 'classificationOther'
+                const classificationText = isPendingClassification
+                  ? t('classificationPending')
+                  : isFailedClassification
+                    ? t('classificationFailed')
+                    : t(classificationKey)
+                const badgeClass = isFailedClassification
+                  ? 'border-[#f0c2bb] bg-[#fdf2f0] text-[#a66142]'
+                  : isPendingClassification
+                    ? 'border-[#dedbd5] bg-[#f4f1eb] text-[#8a8178] animate-pulse'
+                    : 'border-[#dedbd5] bg-[#f4f1eb] text-[#706b64]'
                 return (
                   <Link key={project.id} href={`/projects/${project.id}`} className="group flex min-h-[238px] flex-col rounded-[20px] border border-[#dedbd5] bg-[#fffdfa] p-5 shadow-[0_8px_22px_rgba(36,35,31,0.035)] transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-[#b9afa4] hover:shadow-[0_16px_30px_rgba(36,35,31,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="rounded-full border border-[#dedbd5] bg-[#f4f1eb] px-2.5 py-1 text-[10px] font-semibold text-[#706b64]">{t(classificationKey)}</span>
+                      <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${badgeClass}`}>{classificationText}</span>
                       <StatusBadge tone={tone}>{tStatus(project.status as Parameters<typeof tStatus>[0])}</StatusBadge>
                     </div>
                     <h3 className="mt-6 truncate text-xl font-semibold tracking-[-.045em] transition-colors group-hover:text-[#a66142]">{project.name}</h3>

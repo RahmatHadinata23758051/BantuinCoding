@@ -2,20 +2,8 @@
 
 import { Send } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useFormStatus } from 'react-dom'
-
-const CLASSIFICATIONS = [
-  'SAAS',
-  'LANDING_PAGE',
-  'DASHBOARD',
-  'CRUD_APP',
-  'FULLSTACK_COMPLEX',
-  'MOBILE_APP',
-  'API_SERVICE',
-  'AI_APP',
-  'OTHER',
-] as const
 
 type PromptAction = (formData: FormData) => void | Promise<void>
 
@@ -38,7 +26,6 @@ function SubmitButton() {
 export function PromptComposer({ action }: { action: PromptAction }) {
   const t = useTranslations('Dashboard')
   const locale = useLocale()
-  const [classification, setClassification] = useState<(typeof CLASSIFICATIONS)[number]>('OTHER')
   const formRef = useRef<HTMLFormElement>(null)
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -67,31 +54,7 @@ export function PromptComposer({ action }: { action: PromptAction }) {
           className="min-h-32 w-full resize-none bg-transparent px-2 py-2 text-base leading-7 text-[#24231f] outline-none placeholder:text-[#a9a29a] focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] focus:placeholder:text-[#706b64] sm:min-h-36 sm:text-lg"
         />
 
-        <input type="hidden" name="classification" value={classification} />
         <input type="hidden" name="language" value={locale === 'id' ? 'id' : 'en'} />
-
-        <div className="mt-3 border-t border-[#dedbd5] pt-3" aria-label={t('promptCategoryLabel')}>
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#a9a29a]">{t('promptCategoryLabel')}</span>
-            <span className="text-[11px] text-[#a9a29a]">{t(`classification${classification === 'FULLSTACK_COMPLEX' ? 'FullstackComplex' : classification === 'LANDING_PAGE' ? 'LandingPage' : classification === 'CRUD_APP' ? 'CrudApp' : classification === 'API_SERVICE' ? 'ApiService' : classification === 'MOBILE_APP' ? 'MobileApp' : classification === 'AI_APP' ? 'AiApp' : classification === 'SAAS' ? 'Saas' : classification === 'DASHBOARD' ? 'Dashboard' : 'Other'}` as Parameters<typeof t>[0])}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {CLASSIFICATIONS.map((value) => {
-              const selected = value === classification
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setClassification(value)}
-                  aria-pressed={selected}
-                  className={`min-h-9 rounded-xl border px-3 py-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] ${selected ? 'border-[#a85e3c] bg-[#a85e3c] text-white shadow-[0_4px_12px_rgba(168,94,60,0.16)]' : 'border-[#dedbd5] bg-[#f7f4ef] text-[#706b64] hover:border-[#c9c4bc] hover:bg-[#f0ece6] hover:text-[#24231f]'}`}
-                >
-                  {t(`classification${value === 'FULLSTACK_COMPLEX' ? 'FullstackComplex' : value === 'LANDING_PAGE' ? 'LandingPage' : value === 'CRUD_APP' ? 'CrudApp' : value === 'API_SERVICE' ? 'ApiService' : value === 'MOBILE_APP' ? 'MobileApp' : value === 'AI_APP' ? 'AiApp' : value === 'SAAS' ? 'Saas' : value === 'DASHBOARD' ? 'Dashboard' : 'Other'}` as Parameters<typeof t>[0])}
-                </button>
-              )
-            })}
-          </div>
-        </div>
 
         <div className="mt-3 flex items-center justify-end gap-3 border-t border-[#dedbd5] pt-3">
           <span className="hidden text-[11px] text-[#a9a29a] sm:inline">{t('promptSendHint')}</span>

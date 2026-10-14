@@ -74,6 +74,8 @@ export interface ProjectWorkspaceProps {
     name: string
     description: string | null
     classification: string
+    classificationStatus: string
+    classificationError: string | null
     language: string
     status: string
     createdAt: string
@@ -677,6 +679,11 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   )
   const [isGenerating, setIsGenerating] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [currentClassification, setCurrentClassification] = useState(initialData.classification)
+  const [classificationStatus, setClassificationStatus] = useState(initialData.classificationStatus)
+  const [classificationRetryError, setClassificationRetryError] = useState<string | null>(null)
+  const [classificationTimedOut, setClassificationTimedOut] = useState(false)
+  const [isRetryingClassification, setIsRetryingClassification] = useState(false)
   const [isSubmittingAnswers, setIsSubmittingAnswers] = useState(false)
   const [genMessage, setGenMessage] = useState<{
     type: 'status' | 'error'
@@ -788,6 +795,41 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
 
+  useEffect(() => {
+    if (classificationStatus !== 'PENDING') return
+
+    let cancelled = false
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/projects/${initialData.id}`)
+        if (!response.ok) return
+        const data = (await response.json()) as { project?: { classificationStatus?: string; classification?: string } }
+        const project = data.project
+        if (!project || cancelled) return
+        if (project.classificationStatus && project.classificationStatus !== 'PENDING') {
+          setClassificationStatus(project.classificationStatus)
+          if (project.classification) {
+            setCurrentClassification(project.classification)
+          }
+          clearInterval(pollInterval)
+        }
+      } catch {
+        // Continue polling until timeout
+      }
+    }, 2000)
+
+    const timeout = setTimeout(() => {
+      clearInterval(pollInterval)
+      if (!cancelled) setClassificationTimedOut(true)
+    }, 15000)
+
+    return () => {
+      cancelled = true
+      clearInterval(pollInterval)
+      clearTimeout(timeout)
+    }
+  }, [classificationStatus, initialData.id])
+
   const toggleBrief = () => {
     const nextExpanded = !isBriefExpanded
     setIsBriefExpanded(nextExpanded)
@@ -808,7 +850,12 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const heroMotionPaused = !isHeroVisible || !isDocumentVisible
   const briefHasStructuredSections = parsedBrief.features.length > 0 || parsedBrief.pageStructure.length > 0 || parsedBrief.scope.included.length > 0 || parsedBrief.scope.excluded.length > 0 || parsedBrief.audience.length > 0
   const localizedLanguage = initialData.language === 'id' ? t('settingsLanguageId') : t('settingsLanguageEn')
-  const localizedClassification = formatLabel(initialData.classification)
+  const localizedClassification =
+    classificationStatus === 'PENDING'
+      ? t('classificationPending')
+      : classificationStatus === 'FAILED'
+        ? t('classificationFailed')
+        : formatLabel(currentClassification)
   const formattedUpdatedDate = formatDate(initialData.updatedAt, locale) ?? t('unknownDate')
 
   const briefActionButton = isBriefOverflowing ? (
@@ -861,6 +908,32 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
       {!briefHasStructuredSections && <p className="sr-only">{t('overviewStructuredFallback')}</p>}
     </div>
   )
+
+  const handleRetryClassification = async () => {
+    setIsRetryingClassification(true)
+    setClassificationRetryError(null)
+    setClassificationTimedOut(false)
+    setClassificationStatus('PENDING')
+
+    try {
+      const response = await fetch(`/api/projects/${initialData.id}/classify`, {
+        method: 'POST',
+      })
+      const result = (await response.json()) as {
+        status?: string
+        classification?: string
+      }
+
+      if (!response.ok) throw new Error('Classification retry failed')
+      if (result.classification) setCurrentClassification(result.classification)
+      if (result.status) setClassificationStatus(result.status)
+    } catch {
+      setClassificationStatus('FAILED')
+      setClassificationRetryError(t('classificationRetryError'))
+    } finally {
+      setIsRetryingClassification(false)
+    }
+  }
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1664,10 +1737,32 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       <span>{t('briefLabel')}</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--workspace-ink)]">
-                        <FolderKanban aria-hidden="true" className="size-3.5" />
-                        {localizedClassification}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          role="status"
+                          aria-live="polite"
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold text-[var(--workspace-ink)] ${classificationStatus === 'FAILED' ? 'border-[var(--workspace-rose)] bg-[var(--workspace-rose-soft)]' : 'border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)]'}`}
+                        >
+                          <FolderKanban aria-hidden="true" className="size-3.5" />
+                          {localizedClassification}
+                        </span>
+                        {(classificationStatus === 'FAILED' || classificationTimedOut) && (
+                          <button
+                            type="button"
+                            onClick={handleRetryClassification}
+                            disabled={isRetryingClassification}
+                            className={`inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-3 py-1.5 text-xs font-semibold text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)] disabled:cursor-wait disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                          >
+                            {isRetryingClassification && <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />}
+                            {isRetryingClassification ? t('classificationRetrying') : t('classificationRetry')}
+                          </button>
+                        )}
+                      </div>
+                      {classificationRetryError && (
+                        <p role="alert" className="basis-full text-xs text-[var(--workspace-rose)]">
+                          {classificationRetryError}
+                        </p>
+                      )}
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--workspace-border)] bg-white/70 px-3 py-1.5 text-xs text-[var(--workspace-muted)]">
                         <CalendarDays aria-hidden="true" className="size-3.5" />
                         {formattedUpdatedDate}
