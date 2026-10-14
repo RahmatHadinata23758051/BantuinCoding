@@ -190,6 +190,38 @@ describe('Project Classifier Service', () => {
     })
   })
 
+  it('does not report stale success when a newer retry supersedes the attempt', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'proj-1',
+      name: 'Invoice Dashboard',
+      rawIdea: 'Analytics portal with metrics and charts.',
+      classification: 'OTHER',
+      classificationAttempt: 2,
+      language: 'en',
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'claude-3-7-sonnet',
+      apiKey: 'sk-test',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({ classification: 'DASHBOARD' }),
+    })
+    vi.mocked(db.project.updateMany)
+      .mockResolvedValueOnce({ count: 1 } as never)
+      .mockResolvedValueOnce({ count: 0 } as never)
+
+    const result = await classifyProject({ userId: 'user-1', projectId: 'proj-1' })
+
+    expect(result).toEqual({ status: 'PENDING', classification: 'OTHER' })
+  })
+
   it('safely handles non-standard model responses by falling back to OTHER', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')

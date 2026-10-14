@@ -72,15 +72,15 @@ describe('Project State Machine — allowed transitions', () => {
 })
 
 describe('CreateProjectSchema', () => {
-  it('accepts valid project input', () => {
-    const input = {
+  it('ignores client-provided classification', () => {
+    const result = CreateProjectSchema.safeParse({
       name: 'Acme SaaS',
       rawIdea: 'A complete multi-tenant SaaS application for issue tracking with AI.',
       classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
-    }
-    const result = CreateProjectSchema.safeParse(input)
+    })
     expect(result.success).toBe(true)
+    expect(result.data).not.toHaveProperty('classification')
   })
 
   it('rejects short name (<2 chars)', () => {
@@ -99,13 +99,13 @@ describe('CreateProjectSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('defaults classification to OTHER if omitted', () => {
+  it('does not allow classification through project input', () => {
     const result = CreateProjectSchema.safeParse({
       name: 'Valid Name',
       rawIdea: 'Valid raw idea description over 10 characters',
     })
     expect(result.success).toBe(true)
-    expect(result.data?.classification).toBe('OTHER')
+    expect(result.data).not.toHaveProperty('classification')
   })
 
   it('defaults targetAgent to OTHER if omitted', () => {
@@ -163,18 +163,19 @@ describe('Project CRUD logic — db interactions', () => {
       name: 'Test Project',
       rawIdea: 'Valid description text long enough',
       classification: 'SAAS',
+      classificationStatus: 'PENDING',
+      classificationAttempt: 0,
       targetAgent: 'CLAUDE_CODE',
       status: 'DRAFT',
       language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    } as never)
 
     const { createProject } = await import('@/lib/projects/project-service')
     const result = await createProject('user-1', {
       name: 'Test Project',
       rawIdea: 'Valid description text long enough',
-      classification: 'SAAS',
       targetAgent: 'CLAUDE_CODE',
       language: 'id',
     })
@@ -185,7 +186,9 @@ describe('Project CRUD logic — db interactions', () => {
         userId: 'user-1',
         name: 'Test Project',
         rawIdea: 'Valid description text long enough',
-        classification: 'SAAS',
+        classification: 'OTHER',
+        classificationStatus: 'PENDING',
+        classificationAttempt: 0,
         targetAgent: 'CLAUDE_CODE',
         language: 'id',
         status: 'DRAFT',
@@ -249,7 +252,7 @@ describe('Project CRUD logic — db interactions', () => {
       language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    } as never)
 
     const { updateProject } = await import('@/lib/projects/project-service')
     await expect(

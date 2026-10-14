@@ -335,7 +335,7 @@ describe('Clarification Engine — submitClarificationAnswers', () => {
       language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    } as never)
 
     vi.mocked(db.clarificationQuestion.findMany).mockResolvedValueOnce([{ id: 'q-1' }] as never)
     vi.mocked(db.clarificationQuestion.updateMany).mockResolvedValueOnce({ count: 1 })

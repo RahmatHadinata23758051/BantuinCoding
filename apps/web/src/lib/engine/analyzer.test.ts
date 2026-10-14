@@ -112,7 +112,7 @@ describe('Requirement Analyzer Engine', () => {
       language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    } as never)
     vi.mocked(getProviderConfig).mockReturnValueOnce(null)
 
     await expect(
@@ -138,7 +138,7 @@ describe('Requirement Analyzer Engine', () => {
       language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    } as never)
     vi.mocked(getProviderConfig).mockReturnValueOnce({
       provider: 'ANTHROPIC',
       model: 'claude-sonnet-4-5',
@@ -186,7 +186,7 @@ describe('Requirement Analyzer Engine', () => {
       language: 'id',
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    } as never)
     vi.mocked(getProviderConfig).mockReturnValueOnce({
       provider: 'ANTHROPIC',
       model: 'claude-sonnet-4-5',
