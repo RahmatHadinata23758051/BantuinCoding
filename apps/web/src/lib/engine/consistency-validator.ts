@@ -1,6 +1,7 @@
 import { db } from '@repo/db'
 import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
+import { scanContentForSecrets } from '@/lib/export/export-service'
 import {
   CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
   ConsistencyReportSchema,
@@ -157,6 +158,21 @@ export function validateRuleBasedConsistency(
           recommendation: `Remove or update reference to ${ref} in BACKLOG.md`,
         })
       }
+    }
+  }
+
+  // Rule 3: Secret Leakage Preflight Check
+  for (const art of artifacts) {
+    try {
+      scanContentForSecrets(art.content, art.path)
+    } catch {
+      issues.push({
+        severity: 'HIGH',
+        category: 'SECRET_LEAKAGE',
+        description: `Potential secret or API key pattern detected in ${art.path}. Remove or replace credentials with empty placeholders before export.`,
+        affected_documents: [art.path],
+        recommendation: `Sanitize credentials, connection strings, or private keys in ${art.path} with placeholder values like "" or \${VAR_NAME}.`,
+      })
     }
   }
 

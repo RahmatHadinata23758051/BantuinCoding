@@ -13,6 +13,13 @@ import {
   buildArchitectureGeneratorUserPrompt,
 } from '@/lib/prompts/architecture-generator'
 import { generateDesignArtifactContent } from '@/lib/engine/design-generator'
+import { scanContentForSecrets } from '@/lib/export/export-service'
+
+export function scrubSampleSecrets(markdown: string): string {
+  return markdown
+    .replace(/\b([A-Z0-9_]*(?:DATABASE_URL|DIRECT_URL|DB_URL))\s*=\s*(["'])(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s"']*\2/gi, '$1=""')
+    .replace(/\b([A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*(["'])[a-f0-9]{32,}\2/gi, '$1=""')
+}
 
 export interface GenerateArtifactsOptions {
   userId: string
@@ -367,6 +374,9 @@ export async function generateCoreArtifacts({
           currentContextRecord.version,
         )
       }
+
+      markdownContent = scrubSampleSecrets(markdownContent)
+      scanContentForSecrets(markdownContent, path)
 
       await db.artifact.update({
         where: { projectId_type: { projectId, type: artifactType } },

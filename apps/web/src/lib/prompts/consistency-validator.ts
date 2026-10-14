@@ -14,6 +14,7 @@ export const ConsistencyIssueSchema = z.object({
     'MISSING_SPEC',
     'INVALID_BACKLOG_DOC_REF',
     'TERMINOLOGY_MISMATCH',
+    'SECRET_LEAKAGE',
   ]),
   description: z.string(),
   affected_documents: z.array(z.string()),

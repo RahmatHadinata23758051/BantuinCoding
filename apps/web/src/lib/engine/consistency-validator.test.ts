@@ -66,6 +66,39 @@ describe('Rule-Based Consistency Validator', () => {
     const report = validateRuleBasedConsistency(artifacts)
     expect(report.issues.some((i) => i.category === 'INVALID_BACKLOG_DOC_REF')).toBe(true)
   })
+
+  it('blocks secret-containing artifacts and reports no matched secret values', () => {
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'ARCHITECTURE',
+        path: 'ARCHITECTURE.md',
+        content: 'DATABASE_URL="postgresql://user:private_password@db-host/app"',
+      },
+    ])
+
+    expect(report.isConsistent).toBe(false)
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({
+        severity: 'HIGH',
+        category: 'SECRET_LEAKAGE',
+        affected_documents: ['ARCHITECTURE.md'],
+      }),
+    )
+    expect(JSON.stringify(report)).not.toContain('private_password')
+  })
+
+  it('allows empty environment placeholders during validation', () => {
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'ARCHITECTURE',
+        path: 'ARCHITECTURE.md',
+        content: 'DATABASE_URL=""\nNEXTAUTH_SECRET=""',
+      },
+    ])
+
+    expect(report.isConsistent).toBe(true)
+    expect(report.issues).toEqual([])
+  })
 })
 
 describe('Consistency Validator Engine — auditProjectConsistency', () => {

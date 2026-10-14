@@ -1,4 +1,4 @@
-const SAFE_ERROR_PATTERNS: Array<[RegExp, string]> = [
+const SAFE_ERROR_PATTERNS: Array<[RegExp, string | ((msg: string) => string)]> = [
   [/project not found/i, 'Project not found'],
   [/project state .* does not allow/i, 'This action is not available in the project’s current state. Refresh the project and continue from the active workflow step.'],
   [/no active ai provider session/i, 'No active AI provider session found. Please configure your BYOK provider first.'],
@@ -7,7 +7,16 @@ const SAFE_ERROR_PATTERNS: Array<[RegExp, string]> = [
   [/project is not exportable/i, 'Project validation must pass before export.'],
   [/project has no current context/i, 'Canonical context is required before export.'],
   [/project documents are not ready for export/i, 'All required documents must be ready before export.'],
-  [/duplicate file path|control character detected/i, 'Export contains an unsafe filename. Regenerate the affected document and retry.'],
+  [
+    /security alert.*potential api key leakage detected in ([a-z0-9_.-]+)/i,
+    (msg: string) => {
+      const match = msg.match(/detected in ([a-z0-9_.-]+)/i)
+      const doc = match?.[1] ? ` in ${match[1]}` : ''
+      return `Export blocked for security: potential secret or credential patterns detected${doc}. Remove or replace them with empty placeholders and retry.`
+    },
+  ],
+  [/security alert|potential api key leakage/i, 'Export blocked for security: a generated document contains potential secret or credential patterns. Remove or replace them with empty placeholders and retry.'],
+  [/duplicate file path|control character detected|absolute path drive letter|path traversal security risk/i, 'Export contains an unsafe filename. Regenerate the affected document and retry.'],
   [/no core artifacts are required/i, 'The current project plan has no core documents to generate.'],
   [/invalid json body/i, 'Invalid JSON body'],
   [/invalid input/i, 'Invalid input'],
@@ -25,8 +34,11 @@ export function getSafeApiErrorMessage(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : String(error)
 
   for (const [pattern, safeMessage] of SAFE_ERROR_PATTERNS) {
-    if (pattern.test(message)) return safeMessage
+    if (pattern.test(message)) {
+      return typeof safeMessage === 'function' ? safeMessage(message) : safeMessage
+    }
   }
 
   return fallback
 }
+

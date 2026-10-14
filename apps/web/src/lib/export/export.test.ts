@@ -73,6 +73,32 @@ describe('ZIP Secret Leakage Scanner', () => {
     expect(() => scanContentForSecrets('-----BEGIN PRIVATE KEY-----', 'Agent.md')).toThrow('SECURITY ALERT')
     expect(() => scanContentForSecrets('DATABASE_URL=postgres://user:pass@host/db', 'Agent.md')).toThrow('SECURITY ALERT')
   })
+
+  it('allows empty, unresolved, and descriptive environment placeholders', () => {
+    expect(() => scanContentForSecrets('DATABASE_URL=""\nNEXTAUTH_SECRET=""\nAPI_TOKEN=${API_TOKEN}', 'ARCHITECTURE.md')).not.toThrow()
+    expect(() => scanContentForSecrets('DATABASE_URL= # Set this in your local environment', 'ARCHITECTURE.md')).not.toThrow()
+  })
+
+  it('blocks populated secret assignments without exposing the value', () => {
+    expect(() => scanContentForSecrets('NEXTAUTH_SECRET="not-empty"', 'ARCHITECTURE.md')).toThrow('SECURITY ALERT')
+  })
+})
+
+ describe('Export preflight', () => {
+  it('rejects realistic database credentials and secret values before ZIP generation', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test Project', status: 'EXPORTABLE',
+      contexts: [currentContext(['ARCHITECTURE'])],
+      artifacts: [artifact(
+        'ARCHITECTURE',
+        'ARCHITECTURE.md',
+        'DATABASE_URL="postgresql://pos_admin:secure_password@db-host:5432/resto_pos"\nNEXTAUTH_SECRET="4f9b8c2e6d1a5f7823e1b0c9a87d4e5f6123456789abcdef0123456789abcdef"',
+      )],
+    } as never)
+
+    await expect(exportProjectZip({ userId: 'u-1', projectId: 'p-1' })).rejects.toThrow('SECURITY ALERT')
+  })
 })
 
 describe('Bootstrap README Generator', () => {

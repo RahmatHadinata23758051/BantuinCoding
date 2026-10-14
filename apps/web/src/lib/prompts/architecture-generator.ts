@@ -52,6 +52,7 @@ ARCHITECTURE STRUCTURE REQUIREMENTS:
 CRITICAL CONSTRAINTS:
 - Keep the architecture practical (modular monolith first; avoid unnecessary microservices or over-engineering).
 - Explicitly detail data flow and security boundaries.
+- Never emit real or realistic fake API keys, passwords, tokens, secret values, or database connection URLs containing credentials. For environment examples, use empty values or unresolved placeholders such as DATABASE_URL="" or DATABASE_URL="placeholder"; never invent credential-like values.
 - Ensure the specification is dense, rigorous, and completes cleanly within token limits.`
 
 export function buildArchitectureGeneratorUserPrompt(

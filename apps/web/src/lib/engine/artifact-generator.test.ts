@@ -21,6 +21,7 @@ import {
 } from '@/lib/prompts/design-generator'
 import {
   generateCoreArtifacts,
+  scrubSampleSecrets,
   generateFallbackPrd,
   generateFallbackSrs,
   generateFallbackArchitecture,
@@ -297,6 +298,24 @@ describe('Artifact Generator Fallbacks', () => {
     })
     expect(neoMd).toContain('Neo-Brutalist Utility')
     expect(neoMd).toContain('#F7F0DF')
+  })
+})
+
+describe('Generated sample secret sanitizer', () => {
+  it('replaces dummy connection URLs and long hex secrets while preserving placeholders', () => {
+    const content = [
+      'DATABASE_URL="postgresql://pos_admin:secure_password@db-host:5432/resto_pos"',
+      'DIRECT_URL="postgresql://pos_admin:secure_password@db-host:5432/resto_pos"',
+      'NEXTAUTH_SECRET="4f9b8c2e6d1a5f7823e1b0c9a87d4e5f6123456789abcdef0123456789abcdef"',
+      'API_TOKEN=${API_TOKEN}',
+    ].join('\n')
+
+    expect(scrubSampleSecrets(content)).toBe([
+      'DATABASE_URL=""',
+      'DIRECT_URL=""',
+      'NEXTAUTH_SECRET=""',
+      'API_TOKEN=${API_TOKEN}',
+    ].join('\n'))
   })
 })
 

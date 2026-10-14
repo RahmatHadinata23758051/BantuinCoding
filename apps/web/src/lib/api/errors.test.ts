@@ -36,4 +36,15 @@ describe('getSafeApiErrorMessage', () => {
       'Network error while contacting the provider. Check connectivity and retry.',
     )
   })
+
+  it('maps export secret alerts without exposing credential values', () => {
+    const message = getSafeApiErrorMessage(
+      new Error('SECURITY ALERT: Potential API key leakage detected in ARCHITECTURE.md'),
+      'Export failed.',
+    )
+
+    expect(message).toContain('Export blocked for security')
+    expect(message).toContain('ARCHITECTURE.md')
+    expect(message).not.toContain('key value')
+  })
 })
