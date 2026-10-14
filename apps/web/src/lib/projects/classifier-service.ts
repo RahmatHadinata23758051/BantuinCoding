@@ -88,31 +88,33 @@ export async function classifyProject({
     currentAttempt = latest.classificationAttempt
   }
 
-  // Check BYOK session or restore from vault
-  const providerConfig =
-    getProviderConfig(userId) ?? (await restoreProviderSession(userId))
-
-  if (!providerConfig) {
-    await db.project.updateMany({
-      where: {
-        id: projectId,
-        userId,
-        classificationAttempt: nextAttempt,
-      },
-      data: {
-        classificationStatus: 'FAILED',
-        classificationError: 'NO_ACTIVE_PROVIDER',
-      },
-    })
-
-    return {
-      status: 'FAILED',
-      classification: project.classification,
-      error: 'NO_ACTIVE_PROVIDER',
-    }
-  }
-
   try {
+    // Check BYOK session or restore from vault
+    const providerConfig =
+      getProviderConfig(userId) ?? (await restoreProviderSession(userId))
+
+    if (!providerConfig) {
+      const failed = await db.project.updateMany({
+        where: {
+          id: projectId,
+          userId,
+          classificationAttempt: nextAttempt,
+        },
+        data: {
+          classificationStatus: 'FAILED',
+          classificationError: 'NO_ACTIVE_PROVIDER',
+        },
+      })
+
+      return failed.count === 1
+        ? {
+            status: 'FAILED',
+            classification: project.classification,
+            error: 'NO_ACTIVE_PROVIDER',
+          }
+        : { status: 'PENDING', classification: project.classification }
+    }
+
     const provider = createProvider(providerConfig)
     const prompt = buildProjectClassifierUserPrompt(
       project.name,
@@ -136,7 +138,7 @@ export async function classifyProject({
       : 'OTHER'
 
     // Conditional update: only persist if this attempt is still the latest
-    await db.project.updateMany({
+    const persisted = await db.project.updateMany({
       where: {
         id: projectId,
         userId,
@@ -149,12 +151,11 @@ export async function classifyProject({
       },
     })
 
-    return {
-      status: 'READY',
-      classification: validClassification,
-    }
+    return persisted.count === 1
+      ? { status: 'READY', classification: validClassification }
+      : { status: 'PENDING', classification: project.classification }
   } catch {
-    await db.project.updateMany({
+    const failed = await db.project.updateMany({
       where: {
         id: projectId,
         userId,
@@ -166,10 +167,12 @@ export async function classifyProject({
       },
     })
 
-    return {
-      status: 'FAILED',
-      classification: project.classification,
-      error: 'CLASSIFICATION_FAILED',
-    }
+    return failed.count === 1
+      ? {
+          status: 'FAILED',
+          classification: project.classification,
+          error: 'CLASSIFICATION_FAILED',
+        }
+      : { status: 'PENDING', classification: project.classification }
   }
 }

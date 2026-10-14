@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import {
   createProject,
@@ -45,6 +45,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const project = await createProject(session.user.id, parsed.data)
+  const userId = session.user.id
+  const project = await createProject(userId, parsed.data)
+  after(async () => {
+    const { classifyProject } = await import('@/lib/projects/classifier-service')
+    await classifyProject({ userId, projectId: project.id })
+  })
   return NextResponse.json({ project }, { status: 201 })
 }

@@ -41,6 +41,8 @@ export async function getProjectWorkspaceData(userId: string, projectId: string)
     name: project.name,
     description: project.rawIdea,
     classification: project.classification,
+    classificationStatus: project.classificationStatus,
+    classificationError: project.classificationError,
     targetAgent: project.targetAgent,
     language: project.language,
     status: project.status,

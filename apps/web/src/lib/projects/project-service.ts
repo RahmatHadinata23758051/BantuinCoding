@@ -86,21 +86,6 @@ export const CreateProjectSchema = z.object({
     .string()
     .min(10, 'Idea text must be at least 10 characters')
     .max(5000, 'Idea text too long'),
-  classification: z
-    .enum([
-      'STATIC_SITE',
-      'LANDING_PAGE',
-      'CRUD_APP',
-      'DASHBOARD',
-      'SAAS',
-      'API_SERVICE',
-      'MOBILE_APP',
-      'AI_APP',
-      'IOT_DASHBOARD',
-      'FULLSTACK_COMPLEX',
-      'OTHER',
-    ])
-    .default('OTHER'),
   targetAgent: z
     .enum(['CLAUDE_CODE', 'CODEX', 'OPENCODE', 'ANTIGRAVITY', 'CURSOR', 'OTHER'])
     .default('OTHER'),
@@ -141,7 +126,9 @@ export async function createProject(userId: string, input: CreateProjectInput) {
       userId,
       name: parsed.name,
       rawIdea: parsed.rawIdea,
-      classification: parsed.classification,
+      classification: 'OTHER',
+      classificationStatus: 'PENDING',
+      classificationAttempt: 0,
       targetAgent: parsed.targetAgent,
       language: parsed.language,
       status: 'DRAFT',
@@ -158,6 +145,8 @@ export async function getUserProjects(userId: string) {
       name: true,
       rawIdea: true,
       classification: true,
+      classificationStatus: true,
+      classificationError: true,
       targetAgent: true,
       status: true,
       createdAt: true,
@@ -221,7 +210,6 @@ export async function updateProject(
     data: {
       ...(input.name && { name: input.name }),
       ...(input.rawIdea && { rawIdea: input.rawIdea }),
-      ...(input.classification && { classification: input.classification }),
       ...(input.targetAgent && { targetAgent: input.targetAgent }),
       ...(input.language && { language: input.language }),
       ...(input.status && { status: input.status }),
