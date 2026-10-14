@@ -1,4 +1,4 @@
-import { ArrowUpRight, ChevronRight, KeyRound, LogOut } from 'lucide-react'
+import { ArrowUpRight, ChevronRight, KeyRound, LogOut, UserCircle } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
@@ -105,6 +105,10 @@ export default async function DashboardPage() {
             <span className="sm:hidden">{t('providerShort')}</span>
           </Link>
           <LanguageSwitcher />
+          <Link href="/profile" aria-label={t('profileSettings')} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/65 px-3 text-xs font-semibold text-[#24231f] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
+            <UserCircle size={14} aria-hidden="true" />
+            <span className="hidden sm:inline">{t('profileSettings')}</span>
+          </Link>
           <span className="hidden max-w-36 truncate px-2 text-xs text-[#706b64] lg:inline">{session?.user?.email}</span>
           <form action={logoutAction}>
             <button type="submit" aria-label={tCommon('signOut')} className="inline-flex size-9 items-center justify-center rounded-full border border-[#dedbd5] bg-white/65 text-[#706b64] transition-colors hover:bg-white hover:text-[#24231f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
