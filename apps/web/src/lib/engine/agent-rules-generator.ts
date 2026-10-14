@@ -162,7 +162,7 @@ export async function generateAgentAndRulesArtifacts({
 
   for (const item of items) {
     const content = agentContent
-    await db.artifact.update({
+    const updatedArtifact = await db.artifact.update({
       where: { projectId_type: { projectId, type: item.type } },
       data: {
         content,
@@ -170,13 +170,19 @@ export async function generateAgentAndRulesArtifacts({
         provider: providerConfig?.provider ?? 'FALLBACK',
         model: providerConfig?.model ?? 'BASELINE',
       },
+      select: {
+        id: true,
+        updatedAt: true,
+      },
     })
 
     results.push({
+      id: updatedArtifact?.id,
       type: item.type,
       status: 'READY',
       path: item.path,
       content,
+      updatedAt: updatedArtifact?.updatedAt ? updatedArtifact.updatedAt.toISOString() : undefined,
     })
   }
 

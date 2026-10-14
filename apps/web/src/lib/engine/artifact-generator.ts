@@ -28,10 +28,12 @@ export interface GenerateArtifactsOptions {
 }
 
 export interface GeneratedArtifactResult {
+  id?: string
   type: string
   status: 'READY' | 'FAILED'
   path: string
   content: string
+  updatedAt?: string
   error?: string
 }
 
@@ -378,7 +380,7 @@ export async function generateCoreArtifacts({
       markdownContent = scrubSampleSecrets(markdownContent)
       scanContentForSecrets(markdownContent, path)
 
-      await db.artifact.update({
+      const updatedArtifact = await db.artifact.update({
         where: { projectId_type: { projectId, type: artifactType } },
         data: {
           content: markdownContent,
@@ -386,13 +388,23 @@ export async function generateCoreArtifacts({
           provider: providerConfig?.provider ?? 'FALLBACK',
           model: providerConfig?.model ?? 'BASELINE',
         },
+        select: {
+          id: true,
+          type: true,
+          path: true,
+          status: true,
+          content: true,
+          updatedAt: true,
+        },
       })
 
       results.push({
+        id: updatedArtifact?.id,
         type: artifactType,
         status: 'READY',
         path,
         content: markdownContent,
+        updatedAt: updatedArtifact?.updatedAt ? updatedArtifact.updatedAt.toISOString() : undefined,
       })
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Generation failed'
