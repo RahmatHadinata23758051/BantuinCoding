@@ -27,6 +27,13 @@ export function PromptComposer({ action }: { action: PromptAction }) {
   const t = useTranslations('Dashboard')
   const locale = useLocale()
   const formRef = useRef<HTMLFormElement>(null)
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
+
+  function handleTitleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+    event.preventDefault()
+    descriptionRef.current?.focus()
+  }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
@@ -41,18 +48,40 @@ export function PromptComposer({ action }: { action: PromptAction }) {
         <div className="prompt-composer-signal absolute left-0 top-0 h-px w-1/3 bg-gradient-to-r from-transparent via-[#a85e3c]/70 to-transparent" />
       </div>
       <div className="relative z-10">
-        <label htmlFor="dashboard-prompt" className="sr-only">{t('promptLabel')}</label>
-        <textarea
-          id="dashboard-prompt"
-          name="prompt"
-          required
-          minLength={10}
-          maxLength={5000}
-          rows={4}
-          onKeyDown={handleKeyDown}
-          placeholder={t('promptPlaceholder')}
-          className="min-h-32 w-full resize-none bg-transparent px-2 py-2 text-base leading-7 text-[#24231f] outline-none placeholder:text-[#a9a29a] focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] focus:placeholder:text-[#706b64] sm:min-h-36 sm:text-lg"
-        />
+        <div className="px-2 pb-3 pt-1">
+          <label htmlFor="dashboard-title" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#a85e3c]">
+            {t('promptTitleLabel')}
+          </label>
+          <input
+            id="dashboard-title"
+            name="name"
+            type="text"
+            required
+            minLength={2}
+            maxLength={100}
+            onKeyDown={handleTitleKeyDown}
+            placeholder={t('promptTitlePlaceholder')}
+            className="w-full bg-transparent py-1 text-lg font-semibold tracking-[-0.02em] text-[#24231f] outline-none placeholder:font-normal placeholder:text-[#a9a29a] focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] focus:placeholder:text-[#706b64] sm:text-xl"
+          />
+        </div>
+
+        <div className="border-t border-[#dedbd5] px-2 pb-2 pt-3">
+          <label htmlFor="dashboard-prompt" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#a85e3c]">
+            {t('promptDescriptionLabel')}
+          </label>
+          <textarea
+            ref={descriptionRef}
+            id="dashboard-prompt"
+            name="prompt"
+            required
+            minLength={10}
+            maxLength={5000}
+            rows={4}
+            onKeyDown={handleKeyDown}
+            placeholder={t('promptDescriptionPlaceholder')}
+            className="min-h-28 w-full resize-none bg-transparent py-1 text-base leading-7 text-[#24231f] outline-none placeholder:text-[#a9a29a] focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] focus:placeholder:text-[#706b64] sm:min-h-32 sm:text-lg"
+          />
+        </div>
 
         <input type="hidden" name="language" value={locale === 'id' ? 'id' : 'en'} />
 

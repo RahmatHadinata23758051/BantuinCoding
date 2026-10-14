@@ -63,10 +63,12 @@ async function createProjectFromPrompt(formData: FormData) {
   if (!userId) redirect('/login')
 
   const rawIdea = String(formData.get('prompt') ?? '').trim()
+  const requestedName = String(formData.get('name') ?? '').trim()
+  const name = requestedName.length >= 2 ? requestedName.slice(0, 100) : deriveProjectName(rawIdea)
   const language = formData.get('language') === 'id' ? 'id' : 'en'
 
   const project = await createProject(userId, {
-    name: deriveProjectName(rawIdea),
+    name,
     rawIdea,
     targetAgent: 'OTHER',
     language,
