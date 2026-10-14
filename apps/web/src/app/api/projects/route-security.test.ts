@@ -17,6 +17,18 @@ const mocks = vi.hoisted(() => ({
   getProjectReadiness: vi.fn(),
   recomputeProjectReadiness: vi.fn(),
   exportProjectZip: vi.fn(),
+  findBacklogArtifact: vi.fn(),
+}))
+
+vi.mock('@repo/db', () => ({
+  db: {
+    artifact: {
+      findUnique: mocks.findBacklogArtifact,
+    },
+    backlogPhase: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
 }))
 
 vi.mock('@/lib/auth', () => ({ auth: mocks.auth }))
@@ -121,6 +133,31 @@ describe('BK-025 workflow route security', () => {
     expect(serialized).not.toContain('provider.ts')
     expect(serialized).not.toContain('prompt=private')
     expect(serialized).not.toContain('SDK payload')
+  })
+
+  it('backlog generation returns the persisted artifact for client synchronization', async () => {
+    const artifact = {
+      id: 'artifact-backlog',
+      type: 'BACKLOG',
+      path: 'BACKLOG.md',
+      status: 'READY',
+      content: '# Backlog',
+      updatedAt: new Date('2026-10-14T00:00:00.000Z'),
+    }
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'GENERATING' })
+    mocks.generateProjectBacklog.mockResolvedValue({ phases: [] })
+    mocks.recomputeProjectReadiness.mockResolvedValue({ isReady: true })
+    mocks.findBacklogArtifact.mockResolvedValue(artifact)
+
+    const response = await backlog(postRequest(), params)
+    const payload = await body<{ backlog: unknown; readiness: unknown; artifact: typeof artifact }>(response)
+
+    expect(response.status).toBe(200)
+    expect(payload.artifact).toMatchObject({ ...artifact, updatedAt: artifact.updatedAt.toISOString() })
+    expect(mocks.findBacklogArtifact).toHaveBeenCalledWith({
+      where: { projectId_type: { projectId: 'project-1', type: 'BACKLOG' } },
+      select: { id: true, type: true, path: true, status: true, content: true, updatedAt: true },
+    })
   })
 
   it('clarification generation ignores client-supplied analysis JSON', async () => {

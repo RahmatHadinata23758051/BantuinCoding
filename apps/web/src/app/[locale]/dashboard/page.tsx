@@ -79,7 +79,7 @@ async function createProjectFromPrompt(formData: FormData) {
     await classifyProject({ userId, projectId: project.id })
   })
 
-  redirect(`/projects/${project.id}`)
+  redirect(`/projects/${project.id}?tab=context&flow=auto`)
 }
 
 export default async function DashboardPage() {

@@ -268,7 +268,7 @@ export function MarkdownWorkspace({
 
             return (
               <button
-                key={artifact.id}
+                key={artifact.id || artifact.type}
                 type="button"
                 onClick={() => handleSelectArtifact(artifact)}
                 aria-current={isSelected ? 'page' : undefined}

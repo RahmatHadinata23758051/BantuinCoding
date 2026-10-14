@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@repo/db'
 import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import { generateProjectBacklog } from '@/lib/engine/backlog-generator'
@@ -27,8 +28,67 @@ export async function POST(
       projectId: id,
     })
     const readiness = await recomputeProjectReadiness(session.user.id, id)
+    const artifact = await db.artifact.findUnique({
+      where: { projectId_type: { projectId: id, type: 'BACKLOG' } },
+      select: {
+        id: true,
+        type: true,
+        path: true,
+        status: true,
+        content: true,
+        updatedAt: true,
+      },
+    })
 
-    return NextResponse.json({ backlog, readiness })
+    const dbPhases = await db.backlogPhase.findMany({
+      where: { projectId: id },
+      orderBy: { order: 'asc' },
+      include: {
+        tasks: {
+          orderBy: { taskKey: 'asc' },
+          include: {
+            dependsOn: true,
+          },
+        },
+      },
+    }).catch(() => [])
+
+    const formattedPhases = dbPhases.map((phase) => ({
+      id: phase.id,
+      name: phase.name,
+      order: phase.order,
+      description: phase.description,
+      tasks: phase.tasks.map((task) => {
+        let acceptanceCriteria: string[] = []
+        let relevantDocs: string[] = []
+        let recommendedSkills: string[] = []
+
+        try {
+          acceptanceCriteria = JSON.parse(task.acceptanceCriteria)
+        } catch {}
+        try {
+          relevantDocs = JSON.parse(task.relevantDocs || '[]')
+        } catch {}
+        try {
+          recommendedSkills = JSON.parse(task.recommendedSkills || '[]')
+        } catch {}
+
+        return {
+          id: task.id,
+          taskKey: task.taskKey,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          acceptanceCriteria,
+          definitionOfDone: task.definitionOfDone,
+          relevantDocs,
+          recommendedSkills,
+          dependencies: task.dependsOn.map((d) => d.dependsOnTaskId),
+        }
+      }),
+    }))
+
+    return NextResponse.json({ backlog, readiness, artifact, phases: formattedPhases })
   } catch (err) {
     console.error('Backlog generation error:', err)
     const message = getSafeApiErrorMessage(err, 'Backlog generation failed. Please retry.')

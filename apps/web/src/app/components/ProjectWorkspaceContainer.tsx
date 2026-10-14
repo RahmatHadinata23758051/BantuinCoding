@@ -658,16 +658,25 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
 
   const selectTab = (section: WorkspaceSection) => {
     const params = new URLSearchParams(searchParams.toString())
+    params.delete('flow')
     if (section === 'overview') params.delete('tab')
     else params.set('tab', section)
     const query = params.toString()
     router.replace(query ? `?${query}` : '?', { scroll: false })
   }
+
+  const selectTabRef = useRef(selectTab)
+  useEffect(() => {
+    selectTabRef.current = selectTab
+  })
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [projectName, setProjectName] = useState(initialData.name)
   const [projectLang, setProjectLang] = useState(initialData.language || 'id')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
+  const [phases, setPhases] = useState(initialData.phases)
+  const [backlogRevision, setBacklogRevision] = useState(0)
   const [generationState, setGenerationState] = useState<GenerationState>(() =>
     createPersistedGenerationState({
       projectStatus: initialData.status,
@@ -698,6 +707,13 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [clarifications, setClarifications] = useState(initialData.clarifications)
   const [openContextCategory, setOpenContextCategory] = useState<string | null>(null)
   const [projectStatus, setProjectStatus] = useState(initialData.status)
+  const [projectContext, setProjectContext] = useState<Record<string, unknown> | null>(initialData.context)
+  const [isGenerationFinished, setIsGenerationFinished] = useState(false)
+  const [autoRedirectSeconds, setAutoRedirectSeconds] = useState<number | null>(null)
+  const [hasDismissedRedirect, setHasDismissedRedirect] = useState(false)
+  const [showErrorDetails, setShowErrorDetails] = useState(false)
+  const autoFlowStartedRef = useRef(false)
+  const failureDetailsRef = useRef<HTMLDetailsElement>(null)
   const sectionTabRefs = useRef(new Map<WorkspaceSection, HTMLButtonElement>())
 
   const readyArtifacts = artifacts.filter(
@@ -706,17 +722,17 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const attentionArtifacts = artifacts.filter(
     (artifact) => artifact.status !== 'READY' && artifact.status !== 'MODIFIED',
   )
-  const allTasks = initialData.phases.flatMap((phase) => phase.tasks)
+  const allTasks = phases.flatMap((phase) => phase.tasks)
   const readyTasks = allTasks.filter((task) => task.status === 'READY')
   const doneTasks = allTasks.filter((task) => task.status === 'DONE')
   const blockedTasks = allTasks.filter((task) => task.status === 'BLOCKED')
   const pendingClarifications = clarifications.filter((question) => question.status === 'PENDING')
   const answeredClarifications = clarifications.filter((question) => question.status === 'ANSWERED')
-  const contextReady = hasContextData(initialData.context)
+  const contextReady = hasContextData(projectContext)
   const contextCategories = CONTEXT_CATEGORY_DEFINITIONS.map((category) => {
-    const categoryKeys = category.keys.filter((key) => Object.prototype.hasOwnProperty.call(initialData.context ?? {}, key))
-    const counts = getContextProvenanceCounts(initialData.context ?? {}, categoryKeys)
-    const itemCount = categoryKeys.reduce((total, key) => total + countContextItems(initialData.context?.[key]), 0)
+    const categoryKeys = category.keys.filter((key) => Object.prototype.hasOwnProperty.call(projectContext ?? {}, key))
+    const counts = getContextProvenanceCounts(projectContext ?? {}, categoryKeys)
+    const itemCount = categoryKeys.reduce((total, key) => total + countContextItems(projectContext?.[key]), 0)
 
     return { ...category, categoryKeys, counts, itemCount }
   }).filter((category) => category.itemCount > 0)
@@ -741,6 +757,61 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     (projectStatus === 'READY' || projectStatus === 'EXPORTABLE') &&
     initialData.requiredArtifactTypes.length > 0 &&
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
+
+  const sidebarDocuments = (() => {
+    const plannedTypes: { type: string; filename: string }[] = [
+      { type: 'PRD', filename: 'PRD.md' },
+      ...(initialData.requiredArtifactTypes.includes('SRS') ? [{ type: 'SRS', filename: 'SRS.md' }] : []),
+      ...(initialData.requiredArtifactTypes.includes('ARCHITECTURE') ? [{ type: 'ARCHITECTURE', filename: 'ARCHITECTURE.md' }] : []),
+      ...(initialData.requiredArtifactTypes.includes('DESIGN') ? [{ type: 'DESIGN', filename: 'DESIGN.md' }] : []),
+      { type: 'AGENT', filename: 'Agent.md' },
+      { type: 'BACKLOG', filename: 'BACKLOG.md' },
+    ]
+
+    const artifactMap = new Map(artifacts.map((a) => [a.type, a]))
+    for (const artifact of artifacts) {
+      if (!plannedTypes.some(({ type }) => type === artifact.type)) {
+        plannedTypes.push({ type: artifact.type, filename: artifact.path.split('/').pop() ?? `${artifact.type}.md` })
+      }
+    }
+
+    return plannedTypes.map(({ type, filename }) => {
+      const artifact = artifactMap.get(type)
+      if (artifact) {
+        return {
+          id: artifact.id || type,
+          filename: artifact.path.split('/').pop() ?? filename,
+          status: artifact.status,
+        }
+      }
+
+      let status = 'WAITING'
+      if (isGenerating) {
+        if (['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'].includes(type)) {
+          if (generationState.stages.documents.status === 'running') status = 'GENERATING'
+          else if (generationState.stages.documents.status === 'failed') status = 'FAILED'
+          else if (generationState.stages.documents.status === 'complete') status = 'READY'
+        } else if (type === 'AGENT') {
+          if (generationState.stages.agentRules.status === 'running') status = 'GENERATING'
+          else if (generationState.stages.agentRules.status === 'failed') status = 'FAILED'
+          else if (generationState.stages.agentRules.status === 'complete') status = 'READY'
+        } else if (type === 'BACKLOG') {
+          if (generationState.stages.backlog.status === 'running') status = 'GENERATING'
+          else if (generationState.stages.backlog.status === 'failed') status = 'FAILED'
+          else if (generationState.stages.backlog.status === 'complete') status = 'READY'
+        }
+      } else if (generationState.stages.documents.status === 'failed' && ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN'].includes(type)) {
+        status = 'FAILED'
+      }
+
+      return {
+        id: type,
+        filename,
+        status,
+      }
+    })
+  })()
+
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [isBriefExpanded, setIsBriefExpanded] = useState(false)
   const [isBriefOverflowing, setIsBriefOverflowing] = useState(false)
@@ -749,7 +820,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const briefCardRef = useRef<HTMLDivElement>(null)
   const briefContentRef = useRef<HTMLDivElement>(null)
   const briefText = initialData.description || t('noBrief')
-  const parsedBrief: ParsedProjectBrief = parseProjectBrief(initialData.description, initialData.context)
+  const parsedBrief: ParsedProjectBrief = parseProjectBrief(initialData.description, projectContext)
   const briefParagraphs = parsedBrief.paragraphs.length > 0
     ? parsedBrief.paragraphs
     : [parsedBrief.lead || briefText]
@@ -794,6 +865,19 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
+
+  useEffect(() => {
+    if (autoRedirectSeconds === null || hasDismissedRedirect) return
+    const timer = setTimeout(() => {
+      if (autoRedirectSeconds === 1) {
+        selectTabRef.current('export')
+        setAutoRedirectSeconds(null)
+      } else {
+        setAutoRedirectSeconds((seconds) => seconds === null ? null : seconds - 1)
+      }
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [autoRedirectSeconds, hasDismissedRedirect])
 
   useEffect(() => {
     if (classificationStatus !== 'PENDING') return
@@ -1213,19 +1297,27 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     return data
   }
 
+  const runGenerationRef = useRef<(operation: 'initial' | 'retry', contextIsReady?: boolean) => Promise<void>>(async () => {})
+
   const buildCanonicalContext = async () => {
     setIsAnalyzing(true)
     setDiscoveryMessage({ type: 'status', text: t('normalizingContext') })
     try {
-      await requestProjectStage(
+      const result = await requestProjectStage<{
+        context: Record<string, unknown>
+        version: number
+      }>(
         'context',
         { method: 'POST' },
         t('contextGenerationFailed'),
       )
 
+      setProjectContext(result.context)
       setProjectStatus('CONTEXT_READY')
       setDiscoveryMessage({ type: 'status', text: t('contextReadyMessage') })
-      window.location.reload()
+      setIsAnalyzing(false)
+      selectTab('backlog')
+      await runGenerationRef.current('initial', true)
     } catch (error) {
       setDiscoveryMessage({
         type: 'error',
@@ -1293,6 +1385,19 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       setIsAnalyzing(false)
     }
   }
+
+  const handleStartDiscoveryRef = useRef(handleStartDiscovery)
+  useEffect(() => {
+    handleStartDiscoveryRef.current = handleStartDiscovery
+  })
+
+  useEffect(() => {
+    if (searchParams.get('flow') !== 'auto' || autoFlowStartedRef.current) return
+    if (projectStatus !== 'DRAFT' && projectStatus !== 'CONFIGURED') return
+    autoFlowStartedRef.current = true
+    selectTabRef.current('context')
+    void handleStartDiscoveryRef.current()
+  }, [projectStatus, searchParams])
 
   const handleSubmitClarifications = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -1414,7 +1519,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         return
       case 'documents': {
         const result = await requestProjectStage<{
-          artifacts?: Array<{ type: string; status: string; error?: string }>
+          artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; version?: number; error?: string }>
         }>(
           'generate',
           { method: 'POST' },
@@ -1425,11 +1530,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           throw new Error(failedArtifact.error ?? `${failedArtifact.type}.md generation failed.`)
         }
         if (!result.artifacts?.length) throw new Error(t('documentGenerationEmpty'))
-        return
+        return result
       }
       case 'agentRules': {
         const result = await requestProjectStage<{
-          artifacts?: Array<{ type: string; status: string; error?: string }>
+          artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; version?: number; error?: string }>
         }>(
           'generate',
           {
@@ -1442,19 +1547,26 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
         if (failedArtifact) throw new Error(failedArtifact.error ?? t('agentGenerationFailed'))
         if (!result.artifacts?.length) throw new Error(t('agentInstructionsEmpty'))
-        return
+        return result
       }
       case 'skills':
         await requestProjectStage('skills', { method: 'POST' }, t('skillResolutionFailed'))
         return
-      case 'backlog':
-        await requestProjectStage('backlog', { method: 'POST' }, t('backlogGenerationFailed'))
-        return
+      case 'backlog': {
+        const result = await requestProjectStage<{
+          artifact?: { id: string; type: string; path: string; status: string; content?: string; updatedAt?: string }
+          phases?: typeof initialData.phases
+        }>('backlog', { method: 'POST' }, t('backlogGenerationFailed'))
+        if (!result.artifact || !['READY', 'MODIFIED'].includes(result.artifact.status)) {
+          throw new Error(t('backlogGenerationFailed'))
+        }
+        return result
+      }
       case 'validation': {
         const result = await requestProjectStage<{
           report?: { isConsistent?: boolean }
         }>('validate', { method: 'POST' }, t('readinessValidationFailed'))
-        if (result.report && result.report.isConsistent === false) {
+        if (!result.report?.isConsistent) {
           throw new Error(t('generationValidationFailed'))
         }
         return
@@ -1462,8 +1574,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     }
   }
 
-  const runGeneration = async (operation: 'initial' | 'retry') => {
-    if (!contextReady || isGenerating) return
+  const runGeneration = async (operation: 'initial' | 'retry', contextIsReady = contextReady) => {
+    if (!contextIsReady || isGenerating) return
 
     setIsGenerating(true)
     setGenerationOperation(operation)
@@ -1474,6 +1586,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       ? resetGenerationForRetry(generationState)
       : createQueuedGenerationState()
     setGenerationState(state)
+    let latestArtifacts = artifacts
 
     const stagesToRun = operation === 'retry'
       ? getRetryableGenerationStages(state)
@@ -1489,7 +1602,33 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         })
 
         try {
-          await generationStageRequest(stage)
+          if (stage === 'documents' || stage === 'agentRules' || stage === 'backlog') {
+            const result = await generationStageRequest(stage) as {
+              artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; version?: number }>
+              artifact?: { id: string; type: string; path: string; status: string; content?: string; updatedAt?: string }
+              phases?: typeof initialData.phases
+            }
+            if (stage === 'backlog' && result.phases) {
+              setPhases(result.phases)
+              setBacklogRevision((revision) => revision + 1)
+            }
+            const incoming = result.artifacts ?? (result.artifact ? [result.artifact] : [])
+            const updated = new Map(incoming.map((artifact) => [artifact.type, artifact]))
+            latestArtifacts = [
+              ...latestArtifacts.filter((artifact) => !updated.has(artifact.type)),
+              ...[...updated.values()].map((artifact) => ({
+                id: artifact.id || artifact.type,
+                type: artifact.type,
+                path: artifact.path,
+                status: artifact.status,
+                content: artifact.content ?? '',
+                updatedAt: artifact.updatedAt ?? new Date().toISOString(),
+              })),
+            ]
+            setArtifacts(latestArtifacts)
+          } else {
+            await generationStageRequest(stage)
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : t('generationFailed')
           state = markGenerationStageFailed(state, stage, message)
@@ -1504,12 +1643,20 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       }
 
       setGenMessage({ type: 'status', text: t('generationComplete') })
-      window.location.reload()
+      setProjectStatus('EXPORTABLE')
+      setGenerationState((current) => ({ ...current, activeStage: null, isRunning: false }))
+      setIsGenerationFinished(true)
+      setAutoRedirectSeconds(4)
+      router.refresh()
     } finally {
       setIsGenerating(false)
       setGenerationOperation(null)
     }
   }
+
+  useEffect(() => {
+    runGenerationRef.current = runGeneration
+  })
 
   const handleGenerateAll = async () => {
     if (!contextReady) {
@@ -1561,6 +1708,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       ? GENERATION_STAGES.length
       : Math.max(1, completedGenerationStageCount + 1)
 
+  const showGenerationStatus =
+    isGenerating ||
+    generationState.stages.documents.status === 'failed' ||
+    generationState.stages.agentRules.status === 'failed' ||
+    generationState.stages.skills.status === 'failed' ||
+    generationState.stages.backlog.status === 'failed' ||
+    generationState.stages.validation.status === 'failed'
+
   const generationProgress = (
     <section
       aria-labelledby="generation-progress-title"
@@ -1570,7 +1725,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       <div className="flex items-start justify-between gap-3 border-b border-black/[0.08] pb-3">
         <div>
           <h2 id="generation-progress-title" className="font-sans text-xs font-semibold">
-            {t('generationProgressTitle')}
+            {t('stateBProgressTitle')}
           </h2>
           <p className="mt-1 text-xs leading-5 text-[var(--workspace-muted)]">
             {t('generationProgressDesc')}
@@ -1783,7 +1938,48 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               </header>
             )}
 
-            {(isGenerating || generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && <div>{generationProgress}</div>}
+            {((showGenerationStatus && activeTab === 'backlog') || (isGenerating && activeTab === 'export')) && (
+              <div className="mb-6 grid gap-5 lg:grid-cols-[minmax(15rem,.8fr)_minmax(0,1.6fr)]">
+                <aside className="order-2 rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 lg:order-1">
+                  <h2 className="text-lg font-semibold">{t('stateBSidebarTitle')}</h2>
+                  <ul className="mt-3 space-y-2">
+                    {sidebarDocuments.map((document) => {
+                      const failed = document.status === 'FAILED' || document.status === 'OUTDATED'
+                      const done = document.status === 'READY' || document.status === 'MODIFIED'
+                      const busy = document.status === 'GENERATING'
+                      return <li key={document.id || document.filename} className="flex items-center justify-between gap-2 border-t border-[var(--workspace-border-subtle)] py-2 text-sm"><span className="min-w-0 truncate">{document.filename}</span><span className="inline-flex shrink-0 items-center gap-1 text-xs">{busy ? <Loader2 aria-hidden="true" className="size-3.5 motion-safe:animate-spin" /> : done ? <Check aria-hidden="true" className="size-3.5" /> : failed ? <AlertTriangle aria-hidden="true" className="size-3.5" /> : <Circle aria-hidden="true" className="size-3.5" />}{failed ? t('stateBStatusFailed') : done ? t('stateBStatusReady') : busy ? t('stateBStatusRunning') : t('stateBStatusWaiting')}</span></li>
+                    })}
+                  </ul>
+                </aside>
+                <div className="order-1 min-w-0 lg:order-2">
+                  {generationProgress}
+                  {(generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && (
+                    <section className="mt-4 rounded-[16px] border border-[var(--workspace-rose)] bg-[var(--workspace-rose-soft)] p-4" aria-labelledby="generation-failure-title">
+                      <h2 id="generation-failure-title" className="font-semibold">{t('stateB2AlertTitle', { stage: generationState.activeStage ? t(getGenerationStageLabelKey(generationState.activeStage) as Parameters<typeof t>[0]) : t('generationStageDocuments') })}</h2>
+                      <p className="mt-2 text-sm leading-6">{t('stateB2Assurance')}</p>
+                      <details ref={failureDetailsRef} className="mt-3 text-sm" onToggle={(event) => setShowErrorDetails(event.currentTarget.open)}>
+                        <summary className="w-fit cursor-pointer font-semibold underline underline-offset-4">{showErrorDetails ? t('stateB2HideDetails') : t('stateB2ShowDetails')}</summary>
+                        <p className="mt-2 break-words">{genMessage?.type === 'error' ? genMessage.text : t('generationFailed')}</p>
+                      </details>
+                      <button type="button" onClick={handleRegenerateFailed} disabled={isGenerating} className={`mt-4 inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-ink)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}><RefreshCw aria-hidden="true" className="size-4" />{t('stateB2RetryAction')}</button>
+                    </section>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isGenerationFinished && autoRedirectSeconds !== null && !hasDismissedRedirect && (
+              <section aria-labelledby="generation-complete-title" className="mb-6 rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-mint-soft)] p-5 sm:p-7">
+                <h2 id="generation-complete-title" className="text-2xl font-semibold tracking-[-0.04em]">{t('stateCTitle')}</h2>
+                <p className="mt-2 text-sm leading-6">{t('stateCDescription')}</p>
+                <p role="status" aria-live="polite" className="mt-3 text-sm font-semibold">{t('stateCCountdown', { seconds: autoRedirectSeconds })}</p>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button type="button" onClick={() => { setAutoRedirectSeconds(null); selectTab('export') }} className={`min-h-11 border border-[var(--workspace-ink)] bg-[var(--workspace-ink)] px-4 py-2 text-sm font-semibold text-white ${BUTTON_FOCUS_CLASS}`}>{t('stateCOpenNow')}</button>
+                  <button type="button" onClick={() => { setHasDismissedRedirect(true); setAutoRedirectSeconds(null) }} className={`min-h-11 border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-2 text-sm font-semibold ${BUTTON_FOCUS_CLASS}`}>{t('stateCStayHere')}</button>
+                </div>
+              </section>
+            )}
+
 
             {activeTab !== 'overview' && <h1 className="sr-only">{initialData.name}</h1>}
 
@@ -1850,84 +2046,119 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
                 {!contextReady ? (
                   <section className="mx-auto max-w-4xl">
-                    <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5 sm:p-8`}>
-                      <div className="border-b border-[var(--workspace-border-subtle)] pb-7">
-                        <p className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">{t('discoveryInterview')}</p>
-                        <h3 className="mt-3 max-w-2xl text-2xl font-semibold leading-tight tracking-tight text-[var(--workspace-ink)] sm:text-3xl">
-                          {pendingClarifications.length > 0 ? t('answerOpenDecisions') : t('contextNotAssembled')}
-                        </h3>
-                        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
-                          {pendingClarifications.length > 0 ? t('answersBecomeConfirmed') : t('startAnalysisFirst')}
-                        </p>
+                    {isAnalyzing && projectStatus !== 'CLARIFYING' ? (
+                      <div
+                        aria-labelledby="auto-analysis-title"
+                        aria-busy="true"
+                        className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5 sm:p-8`}
+                      >
+                        <h2 id="auto-analysis-title" className="text-2xl font-semibold tracking-[-0.04em]">{t('stateATitle')}</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">{t('stateASubtitle')}</p>
+                        <div className="mt-5 border-l-2 border-[var(--workspace-border)] pl-4">
+                          <h3 className="text-xs font-semibold text-[var(--workspace-muted)]">{t('stateAIdeaCardTitle')}</h3>
+                          <p className="mt-1 font-semibold">{initialData.name}</p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--workspace-body)]">{briefText}</p>
+                        </div>
+                        <ol className="mt-5 grid gap-3 sm:grid-cols-3">
+                          {[t('stateAStep1'), t('stateAStep2'), t('stateAStep3')].map((label, index) => {
+                            const done = index === 0 || (index === 1 && projectStatus !== 'DRAFT' && projectStatus !== 'CONFIGURED')
+                            const active = !done && index === 2
+                            return (
+                              <li key={label} className="flex items-center gap-2 text-sm">
+                                <span aria-hidden="true" className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--workspace-border)]">
+                                  {done ? <Check className="size-3.5" /> : active ? <Loader2 className="size-3.5 motion-safe:animate-spin" /> : <Circle className="size-3.5" />}
+                                </span>
+                                {label}
+                              </li>
+                            )
+                          })}
+                        </ol>
+                        {discoveryMessage && (
+                          <p role={discoveryMessage.type === 'error' ? 'alert' : 'status'} className="mt-4 text-sm text-[var(--workspace-muted)]">
+                            {discoveryMessage.text}
+                          </p>
+                        )}
                       </div>
+                    ) : (
+                      <div className={`${PANEL_CLASS} bg-[var(--workspace-paper)] p-5 sm:p-8`}>
+                        <div className="border-b border-[var(--workspace-border-subtle)] pb-7">
+                          <p className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">{t('discoveryInterview')}</p>
+                          <h3 className="mt-3 max-w-2xl text-2xl font-semibold leading-tight tracking-tight text-[var(--workspace-ink)] sm:text-3xl">
+                            {pendingClarifications.length > 0 ? t('answerOpenDecisions') : t('contextNotAssembled')}
+                          </h3>
+                          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
+                            {pendingClarifications.length > 0 ? t('answersBecomeConfirmed') : t('startAnalysisFirst')}
+                          </p>
+                        </div>
 
-                      {discoveryMessage && (
-                        <p
-                          role={discoveryMessage.type === 'error' ? 'alert' : 'status'}
-                          aria-live={discoveryMessage.type === 'error' ? 'assertive' : 'polite'}
-                          className={`mt-6 border-l-2 border-[var(--workspace-primary)] px-4 py-3 text-sm leading-6 ${
-                            discoveryMessage.type === 'error'
-                              ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
-                              : 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
-                          }`}
-                        >
-                          {discoveryMessage.text}
-                        </p>
-                      )}
+                        {discoveryMessage && (
+                          <p
+                            role={discoveryMessage.type === 'error' ? 'alert' : 'status'}
+                            aria-live={discoveryMessage.type === 'error' ? 'assertive' : 'polite'}
+                            className={`mt-6 border-l-2 border-[var(--workspace-primary)] px-4 py-3 text-sm leading-6 ${
+                              discoveryMessage.type === 'error'
+                                ? 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
+                                : 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
+                            }`}
+                          >
+                            {discoveryMessage.text}
+                          </p>
+                        )}
 
-                      {pendingClarifications.length > 0 ? (
-                        <form onSubmit={handleSubmitClarifications} className="mt-8 space-y-8">
-                          {pendingClarifications.map((question, index) => (
-                            <fieldset key={question.id} className="border-b border-[var(--workspace-border-subtle)] pb-8 last:border-b-0 last:pb-0">
-                              <legend className="w-full">
-                                <span className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('questionOf', { current: index + 1, total: pendingClarifications.length })}</span>
-                                <span className="mt-3 block text-lg font-semibold leading-7 tracking-[-0.02em]">{question.question}</span>
-                              </legend>
-                              {question.impact && <p className="mt-3 border-l-2 border-[var(--workspace-primary)] pl-3 text-sm leading-6 text-[var(--workspace-muted)]">{t('impact')}: {question.impact}</p>}
-                              <div className="mt-5 space-y-3">
-                                {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
-                                  <label key={i} className={`flex cursor-pointer items-start gap-3 border border-[var(--workspace-border)] p-3 transition-colors hover:bg-[var(--workspace-yellow-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                    <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 accent-[var(--workspace-primary)]" />
-                                    <span className="text-sm font-medium text-[var(--workspace-ink)]">{opt}</span>
+                        {pendingClarifications.length > 0 ? (
+                          <form onSubmit={handleSubmitClarifications} className="mt-8 space-y-8">
+                            {pendingClarifications.map((question, index) => (
+                              <fieldset key={question.id} className="border-b border-[var(--workspace-border-subtle)] pb-8 last:border-b-0 last:pb-0">
+                                <legend className="w-full">
+                                  <span className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">{t('questionOf', { current: index + 1, total: pendingClarifications.length })}</span>
+                                  <span className="mt-3 block text-lg font-semibold leading-7 tracking-[-0.02em]">{question.question}</span>
+                                </legend>
+                                {question.impact && <p className="mt-3 border-l-2 border-[var(--workspace-primary)] pl-3 text-sm leading-6 text-[var(--workspace-muted)]">{t('impact')}: {question.impact}</p>}
+                                <div className="mt-5 space-y-3">
+                                  {(Array.isArray(question.options) ? question.options : []).map((opt, i) => (
+                                    <label key={i} className={`flex cursor-pointer items-start gap-3 border border-[var(--workspace-border)] p-3 transition-colors hover:bg-[var(--workspace-yellow-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                      <input type="radio" name={`answer-${question.id}`} value={opt} required className="mt-0.5 size-4 accent-[var(--workspace-primary)]" />
+                                      <span className="text-sm font-medium text-[var(--workspace-ink)]">{opt}</span>
+                                    </label>
+                                  ))}
+                                  <label className={`flex cursor-pointer items-start gap-3 border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
+                                    <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 accent-[var(--workspace-primary)]" />
+                                    <span className="text-sm font-medium text-[var(--workspace-ink)]">{t('autoPick')}</span>
                                   </label>
-                                ))}
-                                <label className={`flex cursor-pointer items-start gap-3 border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] p-3 transition-colors hover:bg-[var(--workspace-mint-soft)] ${BUTTON_FOCUS_CLASS}`}>
-                                  <input type="radio" name={`answer-${question.id}`} value="[AUTO]" required className="mt-0.5 size-4 accent-[var(--workspace-primary)]" />
-                                  <span className="text-sm font-medium text-[var(--workspace-ink)]">{t('autoPick')}</span>
-                                </label>
-                                <div className="pt-2">
-                                  <label className="mb-2 flex items-center gap-2 text-sm font-medium">
-                                    <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 accent-[var(--workspace-primary)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
-                                    {t('otherCustom')}
-                                  </label>
-                                  <textarea
-                                    name={`custom-answer-${question.id}`}
-                                    rows={(Array.isArray(question.options) ? question.options : []).length === 0 ? 4 : 2}
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        const radio = document.getElementById(`custom-radio-${question.id}`) as HTMLInputElement
-                                        if (radio) {
-                                          radio.value = e.target.value
-                                          radio.checked = true
+                                  <div className="pt-2">
+                                    <label className="mb-2 flex items-center gap-2 text-sm font-medium">
+                                      <input type="radio" name={`answer-${question.id}`} value="" id={`custom-radio-${question.id}`} className="size-4 accent-[var(--workspace-primary)]" required={(Array.isArray(question.options) ? question.options : []).length === 0} />
+                                      {t('otherCustom')}
+                                    </label>
+                                    <textarea
+                                      name={`custom-answer-${question.id}`}
+                                      rows={(Array.isArray(question.options) ? question.options : []).length === 0 ? 4 : 2}
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          const radio = document.getElementById(`custom-radio-${question.id}`) as HTMLInputElement
+                                          if (radio) {
+                                            radio.value = e.target.value
+                                            radio.checked = true
+                                          }
                                         }
-                                      }
-                                    }}
-                                    placeholder={t('writeDecision')}
-                                    className={`w-full resize-y border border-[var(--workspace-border)] bg-white px-3 py-3 text-sm leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
-                                  />
+                                      }}
+                                      placeholder={t('writeDecision')}
+                                      className={`w-full resize-y border border-[var(--workspace-border)] bg-white px-3 py-3 text-sm leading-6 text-[var(--workspace-ink)] placeholder:text-[var(--workspace-faint)] ${BUTTON_FOCUS_CLASS}`}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            </fieldset>
-                          ))}
-                          <button type="submit" disabled={isSubmittingAnswers || isAnalyzing} className={`inline-flex items-center justify-center gap-2 bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}>
-                            {isSubmittingAnswers ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Check aria-hidden="true" className="size-4" />}
-                            {isSubmittingAnswers ? t('savingAnswers') : t('submitAnswersContinue')}
-                          </button>
-                        </form>
-                      ) : (
-                        <div className="mt-8">{discoveryButton}</div>
-                      )}
-                    </div>
+                              </fieldset>
+                            ))}
+                            <button type="submit" disabled={isSubmittingAnswers || isAnalyzing} className={`inline-flex items-center justify-center gap-2 bg-[var(--workspace-primary)] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}>
+                              {isSubmittingAnswers ? <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" /> : <Check aria-hidden="true" className="size-4" />}
+                              {isSubmittingAnswers ? t('savingAnswers') : t('submitAnswersContinue')}
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="mt-8">{discoveryButton}</div>
+                        )}
+                      </div>
+                    )}
                   </section>
                 ) : (
                   <>
@@ -1939,7 +2170,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                         </div>
                         <div className="p-5 sm:p-6">
                           <div className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] p-5 text-left text-sm leading-relaxed text-[var(--workspace-body)] sm:p-6 sm:text-base sm:leading-7">
-                            <ContextValue value={initialData.context?.summary ?? initialData.description ?? t('noBrief')} locale={locale} {...contextLabels} />
+                            <ContextValue value={projectContext?.summary ?? initialData.description ?? t('noBrief')} locale={locale} {...contextLabels} />
                           </div>
                           <div className="mt-6 flex flex-wrap items-center gap-2.5 font-sans text-xs font-semibold">
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-[#2d8d6b]/30 bg-[var(--workspace-mint-soft)] px-3 py-1.5 text-[#1b6a4e]">
@@ -2019,7 +2250,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             <section key={key} className="rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 sm:p-5">
                               <h3 className="text-sm font-semibold tracking-[-0.02em] text-[var(--workspace-ink)]">{formatLabel(key)}</h3>
                               <div className="mt-3 text-left text-sm leading-relaxed text-[var(--workspace-body)] sm:text-base sm:leading-7">
-                                {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(initialData.context?.[key]) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={initialData.context?.[key]} locale={locale} {...contextLabels} />}
+                                {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(projectContext?.[key]) ? <SensitiveContextValue label={contextLabels.sensitiveLabel} /> : <ContextValue value={projectContext?.[key]} locale={locale} {...contextLabels} />}
                               </div>
                             </section>
                           ))}
@@ -2084,7 +2315,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   }
                 />
 
-                {initialData.phases.length === 0 ? (
+                {phases.length === 0 ? (
                   <EmptyState
                     icon={FolderKanban}
                     title={t('noImplementationBacklog')}
@@ -2093,13 +2324,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   />
                 ) : (
                   <BacklogKanbanBoard
+                    key={backlogRevision}
                     projectId={initialData.id}
-                    phases={initialData.phases}
+                    phases={phases}
                   />
                 )}
               </div>
 
-              <div className={activeTab === 'export' ? 'space-y-8' : 'hidden'}>
+              <div className={activeTab === 'export' && !isGenerating ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
                   title={t('exportAgentPrompt')}
                   description={t('exportAgentPromptDesc')}
@@ -2189,7 +2421,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                             </div>
                             <ul className="divide-y divide-[var(--workspace-border-subtle)] border-y border-[var(--workspace-border-subtle)]">
                               {exportManifestArtifacts.map((artifact) => (
-                                <li key={artifact.id} className="flex items-start gap-3 py-3">
+                                <li key={artifact.id || artifact.type} className="flex items-start gap-3 py-3">
                                   <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
                                   <div className="min-w-0 flex-1">
                                     <p className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">
