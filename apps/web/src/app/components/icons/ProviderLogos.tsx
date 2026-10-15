@@ -1,10 +1,11 @@
 'use client'
 
 import Image from 'next/image'
+import type { AIProviderType } from '@repo/types'
 
 import { cn } from '@/lib/ui'
 
-type Provider = 'ANTHROPIC' | 'OPENAI' | 'GEMINI' | 'OPENROUTER'
+type Provider = AIProviderType
 
 interface ProviderLogoProps {
   provider: Provider
@@ -17,6 +18,11 @@ const providerIconPaths: Record<Provider, string> = {
   OPENAI: '/provider-icons/openai.svg',
   GEMINI: '/provider-icons/gemini.svg',
   OPENROUTER: '/provider-icons/openrouter.svg',
+  DEEPSEEK: '/provider-icons/deepseek.svg',
+  GROQ: '/provider-icons/groq.svg',
+  MISTRAL: '/provider-icons/mistral.svg',
+  XAI: '/provider-icons/xai.svg',
+  OLLAMA: '/provider-icons/ollama.svg',
 }
 
 export function ProviderLogo({ provider, size = 24, className }: ProviderLogoProps) {

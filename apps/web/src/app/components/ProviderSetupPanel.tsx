@@ -12,12 +12,15 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
+import type { AIProviderType, VerifiedProviderIdentity } from '@repo/types'
 
 import { cn } from '@/lib/ui'
 import { ProviderLogo } from './icons/ProviderLogos'
 import { Button, Input, Select, StatusBadge } from './ui'
 
-const PROVIDERS = ['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER'] as const
+const PRIMARY_PROVIDERS = ['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER'] as const satisfies readonly AIProviderType[]
+const SECONDARY_PROVIDERS = ['DEEPSEEK', 'GROQ', 'MISTRAL', 'XAI', 'OLLAMA'] as const satisfies readonly AIProviderType[]
+const PROVIDERS = [...PRIMARY_PROVIDERS, ...SECONDARY_PROVIDERS] as const
 type Provider = (typeof PROVIDERS)[number]
 
 const providerLogoBackgrounds: Record<Provider, string> = {
@@ -25,6 +28,11 @@ const providerLogoBackgrounds: Record<Provider, string> = {
   OPENAI: 'bg-[#e8f1ee] text-[#176b52]',
   GEMINI: 'bg-[#eee9fb] text-[#624b9b]',
   OPENROUTER: 'bg-[#f1ece6] text-[#5e5147]',
+  DEEPSEEK: 'bg-[#e6f1f7] text-[#216b8f]',
+  GROQ: 'bg-[#fff0d6] text-[#9b5a00]',
+  MISTRAL: 'bg-[#f8e8df] text-[#a4462c]',
+  XAI: 'bg-[#e8e8e8] text-[#161616]',
+  OLLAMA: 'bg-[#e6eee8] text-[#356248]',
 }
 
 const warmFocusClass = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-sun-orange)]'
@@ -61,17 +69,34 @@ interface ModelInfo {
 interface TestResult {
   status?: string
   message?: string
+  error?: string
   models?: ModelInfo[]
+  identity?: VerifiedProviderIdentity
 }
 
 const DEFAULT_MODELS: Record<Provider, string> = {
-  ANTHROPIC: 'claude-opus-5-5',
-  OPENAI: 'gpt-5',
-  GEMINI: 'gemini-2.5-pro',
-  OPENROUTER: 'anthropic/claude-opus-5-5',
+  ANTHROPIC: 'claude-opus-4-5',
+  OPENAI: 'gpt-4o',
+  GEMINI: 'gemini-2.0-flash',
+  OPENROUTER: 'openai/gpt-4o-mini',
+  DEEPSEEK: 'deepseek-chat',
+  GROQ: 'llama-3.3-70b-versatile',
+  MISTRAL: 'mistral-large-latest',
+  XAI: 'grok-2-latest',
+  OLLAMA: 'llama3.2',
 }
 
-const CUSTOM_URL_PROVIDERS: ReadonlySet<Provider> = new Set<Provider>(['OPENAI', 'OPENROUTER'])
+const CUSTOM_URL_PROVIDERS: ReadonlySet<Provider> = new Set<Provider>([
+  'OPENAI',
+  'OPENROUTER',
+  'DEEPSEEK',
+  'GROQ',
+  'MISTRAL',
+  'XAI',
+  'OLLAMA',
+])
+
+const OLLAMA_DEFAULT_URL = 'http://localhost:11434/v1'
 
 function isProvider(value: string): value is Provider {
   return PROVIDERS.includes(value as Provider)
@@ -85,6 +110,7 @@ export function ProviderSetupPanel() {
   const [selectedProvider, setSelectedProvider] = useState<Provider>('ANTHROPIC')
   const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null)
   const [replacingKey, setReplacingKey] = useState(false)
+  const [showAllProviders, setShowAllProviders] = useState(false)
 
   const [keyName, setKeyName] = useState('')
   const [provider, setProvider] = useState<Provider>('ANTHROPIC')
@@ -95,19 +121,22 @@ export function ProviderSetupPanel() {
   const [testing, setTesting] = useState(false)
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([])
-  const [modelsLoaded, setModelsLoaded] = useState(false)
   const [autoTestStatus, setAutoTestStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle')
-  const [modelSearch, setModelSearch] = useState('')
+  const [autoTestError, setAutoTestError] = useState<string | null>(null)
+  const [verifiedIdentity, setVerifiedIdentity] = useState<VerifiedProviderIdentity | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const autoTestRequestRef = useRef(0)
   const autoTestAbortRef = useRef<AbortController | null>(null)
 
   const selectedKey = savedKeys.find((item) => item.id === selectedKeyId) ?? null
   const providerKeys = savedKeys.filter((item) => item.provider === selectedProvider)
-  const showModelSelect = modelsLoaded && availableModels.length > 0
+  const activeOrSelectedSecondary = SECONDARY_PROVIDERS.includes(selectedProvider as (typeof SECONDARY_PROVIDERS)[number])
+    || savedKeys.some((item) => item.isActive && SECONDARY_PROVIDERS.includes(item.provider as (typeof SECONDARY_PROVIDERS)[number]))
+  const effectiveShowAllProviders = showAllProviders || activeOrSelectedSecondary
+  const visibleProviders = effectiveShowAllProviders ? PROVIDERS : PRIMARY_PROVIDERS
 
-  const providerName = (value: Provider) => t(`provider${value}` as 'providerANTHROPIC' | 'providerOPENAI' | 'providerGEMINI' | 'providerOPENROUTER')
-  const providerDescription = (value: Provider) => t(`provider${value}Desc` as 'providerANTHROPICDesc' | 'providerOPENAIDesc' | 'providerGEMINIDesc' | 'providerOPENROUTERDesc')
+  const providerName = (value: Provider) => t(`provider${value}` as 'providerANTHROPIC')
+  const providerDescription = (value: Provider) => t(`provider${value}Desc` as 'providerANTHROPICDesc')
 
   const loadSavedKeys = async () => {
     setLoadingKeys(true)
@@ -126,7 +155,12 @@ export function ProviderSetupPanel() {
         return nextKeys.find((item) => item.isActive)?.id ?? nextKeys[0]?.id ?? null
       })
       const activeKey = nextKeys.find((item) => item.isActive)
-      if (activeKey && isProvider(activeKey.provider)) setSelectedProvider(activeKey.provider)
+      if (activeKey && isProvider(activeKey.provider)) {
+        setSelectedProvider(activeKey.provider)
+        if (SECONDARY_PROVIDERS.includes(activeKey.provider as (typeof SECONDARY_PROVIDERS)[number])) {
+          setShowAllProviders(true)
+        }
+      }
     } catch {
       setLoadError(true)
     } finally {
@@ -161,9 +195,9 @@ export function ProviderSetupPanel() {
         setReplacingKey(false)
       }
       setAvailableModels([])
-      setModelsLoaded(false)
-      setModelSearch('')
       setAutoTestStatus('idle')
+      setAutoTestError(null)
+      setVerifiedIdentity(null)
     }, 0)
 
     return () => window.clearTimeout(timer)
@@ -174,13 +208,32 @@ export function ProviderSetupPanel() {
       ?? savedKeys.find((item) => item.provider === nextProvider)
     setSelectedProvider(nextProvider)
     setSelectedKeyId(nextKey?.id ?? null)
+    setVerifiedIdentity(null)
+    setAutoTestError(null)
     setMessage(null)
   }
 
   const startNewProfile = () => {
     setSelectedProvider('ANTHROPIC')
     setSelectedKeyId(null)
+    setVerifiedIdentity(null)
+    setAutoTestError(null)
     setMessage(null)
+  }
+
+  const handleToggleProviders = () => {
+    if (effectiveShowAllProviders) {
+      if (SECONDARY_PROVIDERS.includes(selectedProvider as (typeof SECONDARY_PROVIDERS)[number])) {
+        const activePrimary = savedKeys.find(
+          (item) => item.isActive && PRIMARY_PROVIDERS.includes(item.provider as (typeof PRIMARY_PROVIDERS)[number]),
+        )
+        const targetPrimary = activePrimary && isProvider(activePrimary.provider) ? activePrimary.provider : 'ANTHROPIC'
+        selectProvider(targetPrimary)
+      }
+      setShowAllProviders(false)
+    } else {
+      setShowAllProviders(true)
+    }
   }
 
   const runAutoTest = useCallback(async (
@@ -188,13 +241,15 @@ export function ProviderSetupPanel() {
     signal: AbortSignal,
     key: string,
     providerNameValue: Provider,
+    modelValue: string,
     customUrl?: string,
   ) => {
     if (signal.aborted || autoTestRequestRef.current !== requestId) return
 
     setAutoTestStatus('testing')
+    setAutoTestError(null)
     setAvailableModels([])
-    setModelsLoaded(false)
+    setVerifiedIdentity(null)
     setMessage(null)
 
     try {
@@ -204,15 +259,20 @@ export function ProviderSetupPanel() {
         body: JSON.stringify({ provider: providerNameValue, apiKey: key, baseUrl: customUrl || undefined }),
         signal,
       })
-      const modelsData = (await modelsResponse.json()) as { models?: ModelInfo[] }
+      const modelsData = (await modelsResponse.json()) as { models?: ModelInfo[]; error?: string; message?: string }
 
       if (signal.aborted || autoTestRequestRef.current !== requestId) return
 
+      if (!modelsResponse.ok && !modelsData.models?.length) {
+        setAvailableModels([])
+        setVerifiedIdentity(null)
+        setAutoTestStatus('invalid')
+        setAutoTestError(modelsData.message || modelsData.error || t('testFailed'))
+        return
+      }
+
       if (modelsData.models && modelsData.models.length > 0) {
         setAvailableModels(modelsData.models)
-        setModelsLoaded(true)
-        setAutoTestStatus('valid')
-        return
       }
 
       const testResponse = await fetch('/api/provider/test', {
@@ -220,7 +280,7 @@ export function ProviderSetupPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider: providerNameValue,
-          model: model || DEFAULT_MODELS[providerNameValue],
+          model: modelValue || DEFAULT_MODELS[providerNameValue],
           apiKey: key,
           baseUrl: customUrl || undefined,
         }),
@@ -231,21 +291,26 @@ export function ProviderSetupPanel() {
       if (signal.aborted || autoTestRequestRef.current !== requestId) return
 
       if (testData.status === 'VALID') {
-        setAvailableModels(testData.models ?? [])
-        setModelsLoaded(Boolean(testData.models?.length))
+        if (testData.models?.length) {
+          setAvailableModels(testData.models)
+        }
+        setVerifiedIdentity(testData.identity ?? null)
         setAutoTestStatus('valid')
+        setAutoTestError(null)
       } else {
         setAvailableModels([])
-        setModelsLoaded(false)
+        setVerifiedIdentity(null)
         setAutoTestStatus('invalid')
+        setAutoTestError(testData.message || testData.error || t('testFailed'))
       }
     } catch {
       if (signal.aborted || autoTestRequestRef.current !== requestId) return
       setAvailableModels([])
-      setModelsLoaded(false)
+      setVerifiedIdentity(null)
       setAutoTestStatus('invalid')
+      setAutoTestError(t('networkError'))
     }
-  }, [model])
+  }, [t])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -253,12 +318,12 @@ export function ProviderSetupPanel() {
     autoTestAbortRef.current = null
     const requestId = ++autoTestRequestRef.current
 
-    if (apiKey.length < 8) return
+    if (provider !== 'OLLAMA' && apiKey.length < 8) return
 
     debounceRef.current = setTimeout(() => {
       const controller = new AbortController()
       autoTestAbortRef.current = controller
-      void runAutoTest(requestId, controller.signal, apiKey, provider, baseUrl)
+      void runAutoTest(requestId, controller.signal, apiKey, provider, model, baseUrl)
     }, 600)
 
     return () => {
@@ -328,18 +393,23 @@ export function ProviderSetupPanel() {
         })
       const data = (await response.json()) as TestResult
 
-      const connectionSucceeded = selectedKey && !replacingKey
-        ? response.ok
-        : response.ok && data.status === 'VALID'
+      const connectionSucceeded = response.ok && (
+        selectedKey && !replacingKey ? Boolean(data.identity) : data.status === 'VALID'
+      )
 
       if (!connectionSucceeded) {
-        setMessage({ type: 'err', text: data.message ?? t('testFailed') })
+        setVerifiedIdentity(null)
+        setAutoTestStatus('invalid')
+        setAutoTestError(data.message || data.error || t('testFailed'))
+        setMessage({ type: 'err', text: data.message || data.error || t('testFailed') })
         return
       }
 
       setMessage({ type: 'ok', text: t('connectionSuccess', { provider: providerName(provider) }) })
+      setVerifiedIdentity(data.identity ?? null)
+      setAutoTestStatus('valid')
+      setAutoTestError(null)
       setAvailableModels(data.models ?? [])
-      setModelsLoaded(Boolean(data.models?.length))
       if (selectedKey && !replacingKey) await loadSavedKeys()
     } catch {
       setMessage({ type: 'err', text: t('networkError') })
@@ -366,17 +436,18 @@ export function ProviderSetupPanel() {
             testConnection: true,
           }),
         })
-        const data = (await response.json()) as { key?: SavedKeyItem; message?: string }
+        const data = (await response.json()) as { key?: SavedKeyItem; message?: string; error?: string; identity?: VerifiedProviderIdentity }
         if (!response.ok) {
-          setMessage({ type: 'err', text: data.message ?? t('saveFailed') })
+          setMessage({ type: 'err', text: data.message || data.error || t('saveFailed') })
           return
         }
+        setVerifiedIdentity(data.identity ?? null)
         setMessage({ type: 'ok', text: t('changesSaved') })
         await loadSavedKeys()
         return
       }
 
-      if (!apiKey) {
+      if (provider !== 'OLLAMA' && !apiKey) {
         setMessage({ type: 'err', text: t('keyRequiredForSave') })
         return
       }
@@ -393,11 +464,13 @@ export function ProviderSetupPanel() {
           baseUrl: baseUrl || undefined,
         }),
       })
-      const data = (await response.json()) as { key?: SavedKeyItem; message?: string }
+      const data = (await response.json()) as { key?: SavedKeyItem; message?: string; error?: string; identity?: VerifiedProviderIdentity }
       if (!response.ok || !data.key) {
-        setMessage({ type: 'err', text: data.message ?? t('saveFailed') })
+        setMessage({ type: 'err', text: data.message || data.error || t('saveFailed') })
         return
       }
+
+      setVerifiedIdentity(data.identity ?? null)
 
       if (!data.key.isActive) {
         const activateResponse = await fetch(`/api/provider/keys/${data.key.id}`, {
@@ -441,8 +514,8 @@ export function ProviderSetupPanel() {
     }
     setMessage(null)
     setAvailableModels([])
-    setModelsLoaded(false)
     setAutoTestStatus('idle')
+    setAutoTestError(null)
   }
 
   const renderAutoTestStatus = () => {
@@ -476,7 +549,7 @@ export function ProviderSetupPanel() {
             </div>
           ) : (
             <div className="mt-5 space-y-2">
-              {PROVIDERS.map((providerOption) => {
+              {visibleProviders.map((providerOption) => {
                 const keys = savedKeys.filter((item) => item.provider === providerOption)
                 const preview = keys.find((item) => item.isActive) ?? keys[0]
                 const isSelected = selectedProvider === providerOption
@@ -511,6 +584,21 @@ export function ProviderSetupPanel() {
                   </button>
                 )
               })}
+              {SECONDARY_PROVIDERS.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleProviders}
+                  aria-expanded={effectiveShowAllProviders}
+                  className={cn(
+                    'w-full rounded-xl border border-dashed border-[var(--border-subtle)] px-3 py-2.5 text-left text-xs font-semibold text-[var(--color-body-text)] transition-colors hover:border-[var(--color-ink-black)] hover:bg-[var(--color-pure-white)]',
+                    warmFocusClass,
+                  )}
+                >
+                  {effectiveShowAllProviders
+                    ? t('showFewerProviders')
+                    : t('showMoreProviders', { count: SECONDARY_PROVIDERS.length })}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={startNewProfile}
@@ -573,7 +661,14 @@ export function ProviderSetupPanel() {
               )}
 
               <div className="space-y-2">
-                <label htmlFor="providerApiKey" className="text-xs font-semibold text-[var(--color-ink-black)]">{t('apiKey')}</label>
+                <label htmlFor="providerApiKey" className="text-xs font-semibold text-[var(--color-ink-black)]">
+                  {t('apiKey')}
+                  {provider === 'OLLAMA' && (
+                    <span className="ml-1 text-[11px] font-normal text-[var(--color-faint-text)]">
+                      ({t('ollamaKeyOptional')})
+                    </span>
+                  )}
+                </label>
                 {selectedKey && !replacingKey ? (
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <div className="flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-buttons)] border border-[var(--border-default)] bg-[var(--color-paper-warmth)] px-3 font-mono text-xs text-[var(--color-body-text)]">
@@ -591,9 +686,11 @@ export function ProviderSetupPanel() {
                       id="providerApiKey"
                       type="password"
                       value={apiKey}
-                      onChange={(event) => setApiKey(event.target.value)}
-                      required
-                      placeholder={t('pasteKeyPlaceholder')}
+                      onChange={(event) => { setApiKey(event.target.value); setVerifiedIdentity(null); setAutoTestError(null) }}
+                      required={provider !== 'OLLAMA'}
+                      aria-invalid={autoTestStatus === 'invalid'}
+                      aria-describedby={autoTestError ? 'providerApiKeyError' : undefined}
+                      placeholder={provider === 'OLLAMA' ? t('ollamaKeyOptional') : t('pasteKeyPlaceholder')}
                       className="pl-9 pr-10 font-mono text-xs"
                     />
                     <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" role="status" aria-label={t(`autoTest${autoTestStatus === 'testing' ? 'Testing' : autoTestStatus === 'valid' ? 'Valid' : 'Invalid'}` as 'autoTestTesting' | 'autoTestValid' | 'autoTestInvalid')}>
@@ -601,36 +698,104 @@ export function ProviderSetupPanel() {
                     </span>
                   </div>
                 )}
+                {(!selectedKey || replacingKey) && autoTestStatus === 'invalid' && autoTestError && (
+                  <p
+                    id="providerApiKeyError"
+                    role="alert"
+                    className="mt-1.5 flex items-start gap-1.5 text-xs leading-5 text-[var(--color-vermillion)]"
+                  >
+                    <AlertTriangle size={13} className="mt-0.5 shrink-0" aria-hidden="true" />
+                    <span>{autoTestError}</span>
+                  </p>
+                )}
                 {replacingKey && <p className="text-[11px] leading-5 text-[var(--color-body-text)]">{t('changeKeyHint')}</p>}
+                {provider === 'OLLAMA' && (
+                  <p className="text-[11px] leading-5 text-[var(--color-body-text)]">{t('ollamaLocalNote')}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label htmlFor="providerModel" className="text-xs font-semibold text-[var(--color-ink-black)]">{t('model')}</label>
-                {showModelSelect ? (
-                  <div className="space-y-2">
-                    <Input
-                      type="search"
-                      value={modelSearch}
-                      onChange={(event) => setModelSearch(event.target.value)}
-                      placeholder={t('searchModels')}
-                      className="text-xs"
-                    />
-                    <Select id="providerModel" value={model} onChange={(event) => setModel(event.target.value)} className="font-mono text-xs">
-                      {availableModels
-                        .filter((item) => item.id === model || item.name.toLowerCase().includes(modelSearch.toLowerCase()) || item.id.toLowerCase().includes(modelSearch.toLowerCase()))
-                        .map((item) => <option key={item.id} value={item.id}>{item.name} · {item.id}</option>)}
-                    </Select>
-                  </div>
-                ) : (
-                  <Input id="providerModel" value={model} onChange={(event) => setModel(event.target.value)} className="font-mono text-xs" required />
-                )}
+                <div className="space-y-2">
+                  <Input
+                    id="providerModel"
+                    list="provider-model-options"
+                    value={model}
+                    onChange={(event) => { setModel(event.target.value); setVerifiedIdentity(null) }}
+                    className="font-mono text-xs"
+                    required
+                  />
+                  {availableModels.length > 0 && (
+                    <datalist id="provider-model-options">
+                      {availableModels.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </datalist>
+                  )}
+                  {availableModels.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      <span className="text-[10px] text-[var(--color-faint-text)]">{t('suggestedModels')}:</span>
+                      {availableModels.slice(0, 6).map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setModel(m.id)}
+                          className={cn(
+                            'rounded-md border px-1.5 py-0.5 font-mono text-[10px] transition-colors',
+                            model === m.id
+                              ? 'border-[var(--color-ink-black)] bg-[var(--color-ink-black)] text-white'
+                              : 'border-[var(--border-subtle)] bg-[var(--color-paper-warmth)] text-[var(--color-body-text)] hover:border-[var(--border-default)]',
+                          )}
+                        >
+                          {m.id}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <p className="text-[11px] leading-5 text-[var(--color-body-text)]">{t('modelHint')}</p>
               </div>
 
               {CUSTOM_URL_PROVIDERS.has(provider) && (
                 <div className="space-y-1.5">
                   <label htmlFor="providerBaseUrl" className="text-xs font-semibold text-[var(--color-ink-black)]">{t('customBaseUrl')}</label>
-                  <Input id="providerBaseUrl" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder={t('customBaseUrlPlaceholder')} className="font-mono text-xs" />
+                  <Input
+                    id="providerBaseUrl"
+                    value={baseUrl}
+                    onChange={(event) => { setBaseUrl(event.target.value); setVerifiedIdentity(null) }}
+                    placeholder={provider === 'OLLAMA' ? OLLAMA_DEFAULT_URL : t('customBaseUrlPlaceholder')}
+                    className="font-mono text-xs"
+                  />
+                </div>
+              )}
+
+              {verifiedIdentity && (
+                <div className="rounded-xl border border-[#b8dfce] bg-[#f2faf5] p-3 text-xs">
+                  <div className="flex items-center gap-2 font-semibold text-[#237452]">
+                    <CheckCircle2 size={15} aria-hidden="true" />
+                    <span>{t('verifiedIdentityTitle')}</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2 text-[11px]">
+                    <div>
+                      <span className="text-[var(--color-faint-text)]">{t('verifiedModel')}: </span>
+                      <span className="font-mono font-medium text-[var(--color-ink-black)]">{verifiedIdentity.model}</span>
+                    </div>
+                    <div>
+                      <span className="text-[var(--color-faint-text)]">{t('verifiedKey')}: </span>
+                      <span className="font-mono text-[var(--color-ink-black)]">{verifiedIdentity.maskedKey ?? '••••••••'}</span>
+                    </div>
+                    {verifiedIdentity.baseUrl && (
+                      <div className="sm:col-span-2 truncate">
+                        <span className="text-[var(--color-faint-text)]">{t('verifiedEndpoint')}: </span>
+                        <span className="font-mono text-[var(--color-ink-black)]">{verifiedIdentity.baseUrl}</span>
+                      </div>
+                    )}
+                    <div className="sm:col-span-2 text-[10px] text-[var(--color-faint-text)]">
+                      {t('verifiedAt')}: {new Date(verifiedIdentity.verifiedAt).toLocaleString()}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -650,10 +815,23 @@ export function ProviderSetupPanel() {
                   </Button>
                 )}
                 <Button type="button" variant="neutral" size="sm" className={cn(ghostButtonClass, warmFocusClass)} onClick={handleCancel}>{t('cancel')}</Button>
-                <Button type="button" variant="neutral" size="sm" className={cn(neutralButtonClass, warmFocusClass)} onClick={() => void handleTestConnection()} disabled={testing || (!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)}>
+                <Button
+                  type="button"
+                  variant="neutral"
+                  size="sm"
+                  className={cn(neutralButtonClass, warmFocusClass)}
+                  onClick={() => void handleTestConnection()}
+                  disabled={testing || (provider !== 'OLLAMA' && ((!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)))}
+                >
                   {testing ? t('testing') : t('testConnection')}
                 </Button>
-                <Button type="submit" variant="primary" size="sm" className={cn(primaryButtonClass, warmFocusClass)} disabled={loading || (!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className={cn(primaryButtonClass, warmFocusClass)}
+                  disabled={loading || (provider !== 'OLLAMA' && ((!selectedKey && !apiKey) || (selectedKey !== null && replacingKey && !apiKey)))}
+                >
                   {loading ? t('saving') : selectedKey && !replacingKey ? t('saveChanges') : t('saveEncrypt')}
                 </Button>
               </div>

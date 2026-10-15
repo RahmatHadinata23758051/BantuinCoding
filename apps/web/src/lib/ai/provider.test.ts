@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { z } from 'zod'
-import { createProvider } from '@/lib/ai/provider'
+import { createProvider, sanitizeProviderMessage } from '@/lib/ai/provider'
 import type { AIProviderConfig } from '@repo/types'
 
 // ============================================================
@@ -53,6 +53,11 @@ const configs = [
   { provider: 'OPENAI', model: 'gpt-4o' },
   { provider: 'GEMINI', model: 'gemini-2.0-flash' },
   { provider: 'OPENROUTER', model: 'anthropic/claude-3-haiku' },
+  { provider: 'DEEPSEEK', model: 'deepseek-chat' },
+  { provider: 'GROQ', model: 'llama-3.3-70b-versatile' },
+  { provider: 'MISTRAL', model: 'mistral-large-latest' },
+  { provider: 'XAI', model: 'grok-2-latest' },
+  { provider: 'OLLAMA', model: 'llama3.2' },
 ] satisfies Array<{ provider: AIProviderConfig['provider']; model: string }>
 
 describe('AIProvider — interface contract', () => {
@@ -93,6 +98,38 @@ describe('AIProvider — interface contract', () => {
       const p = createProvider({ provider: 'GEMINI', model: 'gemini-2.0-flash', apiKey: 'AIza-test' })
       const result = await p.testConnection()
       expect(result.status).toBe('VALID')
+    })
+
+    it('OpenAI-compatible providers return VALID with verified identity', async () => {
+      for (const { provider, model } of configs.filter(({ provider }) => provider !== 'ANTHROPIC' && provider !== 'OPENAI' && provider !== 'GEMINI')) {
+        const p = createProvider({ provider, model, apiKey: provider === 'OLLAMA' ? '' : 'provider-test-key' })
+        const result = await p.testConnection()
+        expect(result.status).toBe('VALID')
+        expect(result.identity).toMatchObject({ provider, model })
+        expect(result.identity?.maskedKey).not.toContain('provider-test-key')
+        expect(result.identity?.verifiedAt).toBeTruthy()
+      }
+    })
+
+    it('preserves arbitrary custom model IDs', async () => {
+      const model = 'provider-private-model-v99'
+      const p = createProvider({ provider: 'OLLAMA', model, apiKey: '' })
+      const result = await p.testConnection()
+      expect(result.identity?.model).toBe(model)
+    })
+
+    it('returns MODEL_UNAVAILABLE without identity when model ping fails', async () => {
+      const { default: OpenAI } = await import('openai')
+      vi.mocked(OpenAI).mockImplementationOnce(() => ({
+        models: { list: vi.fn().mockResolvedValue({ data: [{ id: 'listed-model' }] }) },
+        chat: { completions: { create: vi.fn().mockRejectedValue(new Error('model not found')) } },
+      }) as never)
+
+      const p = createProvider({ provider: 'GROQ', model: 'missing-model', apiKey: 'provider-test-key' })
+      const result = await p.testConnection()
+      expect(result.status).toBe('MODEL_UNAVAILABLE')
+      expect(result.identity).toBeUndefined()
+      expect(result.message).not.toContain('provider-test-key')
     })
   })
 
@@ -237,6 +274,42 @@ describe('AIProvider — interface contract', () => {
       const p = createProvider({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'sk-ant-test' })
       const result = await p.testConnection()
       expect(result.status).toBe('NETWORK_ERROR')
+    })
+
+    it('keeps provider details while removing nested credentials', async () => {
+      const detail = sanitizeProviderMessage(
+        '401 {"error":{"message":"Project is not allowed for key sk-live-123456789012"}}',
+        'sk-live-123456789012',
+      )
+
+      expect(detail).toContain('Project is not allowed')
+      expect(detail).not.toContain('sk-live-123456789012')
+    })
+
+    it('redacts bearer tokens and bounds provider details', () => {
+      const detail = sanitizeProviderMessage(
+        `Bearer ${'a'.repeat(80)} ${'quota '.repeat(100)}`,
+      )
+
+      expect(detail).toContain('Bearer [redacted]')
+      expect(detail.length).toBeLessThanOrEqual(240)
+    })
+
+    it('extracts structured SDK error messages from provider connection failures', async () => {
+      const { Anthropic } = await import('@anthropic-ai/sdk')
+      vi.mocked(Anthropic).mockImplementationOnce(() => ({
+        messages: {
+          create: vi.fn().mockRejectedValue({
+            status: 429,
+            error: { message: 'Quota exceeded for this project' },
+          }),
+        },
+      }) as never)
+
+      const p = createProvider({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'sk-ant-test' })
+      const result = await p.testConnection()
+      expect(result.status).toBe('RATE_LIMITED')
+      expect(result.message).toContain('Quota exceeded for this project')
     })
   })
 

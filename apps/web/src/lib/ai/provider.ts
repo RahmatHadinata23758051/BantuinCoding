@@ -2,6 +2,7 @@ import type {
   AIProviderType,
   AIProviderConfig,
   TestConnectionResult,
+  VerifiedProviderIdentity,
 } from '@repo/types'
 import { z } from 'zod'
 
@@ -51,6 +52,58 @@ export interface ModelInfo {
   contextWindow?: number
 }
 
+export const OPENAI_COMPATIBLE_DEFAULT_URLS = {
+  DEEPSEEK: 'https://api.deepseek.com/v1',
+  GROQ: 'https://api.groq.com/openai/v1',
+  MISTRAL: 'https://api.mistral.ai/v1',
+  XAI: 'https://api.x.ai/v1',
+  OLLAMA: 'http://localhost:11434/v1',
+} as const
+
+export const SUPPORTED_PROVIDER_VALUES = [
+  'ANTHROPIC',
+  'OPENAI',
+  'GEMINI',
+  'OPENROUTER',
+  'DEEPSEEK',
+  'GROQ',
+  'MISTRAL',
+  'XAI',
+  'OLLAMA',
+] as const
+
+export const SUPPORTED_PROVIDERS: AIProviderType[] = [...SUPPORTED_PROVIDER_VALUES]
+
+export function isOllamaProvider(provider: AIProviderType): boolean {
+  return provider === 'OLLAMA'
+}
+
+export const OPENAI_COMPATIBLE_MODELS: Record<keyof typeof OPENAI_COMPATIBLE_DEFAULT_URLS, ModelInfo[]> = {
+  DEEPSEEK: [
+    { id: 'deepseek-chat', name: 'DeepSeek Chat' },
+    { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner' },
+  ],
+  GROQ: [
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile' },
+    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant' },
+    { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B' },
+  ],
+  MISTRAL: [
+    { id: 'mistral-large-latest', name: 'Mistral Large' },
+    { id: 'codestral-latest', name: 'Codestral' },
+    { id: 'mistral-small-latest', name: 'Mistral Small' },
+  ],
+  XAI: [
+    { id: 'grok-2-latest', name: 'Grok 2' },
+    { id: 'grok-beta', name: 'Grok Beta' },
+  ],
+  OLLAMA: [
+    { id: 'llama3.2', name: 'Llama 3.2' },
+    { id: 'qwen2.5-coder', name: 'Qwen 2.5 Coder' },
+    { id: 'deepseek-r1', name: 'DeepSeek R1' },
+  ],
+}
+
 // ============================================================
 // Factory
 // ============================================================
@@ -65,6 +118,12 @@ export function createProvider(config: AIProviderConfig): AIProvider {
       return new GeminiProvider(config)
     case 'OPENROUTER':
       return new OpenRouterProvider(config)
+    case 'DEEPSEEK':
+    case 'GROQ':
+    case 'MISTRAL':
+    case 'XAI':
+    case 'OLLAMA':
+      return new OpenAICompatibleProvider(config)
     default: {
       const _exhaustive: never = config.provider
       throw new Error(`Unknown provider: ${_exhaustive}`)
@@ -374,9 +433,13 @@ class AnthropicProvider extends BaseProvider {
         messages: [{ role: 'user', content: 'ping' }],
       })
 
-      return { status: 'VALID', message: 'Connection successful' }
+      return {
+        status: 'VALID',
+        message: 'Connection successful',
+        identity: verifiedIdentity(this.config),
+      }
     } catch (err) {
-      return mapError('ANTHROPIC', err)
+      return mapError('ANTHROPIC', err, this.config.apiKey)
     }
   }
 
@@ -462,17 +525,24 @@ class OpenAIProvider extends BaseProvider {
           // IMPORTANT: models.list() already succeeded above. So the user's API key
           // is valid. Any error from chat.completions.create is a MODEL/UPSTREAM
           // issue, NEVER a credential issue. Always report MODEL_UNAVAILABLE here.
-          const msg = completionErr instanceof Error ? completionErr.message : String(completionErr)
+          const detail = safeProviderDetail(completionErr, this.config.apiKey)
           return {
             status: 'MODEL_UNAVAILABLE',
-            message: `Model ${this.config.model} unavailable: ${msg}. Try another model.`,
+            message: sanitizeProviderMessage(
+              `Model ${this.config.model} unavailable${detail ? `: ${detail}` : ''}. Try another model.`,
+              this.config.apiKey,
+            ),
           }
         }
       }
 
-      return { status: 'VALID', message: 'Connection successful' }
+      return {
+        status: 'VALID',
+        message: 'Connection successful',
+        identity: verifiedIdentity(this.config, this.getBaseUrl()),
+      }
     } catch (err) {
-      return mapError('OPENAI', err)
+      return mapError('OPENAI', err, this.config.apiKey)
     }
   }
 
@@ -548,9 +618,13 @@ class GeminiProvider extends BaseProvider {
 
       await model.generateContent('ping')
 
-      return { status: 'VALID', message: 'Connection successful' }
+      return {
+        status: 'VALID',
+        message: 'Connection successful',
+        identity: verifiedIdentity(this.config),
+      }
     } catch (err) {
-      return mapError('GEMINI', err)
+      return mapError('GEMINI', err, this.config.apiKey)
     }
   }
 
@@ -591,52 +665,69 @@ class GeminiProvider extends BaseProvider {
 }
 
 // ============================================================
-// OpenRouter Provider (OpenAI-compatible API)
+// OpenAI-compatible providers
 // ============================================================
 
-class OpenRouterProvider extends BaseProvider {
-  readonly type = 'OPENROUTER' as const
+class OpenAICompatibleProvider extends BaseProvider {
+  readonly type: AIProviderType
+
+  constructor(config: AIProviderConfig) {
+    super(config)
+    this.type = config.provider
+  }
 
   private getBaseUrl(): string {
-    return this.config.baseUrl?.replace(/\/+$/, '') || 'https://openrouter.ai/api/v1'
+    if (this.config.baseUrl) return this.config.baseUrl.replace(/\/+$/, '')
+    if (this.config.provider === 'OPENROUTER') return 'https://openrouter.ai/api/v1'
+    return OPENAI_COMPATIBLE_DEFAULT_URLS[this.config.provider as keyof typeof OPENAI_COMPATIBLE_DEFAULT_URLS]
+  }
+
+  private getFallbackModels(): ModelInfo[] {
+    if (this.config.provider === 'OPENROUTER') {
+      return [
+        { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
+        { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
+      ]
+    }
+    return OPENAI_COMPATIBLE_MODELS[this.config.provider as keyof typeof OPENAI_COMPATIBLE_MODELS]
+  }
+
+  private getIdentity(): VerifiedProviderIdentity {
+    return verifiedIdentity(this.config, this.getBaseUrl())
   }
 
   async testConnection(): Promise<TestConnectionResult> {
     try {
       const { default: OpenAI } = await import('openai')
       const client = new OpenAI({
-        apiKey: this.config.apiKey,
+        apiKey: this.config.apiKey || 'ollama',
         baseURL: this.getBaseUrl(),
+        timeout: 10_000,
       })
 
-      // First: verify auth with models endpoint
       await client.models.list()
 
-      if (this.config.model) {
-        try {
-          const completionPromise = client.chat.completions.create({
-            model: this.config.model,
-            max_tokens: 10,
-            messages: [{ role: 'user', content: 'ping' }],
-          })
-          await Promise.race([
-            completionPromise,
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('MODEL_TIMEOUT')), 10_000),
-            ),
-          ])
-        } catch (completionErr) {
-          const msg = completionErr instanceof Error ? completionErr.message : String(completionErr)
-          return {
-            status: 'MODEL_UNAVAILABLE',
-            message: `Model ${this.config.model} unavailable: ${msg}. Try another model.`,
-          }
+      try {
+        await client.chat.completions.create({
+          model: this.config.model,
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'ping' }],
+        })
+      } catch (completionErr) {
+        const msg = completionErr instanceof Error ? completionErr.message : String(completionErr)
+        return {
+          status: 'MODEL_UNAVAILABLE',
+          message: `Model ${this.config.model} unavailable: ${msg}. Try another model.`,
         }
       }
 
-      return { status: 'VALID', message: 'Connection successful' }
+      return {
+        status: 'VALID',
+        message: 'Connection successful',
+        identity: this.getIdentity(),
+      }
     } catch (err) {
-      return mapError('OPENROUTER', err)
+      return mapError(this.config.provider, err, this.config.apiKey)
     }
   }
 
@@ -647,9 +738,9 @@ class OpenRouterProvider extends BaseProvider {
   ): Promise<T> {
     const { default: OpenAI } = await import('openai')
     const client = new OpenAI({
-      apiKey: this.config.apiKey,
+      apiKey: this.config.apiKey || 'ollama',
       baseURL: this.getBaseUrl(),
-      timeout: 180_000, // 3 minutes timeout for document generation
+      timeout: 180_000,
     })
 
     const systemContent =
@@ -670,26 +761,46 @@ class OpenRouterProvider extends BaseProvider {
       throw new Error('Generation truncated due to max tokens limit')
     }
 
-    const raw = completion.choices[0]?.message?.content ?? ''
-    return this.parseAndValidate(raw, schema)
+    return this.parseAndValidate(completion.choices[0]?.message?.content ?? '', schema)
   }
 
   async listModels(): Promise<ModelInfo[]> {
-    const baseUrl = this.getBaseUrl()
     try {
-      const res = await fetch(`${baseUrl}/models`, {
-        headers: { Authorization: `Bearer ${this.config.apiKey}` },
+      const { default: OpenAI } = await import('openai')
+      const client = new OpenAI({
+        apiKey: this.config.apiKey || 'ollama',
+        baseURL: this.getBaseUrl(),
+        timeout: 10_000,
       })
-      if (!res.ok) throw new Error('Failed to fetch models')
-      const data = (await res.json()) as { data: Array<{ id: string; name?: string; context_length?: number }> }
-      return data.data.map((m) => ({
+      const list = await client.models.list()
+      const models = list.data.map((m) => ({
         id: m.id,
-        name: m.name ?? m.id,
-        contextWindow: m.context_length,
+        name: m.id,
+        contextWindow: (m as { context_window?: number }).context_window,
       }))
+      return models.length > 0 ? models : this.getFallbackModels()
     } catch {
-      return []
+      return this.getFallbackModels()
     }
+  }
+}
+
+class OpenRouterProvider extends OpenAICompatibleProvider {
+  readonly type = 'OPENROUTER' as const
+}
+
+function maskProviderKey(value: string): string {
+  if (value.length <= 8) return '••••••••'
+  return `${value.slice(0, 4)}••••${value.slice(-4)}`
+}
+
+function verifiedIdentity(config: AIProviderConfig, baseUrl?: string): VerifiedProviderIdentity {
+  return {
+    provider: config.provider,
+    model: config.model,
+    maskedKey: maskProviderKey(config.apiKey),
+    ...(baseUrl ? { baseUrl } : {}),
+    verifiedAt: new Date().toISOString(),
   }
 }
 
@@ -697,12 +808,92 @@ class OpenRouterProvider extends BaseProvider {
 // Error mapping — maps SDK errors to ConnectionTestResult status
 // ============================================================
 
+const PROVIDER_MESSAGE_LIMIT = 240
+
+function extractProviderMessage(value: unknown, depth = 0, seen = new Set<object>()): string {
+  if (depth > 4 || value == null) return ''
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    const jsonStart = trimmed.indexOf('{')
+    const jsonEnd = trimmed.lastIndexOf('}')
+    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+      try {
+        const nested = extractProviderMessage(JSON.parse(trimmed.slice(jsonStart, jsonEnd + 1)), depth + 1, seen)
+        if (nested) return nested
+      } catch {
+        // Keep looking for a quoted message in non-JSON SDK error text.
+      }
+    }
+
+    const quoted = trimmed.match(/"message"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i)?.[1]
+    if (quoted) {
+      try {
+        return JSON.parse(`"${quoted}"`)
+      } catch {
+        return quoted.replace(/\\"/g, '"')
+      }
+    }
+    return trimmed
+  }
+
+  if (typeof value !== 'object') return ''
+  if (seen.has(value)) return ''
+  seen.add(value)
+
+  const record = value as Record<string, unknown>
+  for (const key of ['error', 'response', 'body', 'data', 'detail', 'message']) {
+    const message = extractProviderMessage(record[key], depth + 1, seen)
+    if (message) return message
+  }
+  return ''
+}
+
+export function sanitizeProviderMessage(message: string, secret?: string): string {
+  let cleaned = message
+  if (secret && secret.length >= 6) cleaned = cleaned.replaceAll(secret, '[redacted]')
+
+  cleaned = cleaned
+    .replace(/Bearer\s+[^\s,;)}\]]+/gi, 'Bearer [redacted]')
+    .replace(/\b(?:sk|pk|rk|gsk|xai|key|token|secret)[-_][A-Za-z0-9._~-]{12,}\b/gi, '[redacted]')
+    .replace(/\bAIza[A-Za-z0-9_-]{20,}\b/gi, '[redacted]')
+    .replace(/\b(?:api[_ -]?key|access[_ -]?token|secret)[-:\s=]+[A-Za-z0-9._~-]{12,}\b/gi, '[redacted]')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!cleaned || /^\[redacted\]$/i.test(cleaned)) return ''
+  return cleaned
+    .replace(/^\s*(?:HTTP\s*)?\d{3}\s*[:\-]?\s*/i, '')
+    .slice(0, PROVIDER_MESSAGE_LIMIT)
+    .trim()
+}
+
+function extractProviderStatus(value: unknown, depth = 0, seen = new Set<object>()): string {
+  if (depth > 4 || value == null || typeof value !== 'object' || seen.has(value)) return ''
+  seen.add(value)
+  const record = value as Record<string, unknown>
+  const status = record.status ?? record.statusCode ?? record.code
+  if (typeof status === 'string' || typeof status === 'number') return String(status)
+  for (const key of ['error', 'response', 'body', 'data']) {
+    const nested = extractProviderStatus(record[key], depth + 1, seen)
+    if (nested) return nested
+  }
+  return ''
+}
+
+function safeProviderDetail(err: unknown, secret?: string): string {
+  return sanitizeProviderMessage(extractProviderMessage(err), secret)
+}
+
 function mapError(
   provider: string,
   err: unknown,
+  secret?: string,
 ): TestConnectionResult {
-  const msg = err instanceof Error ? err.message : String(err)
-  const lower = msg.toLowerCase()
+  const msg = extractProviderMessage(err)
+  const lower = `${extractProviderStatus(err)} ${msg}`.toLowerCase()
+  const detail = safeProviderDetail(err, secret)
+  const fallback = (message: string) => sanitizeProviderMessage(detail ? `${message}: ${detail}` : message, secret) || message
 
   if (
     lower.includes('401') ||
@@ -710,11 +901,11 @@ function mapError(
     lower.includes('invalid api key') ||
     lower.includes('authentication')
   ) {
-    return { status: 'INVALID_CREDENTIAL', message: 'Invalid API key' }
+    return { status: 'INVALID_CREDENTIAL', message: fallback('Invalid API key') }
   }
 
   if (lower.includes('429') || lower.includes('rate limit')) {
-    return { status: 'RATE_LIMITED', message: 'Rate limit exceeded' }
+    return { status: 'RATE_LIMITED', message: fallback('Rate limit exceeded') }
   }
 
   if (
@@ -723,7 +914,7 @@ function mapError(
   ) {
     return {
       status: 'MODEL_UNAVAILABLE',
-      message: 'Selected model is unavailable for this provider',
+      message: fallback('Selected model is unavailable for this provider'),
     }
   }
 
@@ -733,8 +924,8 @@ function mapError(
     lower.includes('fetch failed') ||
     lower.includes('enotfound')
   ) {
-    return { status: 'NETWORK_ERROR', message: 'Network error — check connectivity' }
+    return { status: 'NETWORK_ERROR', message: fallback('Network error — check connectivity') }
   }
 
-  return { status: 'PROVIDER_ERROR', message: 'Provider connection failed. Please retry or choose another provider.' }
+  return { status: 'PROVIDER_ERROR', message: fallback('Provider connection failed. Please retry or choose another provider.') }
 }
