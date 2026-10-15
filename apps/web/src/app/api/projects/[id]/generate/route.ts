@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@repo/db'
+import type { SystemGraphData } from '@repo/types'
 import { getSafeApiErrorMessage } from '@/lib/api/errors'
+import { parseWorkspaceSystemGraph, repairMissingSystemGraph } from '@/lib/projects/workspace-service'
 import { auth } from '@/lib/auth'
-import { generateAgentAndRulesArtifacts } from '@/lib/engine/agent-rules-generator'
+import { generateAgentAndRulesArtifacts, regenerateIncompleteAgentArtifacts } from '@/lib/engine/agent-rules-generator'
 import { generateCoreArtifacts, regenerateFailedArtifacts } from '@/lib/engine/artifact-generator'
 import { requireProjectAction } from '@/lib/projects/project-service'
 import { recomputeProjectReadiness } from '@/lib/projects/readiness-service'
@@ -41,6 +44,11 @@ export async function POST(
       // Body empty or invalid — default to all core documents handled by this route.
     }
 
+    if (requestedType === 'SYSTEM_GRAPH') {
+      const systemGraph = await repairMissingSystemGraph({ userId: session.user.id, projectId: id })
+      return NextResponse.json({ artifacts: [], readiness: null, systemGraph })
+    }
+
     let results: Awaited<ReturnType<typeof generateCoreArtifacts>>
     if (requestedType === 'AGENT_RULES') {
       // Orchestration request: produce both Agent.md and RULES.md in a single
@@ -55,11 +63,17 @@ export async function POST(
         projectId: id,
       })).filter((artifact) => artifact.type === requestedType)
     } else if (regenerateFailed) {
-      // Regenerate only failed artifacts
-      results = await regenerateFailedArtifacts({
+      // Retry only incomplete document artifacts; ready/modified files are protected.
+      // Execute sequentially to avoid concurrent database writes and state transitions.
+      const coreResults = await regenerateFailedArtifacts({
         userId: session.user.id,
         projectId: id,
       })
+      const agentResults = await regenerateIncompleteAgentArtifacts({
+        userId: session.user.id,
+        projectId: id,
+      })
+      results = [...coreResults, ...agentResults]
     } else {
       results = await generateCoreArtifacts({
         userId: session.user.id,
@@ -68,8 +82,16 @@ export async function POST(
       })
     }
     const readiness = await recomputeProjectReadiness(session.user.id, id)
+    let systemGraph: SystemGraphData | null = null
+    const systemGraphArtifact = await db.artifact.findUnique({
+      where: { projectId_type: { projectId: id, type: 'SYSTEM_GRAPH' } },
+      select: { content: true, status: true },
+    })
+    if (systemGraphArtifact?.status === 'READY') {
+      systemGraph = parseWorkspaceSystemGraph(systemGraphArtifact.content)
+    }
 
-    return NextResponse.json({ artifacts: results, readiness })
+    return NextResponse.json({ artifacts: results, readiness, systemGraph })
   } catch (err) {
     const message = getSafeApiErrorMessage(err, 'Document generation failed. Please retry.')
     const status = message === 'Project not found' ? 404 : 400
