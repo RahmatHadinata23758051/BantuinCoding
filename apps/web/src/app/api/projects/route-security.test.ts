@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
   generateCanonicalContext: vi.fn(),
   planProjectArtifacts: vi.fn(),
   generateCoreArtifacts: vi.fn(),
+  regenerateFailedArtifacts: vi.fn(),
+  repairMissingSystemGraph: vi.fn(),
   generateAgentAndRulesArtifacts: vi.fn(),
+  regenerateIncompleteAgentArtifacts: vi.fn(),
   resolveProjectSkills: vi.fn(),
   generateProjectBacklog: vi.fn(),
   auditProjectConsistency: vi.fn(),
@@ -44,8 +47,21 @@ vi.mock('@/lib/engine/requirement-analyzer', () => ({ analyzeProjectRequirement:
 vi.mock('@/lib/engine/clarification-engine', () => ({ generateClarificationRound: mocks.generateClarificationRound }))
 vi.mock('@/lib/engine/context-engine', () => ({ generateCanonicalContext: mocks.generateCanonicalContext }))
 vi.mock('@/lib/engine/artifact-planner', () => ({ planProjectArtifacts: mocks.planProjectArtifacts }))
-vi.mock('@/lib/engine/artifact-generator', () => ({ generateCoreArtifacts: mocks.generateCoreArtifacts }))
-vi.mock('@/lib/engine/agent-rules-generator', () => ({ generateAgentAndRulesArtifacts: mocks.generateAgentAndRulesArtifacts }))
+vi.mock('@/lib/engine/artifact-generator', () => ({
+  generateCoreArtifacts: mocks.generateCoreArtifacts,
+  regenerateFailedArtifacts: mocks.regenerateFailedArtifacts,
+}))
+vi.mock('@/lib/projects/workspace-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/projects/workspace-service')>()
+  return {
+    ...actual,
+    repairMissingSystemGraph: mocks.repairMissingSystemGraph,
+  }
+})
+vi.mock('@/lib/engine/agent-rules-generator', () => ({
+  generateAgentAndRulesArtifacts: mocks.generateAgentAndRulesArtifacts,
+  regenerateIncompleteAgentArtifacts: mocks.regenerateIncompleteAgentArtifacts,
+}))
 vi.mock('@/lib/engine/skill-resolver', () => ({ resolveProjectSkills: mocks.resolveProjectSkills }))
 vi.mock('@/lib/engine/backlog-generator', () => ({ generateProjectBacklog: mocks.generateProjectBacklog }))
 vi.mock('@/lib/engine/consistency-validator', () => ({ auditProjectConsistency: mocks.auditProjectConsistency }))
@@ -205,6 +221,30 @@ describe('BK-025 workflow route security', () => {
     expect(mocks.updateProject).not.toHaveBeenCalled()
   })
 
+  it('generate route returns the persisted system graph for client synchronization', async () => {
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'GENERATING' })
+    mocks.generateCoreArtifacts.mockResolvedValue([
+      { type: 'ARCHITECTURE', status: 'READY', path: 'ARCHITECTURE.md', content: '# Architecture' },
+    ])
+    mocks.recomputeProjectReadiness.mockResolvedValue({ isReady: true })
+    mocks.findBacklogArtifact.mockResolvedValue({
+      content: JSON.stringify({
+        nodes: [{ id: 'client', label: 'Client', category: 'client', description: 'Browser' }],
+        edges: [],
+      }),
+      status: 'READY',
+    })
+
+    const response = await generate(new NextRequest('http://localhost/api/projects/project-1/generate', { method: 'POST' }), params)
+    const json = await body<{ systemGraph: unknown }>(response)
+
+    expect(response.status).toBe(200)
+    expect(json.systemGraph).toEqual({
+      nodes: [{ id: 'client', label: 'Client', category: 'client', description: 'Browser' }],
+      edges: [],
+    })
+  })
+
   it('generate route supports AGENT_RULES orchestration without filtering', async () => {
     mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'GENERATING' })
     mocks.generateAgentAndRulesArtifacts.mockResolvedValue([
@@ -228,5 +268,56 @@ describe('BK-025 workflow route security', () => {
       projectId: 'project-1',
     })
     expect(json.artifacts).toHaveLength(2)
+  })
+
+  it('generate route repairs only the missing system graph', async () => {
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'READY' })
+    const graph = {
+      nodes: [{ id: 'api', label: 'API', category: 'api', description: 'HTTP API' }],
+      edges: [],
+    }
+    mocks.repairMissingSystemGraph.mockResolvedValue(graph)
+
+    const request = new NextRequest('http://localhost/api/projects/project-1/generate', {
+      method: 'POST',
+      body: JSON.stringify({ type: 'SYSTEM_GRAPH' }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    const response = await generate(request, params)
+    expect(response.status).toBe(200)
+    expect(await body(response)).toEqual({ artifacts: [], readiness: null, systemGraph: graph })
+    expect(mocks.repairMissingSystemGraph).toHaveBeenCalledWith({ userId: 'user-1', projectId: 'project-1' })
+    expect(mocks.generateCoreArtifacts).not.toHaveBeenCalled()
+    expect(mocks.recomputeProjectReadiness).not.toHaveBeenCalled()
+  })
+
+  it('generate route retries only incomplete artifacts', async () => {
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'GENERATION_FAILED' })
+    mocks.regenerateFailedArtifacts.mockResolvedValue([
+      { type: 'DESIGN', status: 'READY', path: 'DESIGN.md', content: 'Design' },
+    ])
+    mocks.regenerateIncompleteAgentArtifacts.mockResolvedValue([
+      { type: 'AGENT', status: 'READY', path: 'Agent.md', content: 'Agent' },
+    ])
+    mocks.recomputeProjectReadiness.mockResolvedValue({ isReady: false })
+    mocks.findBacklogArtifact.mockResolvedValue(null)
+
+    const request = new NextRequest('http://localhost/api/projects/project-1/generate', {
+      method: 'POST',
+      body: JSON.stringify({ regenerateFailed: true }),
+      headers: { 'content-type': 'application/json' },
+    })
+
+    const response = await generate(request, params)
+    const json = await body<{ artifacts?: Array<{ type: string }> }>(response)
+
+    expect(response.status).toBe(200)
+    expect(json.artifacts).toEqual([
+      { type: 'DESIGN', status: 'READY', path: 'DESIGN.md', content: 'Design' },
+      { type: 'AGENT', status: 'READY', path: 'Agent.md', content: 'Agent' },
+    ])
+    expect(mocks.regenerateFailedArtifacts).toHaveBeenCalledWith({ userId: 'user-1', projectId: 'project-1' })
+    expect(mocks.regenerateIncompleteAgentArtifacts).toHaveBeenCalledWith({ userId: 'user-1', projectId: 'project-1' })
   })
 })
