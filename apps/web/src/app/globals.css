@@ -41,6 +41,42 @@
   --color-workspace-mint-soft: #edf2eb;
   --color-workspace-rose-soft: #f8e9e5;
 
+  /* Design System graph tokens */
+  --graph-canvas-bg: #f5f1ea;
+  --graph-grid-dot: rgba(112, 92, 66, 0.3);
+  --graph-radial-glow: rgba(217, 119, 87, 0.1);
+  --graph-edge: #8a7c69;
+  --graph-edge-selected: #b4562f;
+  --graph-card-bg: rgba(253, 251, 247, 0.95);
+  --graph-card-border: rgba(90, 70, 45, 0.12);
+  --graph-card-shadow: 0 12px 40px rgba(60, 40, 20, 0.12), 0 2px 6px rgba(60, 40, 20, 0.06);
+  --graph-node-shadow: 0 4px 14px rgba(60, 40, 20, 0.08);
+  --graph-node-selected-shadow: 0 0 0 5px rgba(180, 86, 47, 0.18), 0 8px 22px rgba(180, 86, 47, 0.16);
+  --graph-node-client-bg: #e6eef4;
+  --graph-node-client-border: #8faac0;
+  --graph-node-client-label: #335a7c;
+  --graph-node-client-name: #1e2a33;
+  --graph-node-auth-bg: #f6e9cf;
+  --graph-node-auth-border: #d2b069;
+  --graph-node-auth-label: #805609;
+  --graph-node-auth-name: #2c2412;
+  --graph-node-api-bg: #e1efe2;
+  --graph-node-api-border: #86b28b;
+  --graph-node-api-label: #2a6234;
+  --graph-node-api-name: #1b2b1e;
+  --graph-node-service-bg: #f8e4da;
+  --graph-node-service-border: #d69a80;
+  --graph-node-service-label: #8f4220;
+  --graph-node-service-name: #301c13;
+  --graph-node-database-bg: #e9e4f4;
+  --graph-node-database-border: #a99bcf;
+  --graph-node-database-label: #53428e;
+  --graph-node-database-name: #231b3a;
+  --graph-node-external-bg: #f0ece5;
+  --graph-node-external-border: #b5aa9a;
+  --graph-node-external-label: #5e5547;
+  --graph-node-external-name: #26211a;
+
   --font-notioninter: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-lyon-text: Georgia, 'Times New Roman', serif;
   --font-sans: var(--font-notioninter);
