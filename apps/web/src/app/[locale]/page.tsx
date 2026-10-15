@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, LogOut, UserCircle } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 import { Link } from '@/i18n/routing'
 
@@ -11,10 +11,18 @@ import { RevealOnScroll } from '@/app/components/RevealOnScroll'
 import { LandingHeader } from '@/app/components/LandingHeader'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { BrandLogo } from '@/app/components/BrandLogo'
+import { auth } from '@/lib/auth'
+import { logoutAction } from '@/lib/auth/actions'
 
 export default async function Home() {
   const t = await getTranslations('Home')
   const tCommon = await getTranslations('Common')
+  const tDashboard = await getTranslations('Dashboard')
+  const session = await auth()
+  const isAuthenticated = Boolean(session?.user)
+  const buildHref = isAuthenticated ? '/dashboard' : '/register'
+  const openWorkspaceHref = isAuthenticated ? '/dashboard' : '/login'
+  const profileLabel = session?.user?.name || session?.user?.email || tDashboard('profileSettings')
 
   const prompts: HeroWorkbenchPrompt[] = [
     { label: t('heroPromptOne'), accent: '#f4a261' },
@@ -76,8 +84,25 @@ export default async function Home() {
             <a href="#security" className="rounded-full px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#716c65] transition-colors hover:bg-[#f0ece6] hover:text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{t('navSecurity')}</a>
           </div>
           <LanguageSwitcher />
-          <Link href="/login" className="hidden rounded-full px-3 py-2 text-sm font-medium text-[#24231f] transition-colors hover:bg-white/70 sm:inline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('signIn')}</Link>
-          <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-[#25241f] px-4 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-[#45433c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('getStarted')}<ArrowUpRight size={15} /></Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/profile" aria-label={tDashboard('profileMenuLabel', { email: session?.user?.email ?? tDashboard('profileSettings') })} className="inline-flex h-9 max-w-44 items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/65 px-3 text-xs font-semibold text-[#24231f] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
+                <UserCircle size={14} aria-hidden="true" />
+                <span className="truncate">{profileLabel}</span>
+              </Link>
+              <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-full bg-[#25241f] px-4 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-[#45433c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('dashboard')}<ArrowUpRight size={15} /></Link>
+              <form action={logoutAction}>
+                <button type="submit" aria-label={tCommon('signOut')} className="inline-flex size-9 items-center justify-center rounded-full border border-[#dedbd5] bg-white/65 text-[#706b64] transition-colors hover:bg-white hover:text-[#24231f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
+                  <LogOut size={14} aria-hidden="true" />
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="hidden rounded-full px-3 py-2 text-sm font-medium text-[#24231f] transition-colors hover:bg-white/70 sm:inline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('signIn')}</Link>
+              <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-[#25241f] px-4 py-2.5 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 hover:bg-[#45433c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f4a261]">{tCommon('getStarted')}<ArrowUpRight size={15} /></Link>
+            </>
+          )}
         </nav>
       </LandingHeader>
 
@@ -88,8 +113,8 @@ export default async function Home() {
             <h1 className="max-w-[660px] text-[clamp(2.7rem,5.2vw,5.3rem)] font-semibold leading-[1.01] tracking-[-.05em]"><span>{t('heroTitleLead')}</span>{' '}<span className="relative inline-block underline decoration-[#f4a261] decoration-[0.14em] underline-offset-[0.08em]">{t('heroTitleHighlight')}</span>{' '}<span>{t('heroTitleTrail')}</span></h1>
             <p className="mt-8 max-w-[590px] text-base leading-7 text-[#66615b] sm:text-lg sm:leading-8">{t('heroSubtitle')}</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Link href="/register" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#a85e3c] px-6 py-3 text-sm font-semibold text-white shadow-[5px_5px_0_#24231f] transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 hover:bg-[#8e4e32] hover:shadow-[7px_7px_0_#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24231f]">{t('buildFirst')}<ArrowRight size={17} /></Link>
-              <Link href="/login" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#c9c4bc] px-6 py-3 text-sm font-semibold transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24231f]">{t('openWorkspace')}<ArrowUpRight size={16} /></Link>
+              <Link href={buildHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#a85e3c] px-6 py-3 text-sm font-semibold text-white shadow-[5px_5px_0_#24231f] transition-[transform,box-shadow,background-color] hover:-translate-y-0.5 hover:bg-[#8e4e32] hover:shadow-[7px_7px_0_#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24231f]">{t('buildFirst')}<ArrowRight size={17} /></Link>
+              <Link href={openWorkspaceHref} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#c9c4bc] px-6 py-3 text-sm font-semibold transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24231f]">{t('openWorkspace')}<ArrowUpRight size={16} /></Link>
             </div>
             <p className="mt-8 max-w-[590px] text-xs leading-5 text-[#8a8178]">{t('heroNote')}</p>
           </div>
@@ -233,7 +258,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="border-t border-[#dedbd5] bg-[#f4a261] px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto max-w-[1120px] md:flex md:items-end md:justify-between md:gap-10"><div><p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#6f4328]">{t('closingEyebrow')}</p><h2 className="mt-5 max-w-3xl text-4xl font-semibold leading-[.97] tracking-[-.07em] text-[#25241f] sm:text-6xl">{t('closingHeading')}</h2><p className="mt-5 max-w-lg text-base leading-7 text-[#5a3d2b]">{t('closingCopy')}</p></div><Link href="/register" className="mt-9 inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#25241f] px-6 py-3 text-sm font-semibold text-white shadow-[6px_6px_0_#fffdfa] transition-transform hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25241f]">{t('buildFirst')}<ArrowRight size={17} /></Link></div></section>
+      <section className="border-t border-[#dedbd5] bg-[#f4a261] px-5 py-20 sm:px-8 sm:py-28"><div className="mx-auto max-w-[1120px] md:flex md:items-end md:justify-between md:gap-10"><div><p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#6f4328]">{t('closingEyebrow')}</p><h2 className="mt-5 max-w-3xl text-4xl font-semibold leading-[.97] tracking-[-.07em] text-[#25241f] sm:text-6xl">{t('closingHeading')}</h2><p className="mt-5 max-w-lg text-base leading-7 text-[#5a3d2b]">{t('closingCopy')}</p></div><Link href={buildHref} className="mt-9 inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#25241f] px-6 py-3 text-sm font-semibold text-white shadow-[6px_6px_0_#fffdfa] transition-transform hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25241f]">{t('buildFirst')}<ArrowRight size={17} /></Link></div></section>
 
       <footer className="border-t border-[#dedbd5]"><div className="mx-auto flex max-w-[1240px] flex-col justify-between gap-5 px-5 py-8 text-sm text-[#716c65] sm:flex-row sm:items-center sm:px-8"><div><Link href="/" className="inline-flex rounded-full text-[#24231f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f4a261]"><BrandLogo imageSize={24} textClassName="text-base font-semibold tracking-[-.06em]" /></Link><p className="mt-2 text-xs">{t('footerNote')}</p></div><div className="flex flex-wrap gap-x-6 gap-y-3"><a href="#engine" className="hover:text-[#24231f]">{t('footerWorkflow')}</a><a href="#artifacts" className="hover:text-[#24231f]">{t('footerFeatures')}</a><a href="#security" className="hover:text-[#24231f]">{t('navSecurity')}</a><a href="#" className="inline-flex items-center gap-1 hover:text-[#24231f]">{t('backToTop')}<ArrowUpRight size={13} /></a></div></div></footer>
     </main>
