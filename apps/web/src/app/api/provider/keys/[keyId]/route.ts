@@ -6,11 +6,12 @@ import { db } from '@repo/db'
 import { createProvider } from '@/lib/ai/provider'
 import { setProviderSession } from '@/lib/byok/session-store'
 import { decryptSecret } from '@/lib/security/encryption'
+import { validateProviderBaseUrl } from '@/lib/security/url-validation'
 
 const PatchKeySchema = z.object({
   name: z.string().min(1).max(80).optional(),
   model: z.string().min(1).max(200).optional(),
-  baseUrl: z.string().url().nullable().optional(),
+  baseUrl: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   testConnection: z.boolean().optional(),
 })
@@ -46,18 +47,26 @@ export async function PATCH(
   const rawKey = decryptSecret(existing.encryptedKey)
   const effectiveModel = model ?? existing.model
   const effectiveBaseUrl = baseUrl !== undefined ? (baseUrl ?? undefined) : (existing.baseUrl ?? undefined)
+  const urlCheck = validateProviderBaseUrl(effectiveBaseUrl, existing.provider as AIProviderType)
+  if (!urlCheck.valid) {
+    return NextResponse.json({ error: urlCheck.error ?? 'Invalid base URL' }, { status: 400 })
+  }
+  const normalizedBaseUrl = urlCheck.normalizedUrl ?? effectiveBaseUrl
+  const effectiveApiKey = rawKey || (existing.provider === 'OLLAMA' ? 'ollama' : '')
 
+  let identity
   if (testConnection) {
     const aiProvider = createProvider({
       provider: existing.provider as AIProviderType,
       model: effectiveModel,
-      apiKey: rawKey,
-      baseUrl: effectiveBaseUrl,
+      apiKey: effectiveApiKey,
+      baseUrl: normalizedBaseUrl,
     })
     const testResult = await aiProvider.testConnection()
     if (testResult.status !== 'VALID') {
       return NextResponse.json({ status: testResult.status, message: testResult.message }, { status: 400 })
     }
+    identity = testResult.identity
   }
 
   const updated = await db.$transaction(async (tx) => {
@@ -74,7 +83,7 @@ export async function PATCH(
       data: {
         ...(name && { name }),
         ...(model && { model }),
-        ...(baseUrl !== undefined && { baseUrl }),
+        ...(baseUrl !== undefined && { baseUrl: normalizedBaseUrl }),
         ...(isActive !== undefined && { isActive }),
         lastValidated: new Date(),
       },
@@ -94,12 +103,12 @@ export async function PATCH(
     setProviderSession(userId, {
       provider: updated.provider as AIProviderType,
       model: updated.model,
-      apiKey: rawKey,
+      apiKey: effectiveApiKey,
       baseUrl: updated.baseUrl ?? undefined,
     })
   }
 
-  return NextResponse.json({ key: updated })
+  return NextResponse.json({ key: updated, identity })
 }
 
 export async function DELETE(

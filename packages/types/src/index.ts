@@ -52,7 +52,16 @@ export type AgentTarget =
   | 'OTHER'
 
 // AI Provider
-export type AIProviderType = 'ANTHROPIC' | 'OPENAI' | 'GEMINI' | 'OPENROUTER'
+export type AIProviderType =
+  | 'ANTHROPIC'
+  | 'OPENAI'
+  | 'GEMINI'
+  | 'OPENROUTER'
+  | 'DEEPSEEK'
+  | 'GROQ'
+  | 'MISTRAL'
+  | 'XAI'
+  | 'OLLAMA'
 
 // Provider connection test result
 export type ConnectionTestResult =
@@ -148,8 +157,18 @@ export interface AIProviderConfig {
   baseUrl?: string
 }
 
+export interface VerifiedProviderIdentity {
+  provider: AIProviderType
+  model: string
+  maskedKey?: string
+  baseUrl?: string
+  verifiedAt: string
+  contextWindow?: number
+}
+
 export interface TestConnectionResult {
   status: ConnectionTestResult
   message: string
   availableModels?: string[]
+  identity?: VerifiedProviderIdentity
 }

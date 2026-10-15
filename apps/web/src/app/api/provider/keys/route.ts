@@ -3,18 +3,29 @@ import { z } from 'zod'
 import type { AIProviderType } from '@repo/types'
 import { auth } from '@/lib/auth'
 import { db } from '@repo/db'
-import { createProvider } from '@/lib/ai/provider'
+import { createProvider, SUPPORTED_PROVIDER_VALUES } from '@/lib/ai/provider'
 import { setProviderSession } from '@/lib/byok/session-store'
 import { encryptSecret, maskSecret } from '@/lib/security/encryption'
+import { validateProviderBaseUrl } from '@/lib/security/url-validation'
 
-const ProviderSchema = z.enum(['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER'])
-const CreateKeySchema = z.object({
-  name: z.string().min(1).max(80),
-  provider: ProviderSchema,
-  model: z.string().min(1).max(200),
-  apiKey: z.string().min(8).max(512).regex(/^[^\s]+$/),
-  baseUrl: z.string().url().optional(),
-})
+const ProviderSchema = z.enum(SUPPORTED_PROVIDER_VALUES)
+const CreateKeySchema = z
+  .object({
+    name: z.string().min(1).max(80),
+    provider: ProviderSchema,
+    model: z.string().min(1).max(200),
+    apiKey: z.string().max(512).optional().default(''),
+    baseUrl: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.provider !== 'OLLAMA') {
+      if (!data.apiKey || data.apiKey.length < 8) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'API key too short', path: ['apiKey'] })
+      } else if (/\s/.test(data.apiKey)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'API key must not contain spaces', path: ['apiKey'] })
+      }
+    }
+  })
 
 export async function GET() {
   const session = await auth()
@@ -45,7 +56,13 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 })
 
   const { name, provider, model, apiKey, baseUrl } = parsed.data
-  const aiProvider = createProvider({ provider: provider as AIProviderType, model, apiKey, baseUrl })
+  const urlCheck = validateProviderBaseUrl(baseUrl, provider as AIProviderType)
+  if (!urlCheck.valid) {
+    return NextResponse.json({ error: urlCheck.error ?? 'Invalid base URL' }, { status: 400 })
+  }
+  const effectiveBaseUrl = urlCheck.normalizedUrl ?? baseUrl
+  const effectiveApiKey = apiKey || (provider === 'OLLAMA' ? 'ollama' : '')
+  const aiProvider = createProvider({ provider: provider as AIProviderType, model, apiKey: effectiveApiKey, baseUrl: effectiveBaseUrl })
   const validation = await aiProvider.testConnection()
   if (validation.status !== 'VALID') {
     return NextResponse.json({ status: validation.status, message: validation.message }, { status: 400 })
@@ -60,8 +77,8 @@ export async function POST(req: NextRequest) {
         name,
         provider,
         model,
-        baseUrl,
-        encryptedKey: encryptSecret(apiKey),
+        baseUrl: effectiveBaseUrl,
+        encryptedKey: encryptSecret(effectiveApiKey),
         isActive: !hasExisting,
         lastValidated: new Date(),
       },
@@ -69,6 +86,6 @@ export async function POST(req: NextRequest) {
     })
   })
 
-  if (created.isActive) setProviderSession(userId, { provider: provider as AIProviderType, model, apiKey, baseUrl })
-  return NextResponse.json({ status: 'VALID', key: created })
+  if (created.isActive) setProviderSession(userId, { provider: provider as AIProviderType, model, apiKey: effectiveApiKey, baseUrl: effectiveBaseUrl })
+  return NextResponse.json({ status: 'VALID', key: created, identity: validation.identity })
 }

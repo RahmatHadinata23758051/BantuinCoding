@@ -1,24 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { createProvider } from '@/lib/ai/provider'
 import { z } from 'zod'
 import type { AIProviderType } from '@repo/types'
+import { auth } from '@/lib/auth'
+import { createProvider, SUPPORTED_PROVIDER_VALUES } from '@/lib/ai/provider'
+import { validateProviderBaseUrl } from '@/lib/security/url-validation'
 
-// ============================================================
-// POST /api/provider/models
-// Fetch available models for a provider using the provided API key.
-// Does NOT test connection to a specific model.
-// ============================================================
-
-const ModelsSchema = z.object({
-  provider: z.enum(['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER']),
-  apiKey: z
-    .string()
-    .min(8, 'API key too short')
-    .max(512, 'API key too long')
-    .regex(/^[^\s]+$/, 'API key must not contain spaces'),
-  baseUrl: z.string().optional(),
-})
+const ModelsSchema = z
+  .object({
+    provider: z.enum(SUPPORTED_PROVIDER_VALUES),
+    apiKey: z.string().max(512, 'API key too long').optional().default(''),
+    baseUrl: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.provider !== 'OLLAMA') {
+      if (!data.apiKey || data.apiKey.length < 8) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'API key too short', path: ['apiKey'] })
+      } else if (/\s/.test(data.apiKey)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'API key must not contain spaces', path: ['apiKey'] })
+      }
+    }
+  })
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -42,28 +43,29 @@ export async function POST(req: NextRequest) {
   }
 
   const { provider, apiKey, baseUrl } = parsed.data
+  const urlCheck = validateProviderBaseUrl(baseUrl, provider as AIProviderType)
+  if (!urlCheck.valid) {
+    return NextResponse.json({ error: urlCheck.error ?? 'Invalid base URL' }, { status: 400 })
+  }
 
   const aiProvider = createProvider({
     provider: provider as AIProviderType,
-    model: 'placeholder', // dummy, not used for listModels
-    apiKey,
-    baseUrl,
+    model: 'placeholder',
+    apiKey: apiKey || (provider === 'OLLAMA' ? 'ollama' : ''),
+    baseUrl: urlCheck.normalizedUrl ?? baseUrl,
   })
 
-  // Check if listModels is supported
   if (!aiProvider.listModels) {
-    return NextResponse.json({
-      error: 'Model listing not supported for this provider',
-    }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Model listing not supported for this provider' },
+      { status: 400 },
+    )
   }
 
   try {
     const models = await aiProvider.listModels()
     return NextResponse.json({ models })
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch models' },
-      { status: 502 },
-    )
+    return NextResponse.json({ error: 'Failed to fetch models' }, { status: 502 })
   }
 }

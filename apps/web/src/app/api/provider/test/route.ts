@@ -1,30 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { createProvider } from '@/lib/ai/provider'
-import { getSafeApiErrorMessage } from '@/lib/api/errors'
-
-function safeProviderMessage(message: string): string {
-  return getSafeApiErrorMessage(new Error(message), 'Provider connection failed. Please retry.')
-}
 import { z } from 'zod'
 import type { AIProviderType } from '@repo/types'
+import { auth } from '@/lib/auth'
+import { createProvider, sanitizeProviderMessage, SUPPORTED_PROVIDER_VALUES } from '@/lib/ai/provider'
+import { validateProviderBaseUrl } from '@/lib/security/url-validation'
 
-// ============================================================
-// POST /api/provider/test
-// Test connection and list available models without persisting session.
-// Returns typed result + models array on success.
-// ============================================================
+function safeProviderMessage(message: string, apiKey?: string): string {
+  return sanitizeProviderMessage(message, apiKey) || 'Provider connection failed. Please retry.'
+}
 
-const TestSchema = z.object({
-  provider: z.enum(['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER']),
-  model: z.string().min(1, 'Model is required').max(200),
-  apiKey: z
-    .string()
-    .min(8, 'API key too short')
-    .max(512, 'API key too long')
-    .regex(/^[^\s]+$/, 'API key must not contain spaces'),
-  baseUrl: z.string().optional(),
-})
+const TestSchema = z
+  .object({
+    provider: z.enum(SUPPORTED_PROVIDER_VALUES),
+    model: z.string().min(1, 'Model is required').max(200),
+    apiKey: z.string().max(512, 'API key too long').optional().default(''),
+    baseUrl: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.provider !== 'OLLAMA') {
+      if (!data.apiKey || data.apiKey.length < 8) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'API key too short',
+          path: ['apiKey'],
+        })
+      } else if (/\s/.test(data.apiKey)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'API key must not contain spaces',
+          path: ['apiKey'],
+        })
+      }
+    }
+  })
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 const RATE_LIMIT = 10
@@ -75,17 +83,25 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { provider, model, apiKey } = parsed.data
+  const { provider, model, apiKey, baseUrl } = parsed.data
+
+  const urlCheck = validateProviderBaseUrl(baseUrl, provider as AIProviderType)
+  if (!urlCheck.valid) {
+    return NextResponse.json(
+      { error: urlCheck.error ?? 'Invalid base URL' },
+      { status: 400 },
+    )
+  }
 
   const aiProvider = createProvider({
     provider: provider as AIProviderType,
     model,
-    apiKey,
+    apiKey: apiKey || (provider === 'OLLAMA' ? 'ollama' : ''),
+    baseUrl: urlCheck.normalizedUrl ?? baseUrl,
   })
 
   const testResult = await aiProvider.testConnection()
 
-  // Connection valid — fetch available models
   let models: Array<{ id: string; name: string; contextWindow?: number }> = []
   try {
     models = (await aiProvider.listModels?.()) ?? []
@@ -97,8 +113,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         status: testResult.status,
-        message: safeProviderMessage(testResult.message),
-        models, // still return models so user can pick a different one!
+        message: safeProviderMessage(testResult.message, apiKey),
+        models,
       },
       { status: 200 },
     )
@@ -108,5 +124,6 @@ export async function POST(req: NextRequest) {
     status: 'VALID',
     message: testResult.message,
     models,
+    identity: testResult.identity,
   })
 }

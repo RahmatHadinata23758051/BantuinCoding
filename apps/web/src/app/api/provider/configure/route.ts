@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { createProvider } from '@/lib/ai/provider'
+import { createProvider, SUPPORTED_PROVIDER_VALUES } from '@/lib/ai/provider'
 import {
   setProviderSession,
   getProviderMeta,
 } from '@/lib/byok/session-store'
+import { validateProviderBaseUrl } from '@/lib/security/url-validation'
 import { z } from 'zod'
 import type { AIProviderType } from '@repo/types'
 
@@ -19,16 +20,22 @@ import type { AIProviderType } from '@repo/types'
 //   - Rate limiting: 5 attempts per minute per user (see below)
 // ============================================================
 
-const ConfigureSchema = z.object({
-  provider: z.enum(['ANTHROPIC', 'OPENAI', 'GEMINI', 'OPENROUTER']),
-  model: z.string().min(1, 'Model is required').max(200),
-  apiKey: z
-    .string()
-    .min(8, 'API key too short')
-    .max(512, 'API key too long')
-    .regex(/^[^\s]+$/, 'API key must not contain spaces'),
-  baseUrl: z.string().optional(),
-})
+const ConfigureSchema = z
+  .object({
+    provider: z.enum(SUPPORTED_PROVIDER_VALUES),
+    model: z.string().min(1, 'Model is required').max(200),
+    apiKey: z.string().max(512, 'API key too long').optional().default(''),
+    baseUrl: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.provider !== 'OLLAMA') {
+      if (!data.apiKey || data.apiKey.length < 8) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'API key too short', path: ['apiKey'] })
+      } else if (/\s/.test(data.apiKey)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'API key must not contain spaces', path: ['apiKey'] })
+      }
+    }
+  })
 
 // Simple in-process rate limiter: 5 attempts per minute per user
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
@@ -84,13 +91,19 @@ export async function POST(req: NextRequest) {
   }
 
   const { provider, model, apiKey, baseUrl } = parsed.data
+  const urlCheck = validateProviderBaseUrl(baseUrl, provider as AIProviderType)
+  if (!urlCheck.valid) {
+    return NextResponse.json({ error: urlCheck.error ?? 'Invalid base URL' }, { status: 400 })
+  }
+  const effectiveBaseUrl = urlCheck.normalizedUrl ?? baseUrl
+  const effectiveApiKey = apiKey || (provider === 'OLLAMA' ? 'ollama' : '')
 
   // Test connection — API key stays in server memory only
   const aiProvider = createProvider({
     provider: provider as AIProviderType,
     model,
-    apiKey,
-    baseUrl,
+    apiKey: effectiveApiKey,
+    baseUrl: effectiveBaseUrl,
   })
 
   const result = await aiProvider.testConnection()
@@ -108,7 +121,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Store in session — key never leaves the server
-  setProviderSession(userId, { provider: provider as AIProviderType, model, apiKey, baseUrl })
+  setProviderSession(userId, { provider: provider as AIProviderType, model, apiKey: effectiveApiKey, baseUrl: effectiveBaseUrl })
 
   // Return safe metadata only
   const meta = getProviderMeta(userId)
@@ -119,6 +132,7 @@ export async function POST(req: NextRequest) {
     provider: meta?.provider,
     model: meta?.model,
     configuredAt: meta?.configuredAt,
+    identity: result.identity,
   })
 }
 
