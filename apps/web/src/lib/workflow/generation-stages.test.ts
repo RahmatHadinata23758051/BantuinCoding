@@ -13,6 +13,7 @@ import {
   markGenerationStageFailed,
   markGenerationStageRunning,
   resetGenerationForRetry,
+  reconcileGenerationStateAfterArtifactUpdate,
 } from './generation-stages'
 
 describe('generation stages', () => {
@@ -146,5 +147,51 @@ describe('generation stages', () => {
     expect(state.stages.documents.status).toBe('failed')
     expect(state.stages.agentRules.status).toBe('complete')
     expect(getRetryableGenerationStages(state)[0]).toBe('documents')
+  })
+
+  it('retries only stages that still need work', () => {
+    let state = createQueuedGenerationState()
+    state = markGenerationStageComplete(state, 'planner')
+    state = markGenerationStageFailed(state, 'documents', 'Document request failed')
+    state = { ...state, stages: { ...state.stages, agentRules: { status: 'complete' }, backlog: { status: 'complete' } } }
+
+    expect(getRetryableGenerationStages(state)).toEqual(['documents', 'skills', 'validation'])
+    const retry = resetGenerationForRetry(state)
+    expect(retry.stages.agentRules.status).toBe('complete')
+    expect(retry.stages.backlog.status).toBe('complete')
+  })
+
+  it('reconciles a repaired document without clearing completed later stages', () => {
+    const state = createPersistedGenerationState({
+      projectStatus: 'GENERATION_FAILED',
+      artifacts: [
+        { type: 'PRD', status: 'READY' },
+        { type: 'ARCHITECTURE', status: 'FAILED' },
+        { type: 'AGENT', status: 'READY' },
+        { type: 'BACKLOG', status: 'READY' },
+      ],
+      hasSkills: true,
+      hasBacklog: true,
+    })
+
+    const repaired = reconcileGenerationStateAfterArtifactUpdate({
+      state,
+      projectStatus: 'GENERATION_FAILED',
+      updatedType: 'ARCHITECTURE',
+      requiredArtifactTypes: ['PRD', 'ARCHITECTURE'],
+      artifacts: [
+        { type: 'PRD', status: 'READY' },
+        { type: 'ARCHITECTURE', status: 'READY' },
+        { type: 'AGENT', status: 'READY' },
+        { type: 'BACKLOG', status: 'READY' },
+      ],
+      hasSkills: true,
+      hasBacklog: true,
+    })
+
+    expect(repaired.stages.documents.status).toBe('complete')
+    expect(repaired.stages.agentRules.status).toBe('complete')
+    expect(repaired.stages.backlog.status).toBe('complete')
+    expect(repaired.stages.documents.error).toBeUndefined()
   })
 })
