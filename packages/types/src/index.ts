@@ -172,3 +172,31 @@ export interface TestConnectionResult {
   availableModels?: string[]
   identity?: VerifiedProviderIdentity
 }
+
+// System Architecture Graph (Design System Flowchart)
+export type SystemGraphCategory =
+  | 'client'
+  | 'ui'
+  | 'api'
+  | 'service'
+  | 'database'
+  | 'external'
+  | 'auth'
+
+export interface SystemGraphNode {
+  id: string
+  label: string
+  category: SystemGraphCategory
+  description: string
+}
+
+export interface SystemGraphEdge {
+  source: string
+  target: string
+  label?: string
+}
+
+export interface SystemGraphData {
+  nodes: SystemGraphNode[]
+  edges: SystemGraphEdge[]
+}
