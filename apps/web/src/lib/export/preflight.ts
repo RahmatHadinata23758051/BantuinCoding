@@ -44,8 +44,9 @@ export function scanContentForSecrets(content: string, filename: string): void {
     /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/i,
     /\beyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/,
     /(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s"']+/i,
-    /(?:^|\n)\s*(?:API_KEY|[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*(?!""|''|\$\{[^}\n]+\}|<[^>\n]+>|\s*(?:#|$))[^\s#]+/i,
-    /(?:^|\n)\s*(?:AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|GOOGLE_APPLICATION_CREDENTIALS)\s*=\s*(?!""|''|\$\{[^}\n]+\}|<[^>\n]+>|\s*(?:#|$))[^\s#]+/i,
+    /(?:^|\n)\s*(?:export\s+)?(?:API_KEY|[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*(?!""|''|\$\{[^}\n]+\}|<[^>\n]+>|\s*(?:#|$))[^\s#]+/i,
+    /(?:^|\n)\s*(?:export\s+)?(?:DATABASE_URL|DIRECT_URL|DB_URL)\s*=\s*(?!""|''|\$\{[^}\n]+\}|<[^>\n]+>|\s*(?:#|$))[^\s#]+/i,
+    /(?:^|\n)\s*(?:export\s+)?(?:AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|GOOGLE_APPLICATION_CREDENTIALS)\s*=\s*(?!""|''|\$\{[^}\n]+\}|<[^>\n]+>|\s*(?:#|$))[^\s#]+/i,
   ]
 
   for (const pattern of secretPatterns) {
