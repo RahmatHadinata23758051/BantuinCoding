@@ -97,10 +97,11 @@ export function createPersistedGenerationState({
   const coreTypes = ['PRD', 'SRS', 'DESIGN', 'ARCHITECTURE']
   const requiredCoreTypes = (requiredArtifactTypes ?? ['PRD', 'DESIGN', 'ARCHITECTURE']).filter((type) => coreTypes.includes(type))
   const coreArtifacts = requiredCoreTypes.map((type) => artifactByType.get(type))
+  const isProjectActivelyGenerating = projectStatus === 'GENERATING'
   const hasCoreFailure = coreArtifacts.some(
-    (artifact) => artifact && FAILED_ARTIFACT_STATUSES.has(artifact.status),
+    (artifact) => artifact && (FAILED_ARTIFACT_STATUSES.has(artifact.status) || (!isProjectActivelyGenerating && RUNNING_ARTIFACT_STATUSES.has(artifact.status))),
   )
-  const hasCoreRunning = coreArtifacts.some(
+  const hasCoreRunning = isProjectActivelyGenerating && coreArtifacts.some(
     (artifact) => artifact && RUNNING_ARTIFACT_STATUSES.has(artifact.status),
   )
   const hasCoreCompletion =
@@ -110,10 +111,14 @@ export function createPersistedGenerationState({
     )
   const agent = artifactByType.get('AGENT')
   const hasAgentCompletion = agent ? COMPLETE_ARTIFACT_STATUSES.has(agent.status) : false
-  const hasAgentFailure = agent ? FAILED_ARTIFACT_STATUSES.has(agent.status) : false
+  const hasAgentFailure = agent
+    ? FAILED_ARTIFACT_STATUSES.has(agent.status) || (!isProjectActivelyGenerating && RUNNING_ARTIFACT_STATUSES.has(agent.status))
+    : false
   const backlog = artifactByType.get('BACKLOG')
-  const hasBacklogFailure = backlog ? FAILED_ARTIFACT_STATUSES.has(backlog.status) : false
-  const hasBacklogRunning = backlog ? RUNNING_ARTIFACT_STATUSES.has(backlog.status) : false
+  const hasBacklogFailure = backlog
+    ? FAILED_ARTIFACT_STATUSES.has(backlog.status) || (!isProjectActivelyGenerating && RUNNING_ARTIFACT_STATUSES.has(backlog.status))
+    : false
+  const hasBacklogRunning = isProjectActivelyGenerating && (backlog ? RUNNING_ARTIFACT_STATUSES.has(backlog.status) : false)
   const hasFailedProject = projectStatus === 'GENERATION_FAILED'
 
   state.stages.planner.status = artifacts.length > 0 ? 'complete' : 'queued'
@@ -126,7 +131,7 @@ export function createPersistedGenerationState({
         : 'queued'
   if (hasCoreRunning) state.activeStage = 'documents'
 
-  const agentRunning = agent ? RUNNING_ARTIFACT_STATUSES.has(agent.status) : false
+  const agentRunning = isProjectActivelyGenerating && (agent ? RUNNING_ARTIFACT_STATUSES.has(agent.status) : false)
   if (agentRunning) {
     state.stages.agentRules.status = 'running'
     state.activeStage = 'agentRules'
@@ -152,7 +157,9 @@ export function createPersistedGenerationState({
     state.stages.validation.status = 'complete'
   }
 
-  state.isRunning = state.activeStage !== null
+  const failedStage = GENERATION_STAGES.find(({ id }) => state.stages[id].status === 'failed')?.id ?? null
+  if (failedStage) state.activeStage = failedStage
+  state.isRunning = false
   return state
 }
 
@@ -236,14 +243,12 @@ export function markGenerationStageFailed(
 }
 
 export function getRetryableGenerationStages(state: GenerationState): GenerationStageId[] {
-  const firstAttentionIndex = GENERATION_STAGES.findIndex(({ id }) => {
-    const status = state.stages[id].status
-    return status === 'failed' || status === 'skipped' || status === 'queued'
-  })
-
-  if (firstAttentionIndex < 0) return []
-
-  return GENERATION_STAGES.slice(firstAttentionIndex).map(({ id }) => id)
+  return GENERATION_STAGES
+    .filter(({ id }) => {
+      const status = state.stages[id].status
+      return status === 'failed' || status === 'skipped' || status === 'queued'
+    })
+    .map(({ id }) => id)
 }
 
 export function resetGenerationForRetry(state: GenerationState): GenerationState {
@@ -258,6 +263,60 @@ export function resetGenerationForRetry(state: GenerationState): GenerationState
     ) as GenerationStageStates,
     activeStage: null,
     isRunning: false,
+  }
+}
+
+/**
+ * Reconciles a single artifact update without erasing completed workflow stages.
+ * The persisted artifact is authoritative for its aggregate stage; unrelated
+ * stages keep their existing state until their own server request runs.
+ */
+export function reconcileGenerationStateAfterArtifactUpdate({
+  state,
+  artifacts,
+  updatedType,
+  projectStatus,
+  requiredArtifactTypes,
+  hasSkills = state.stages.skills.status === 'complete',
+  hasBacklog = state.stages.backlog.status === 'complete',
+}: {
+  state: GenerationState
+  artifacts: PersistedGenerationArtifact[]
+  updatedType: string
+  projectStatus: string
+  requiredArtifactTypes?: string[]
+  hasSkills?: boolean
+  hasBacklog?: boolean
+}): GenerationState {
+  const stageForArtifact = updatedType === 'AGENT' || updatedType === 'RULES'
+    ? 'agentRules'
+    : updatedType === 'BACKLOG'
+      ? 'backlog'
+      : ['PRD', 'SRS', 'DESIGN', 'ARCHITECTURE'].includes(updatedType)
+        ? 'documents'
+        : null
+
+  if (!stageForArtifact) return state
+
+  const derived = createPersistedGenerationState({
+    projectStatus,
+    artifacts,
+    requiredArtifactTypes,
+    hasSkills,
+    hasBacklog,
+  })
+  const stages = {
+    ...state.stages,
+    [stageForArtifact]: derived.stages[stageForArtifact],
+  }
+  const activeStage = GENERATION_STAGES.find(({ id }) => stages[id].status === 'failed')?.id
+    ?? GENERATION_STAGES.find(({ id }) => stages[id].status === 'running')?.id
+    ?? null
+
+  return {
+    stages,
+    activeStage,
+    isRunning: activeStage !== null && stages[activeStage].status === 'running',
   }
 }
 
