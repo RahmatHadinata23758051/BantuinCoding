@@ -104,12 +104,11 @@ export default async function DashboardPage() {
             <span className="hidden sm:inline">{t('providerSettings')}</span>
             <span className="sm:hidden">{t('providerShort')}</span>
           </Link>
-          <LanguageSwitcher />
-          <Link href="/profile" aria-label={t('profileSettings')} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/65 px-3 text-xs font-semibold text-[#24231f] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
+          <Link href="/profile" aria-label={t('profileMenuLabel', { email: session?.user?.email ?? t('profileSettings') })} className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#dedbd5] bg-white/65 px-3 text-xs font-semibold text-[#24231f] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
             <UserCircle size={14} aria-hidden="true" />
-            <span className="hidden sm:inline">{t('profileSettings')}</span>
+            <span className="max-w-40 truncate">{session?.user?.name || session?.user?.email}</span>
           </Link>
-          <span className="hidden max-w-36 truncate px-2 text-xs text-[#706b64] lg:inline">{session?.user?.email}</span>
+          <LanguageSwitcher />
           <form action={logoutAction}>
             <button type="submit" aria-label={tCommon('signOut')} className="inline-flex size-9 items-center justify-center rounded-full border border-[#dedbd5] bg-white/65 text-[#706b64] transition-colors hover:bg-white hover:text-[#24231f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f3]">
               <LogOut size={14} aria-hidden="true" />

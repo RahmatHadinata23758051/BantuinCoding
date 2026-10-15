@@ -61,7 +61,7 @@ export function PromptComposer({ action }: { action: PromptAction }) {
             maxLength={100}
             onKeyDown={handleTitleKeyDown}
             placeholder={t('promptTitlePlaceholder')}
-            className="w-full bg-transparent py-1 text-lg font-semibold tracking-[-0.02em] text-[#24231f] outline-none placeholder:font-normal placeholder:text-[#a9a29a] focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] focus:placeholder:text-[#706b64] sm:text-xl"
+            className="w-full bg-transparent py-1 text-lg font-semibold tracking-[-0.02em] text-[#24231f] !outline-none ring-0 placeholder:font-normal placeholder:text-[#a9a29a] focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:placeholder:text-[#706b64] sm:text-xl"
           />
         </div>
 
@@ -79,7 +79,7 @@ export function PromptComposer({ action }: { action: PromptAction }) {
             rows={4}
             onKeyDown={handleKeyDown}
             placeholder={t('promptDescriptionPlaceholder')}
-            className="min-h-28 w-full resize-none bg-transparent py-1 text-base leading-7 text-[#24231f] outline-none placeholder:text-[#a9a29a] focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffdfa] focus:placeholder:text-[#706b64] sm:min-h-32 sm:text-lg"
+            className="min-h-28 w-full resize-none bg-transparent py-1 text-base leading-7 text-[#24231f] !outline-none ring-0 placeholder:text-[#a9a29a] focus:border-0 focus:!outline-none focus:ring-0 focus-visible:!outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:placeholder:text-[#706b64] sm:min-h-32 sm:text-lg"
           />
         </div>
 
