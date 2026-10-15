@@ -300,7 +300,9 @@ export function BacklogKanbanBoard({
 
         {filteredTasks.length === 0 ? (
           <div className="flex min-h-40 items-center justify-center rounded-[var(--radius-buttons)] border border-dashed border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-6 text-center">
-            <p className="text-sm font-medium text-[var(--workspace-muted)]">{t('backlogNoMatchingTasks')}</p>
+            <p className="text-sm font-medium text-[var(--workspace-muted)]">
+              {tasks.length === 0 ? t('backlogTasksUnavailable') : t('backlogNoMatchingTasks')}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto overscroll-x-contain">
@@ -329,7 +331,7 @@ export function BacklogKanbanBoard({
                     <div className="space-y-4" role="list" aria-label={phase.name}>
                       {phase.tasks.length === 0 ? (
                         <div className="flex min-h-32 items-center justify-center rounded-[1rem] border border-dashed border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 text-center">
-                          <p className="text-xs text-[var(--workspace-muted)]">{t('backlogNoMatchingTasks')}</p>
+                          <p className="text-xs text-[var(--workspace-muted)]">{t('backlogNoTasksInPhase')}</p>
                         </div>
                       ) : (
                         phase.tasks.map((task) => {
