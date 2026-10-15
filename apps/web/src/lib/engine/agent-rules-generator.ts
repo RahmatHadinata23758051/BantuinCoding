@@ -188,3 +188,46 @@ export async function generateAgentAndRulesArtifacts({
 
   return results
 }
+
+/**
+ * Regenerates Agent.md only when the current context does not have a usable copy.
+ * Manually modified and ready artifacts are never overwritten by a retry.
+ */
+export async function regenerateIncompleteAgentArtifacts({
+  userId,
+  projectId,
+}: GenerateAgentRulesOptions): Promise<GeneratedArtifactResult[]> {
+  const project = await db.project.findFirst({
+    where: { id: projectId, userId },
+    include: {
+      contexts: {
+        where: { isCurrent: true },
+        take: 1,
+        include: {
+          artifactPlans: { where: { isRequired: true }, select: { type: true } },
+        },
+      },
+      artifacts: true,
+    },
+  })
+
+  if (!project) throw new Error('Project not found')
+  const currentContext = project.contexts[0]
+  if (!currentContext) {
+    throw new Error('No Canonical Project Context found. Generate context first.')
+  }
+
+  const isAgentRequired = currentContext.artifactPlans.some((plan) => plan.type === 'AGENT')
+  if (!isAgentRequired) {
+    return []
+  }
+
+  const currentAgent = project.artifacts.find(
+    (artifact) => artifact.type === 'AGENT' && artifact.contextId === currentContext.id,
+  )
+  if (currentAgent && (currentAgent.status === 'READY' || currentAgent.status === 'MODIFIED')) {
+    return []
+  }
+
+  return generateAgentAndRulesArtifacts({ userId, projectId })
+}
