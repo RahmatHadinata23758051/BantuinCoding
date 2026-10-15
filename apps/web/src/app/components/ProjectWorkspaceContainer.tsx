@@ -34,6 +34,7 @@ import {
   Loader2,
   Lock,
   MessageSquareText,
+  Network,
   Package,
   Play,
   RefreshCw,
@@ -45,7 +46,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
+import { DesignSystemGraph } from '@/app/components/DesignSystemGraph'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
+import type { SystemGraphData } from '@repo/types'
 import { BrandLogo } from '@/app/components/BrandLogo'
 import { parseProjectBrief, type ParsedProjectBrief } from '@/lib/projects/brief-parser'
 
@@ -59,6 +62,7 @@ import {
   getGenerationStageStatusKey,
   getGenerationProgressPercentage,
   getRetryableGenerationStages,
+  reconcileGenerationStateAfterArtifactUpdate,
   markGenerationStageComplete,
   markGenerationStageFailed,
   markGenerationStageRunning,
@@ -83,6 +87,7 @@ export interface ProjectWorkspaceProps {
     context: Record<string, unknown> | null
     contextVersion: number
     requiredArtifactTypes: string[]
+    systemGraph: SystemGraphData | null
     clarifications: {
       id: string
       round: number
@@ -130,7 +135,7 @@ import { parseWorkspaceTab, type WorkspaceSection } from '@/lib/navigation/works
 
 type ReadinessTone = 'ready' | 'attention' | 'idle'
 
-const SECTION_ITEMS: {
+const ALL_SECTIONS: {
   id: WorkspaceSection
   labelKey: string
   descriptionKey: string
@@ -138,10 +143,16 @@ const SECTION_ITEMS: {
 }[] = [
   { id: 'overview', labelKey: 'sectionOverview', descriptionKey: 'sectionOverviewDesc', icon: ClipboardCheck },
   { id: 'context', labelKey: 'sectionContext', descriptionKey: 'sectionContextDesc', icon: Braces },
+  { id: 'design-system', labelKey: 'sectionDesignSystem', descriptionKey: 'sectionDesignSystemDesc', icon: Network },
   { id: 'documents', labelKey: 'sectionDocuments', descriptionKey: 'sectionDocumentsDesc', icon: Files },
   { id: 'backlog', labelKey: 'sectionBacklog', descriptionKey: 'sectionBacklogDesc', icon: ListChecks },
   { id: 'export', labelKey: 'sectionExport', descriptionKey: 'sectionExportDesc', icon: Package },
 ]
+
+function getSectionTabKey(id: WorkspaceSection) {
+  if (id === 'design-system') return 'tabDesignSystem'
+  return `tab${id.charAt(0).toUpperCase() + id.slice(1)}`
+}
 
 const WORKSPACE_STYLE = {
   '--workspace-paper': 'var(--color-workspace-paper)',
@@ -654,7 +665,9 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedTab = parseWorkspaceTab(searchParams.get('tab'))
-  const activeTab = requestedTab
+  const showDesignSystem = initialData.classification !== 'LANDING_PAGE'
+  const sectionItems = ALL_SECTIONS.filter((section) => section.id !== 'design-system' || showDesignSystem)
+  const activeTab = requestedTab === 'design-system' && !showDesignSystem ? 'overview' : requestedTab
 
   const selectTab = (section: WorkspaceSection) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -675,6 +688,9 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [projectName, setProjectName] = useState(initialData.name)
   const [projectLang, setProjectLang] = useState(initialData.language || 'id')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
+  const [systemGraph, setSystemGraph] = useState<SystemGraphData | null>(initialData.systemGraph)
+  const [isRepairingSystemGraph, setIsRepairingSystemGraph] = useState(false)
+  const [systemGraphError, setSystemGraphError] = useState<string | null>(null)
   const [phases, setPhases] = useState(initialData.phases)
   const [backlogRevision, setBacklogRevision] = useState(0)
   const [generationState, setGenerationState] = useState<GenerationState>(() =>
@@ -722,6 +738,14 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const attentionArtifacts = artifacts.filter(
     (artifact) => artifact.status !== 'READY' && artifact.status !== 'MODIFIED',
   )
+  const requiredDocumentTypes = initialData.requiredArtifactTypes.filter((type) =>
+    ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN', 'AGENT'].includes(type),
+  )
+  const retryableDocumentArtifacts = requiredDocumentTypes.filter((type) => {
+    const artifact = artifacts.find((candidate) => candidate.type === type)
+    return !artifact || (artifact.status !== 'READY' && artifact.status !== 'MODIFIED')
+  })
+  const retryableDocumentCount = retryableDocumentArtifacts.length
   const allTasks = phases.flatMap((phase) => phase.tasks)
   const readyTasks = allTasks.filter((task) => task.status === 'READY')
   const doneTasks = allTasks.filter((task) => task.status === 'DONE')
@@ -1150,10 +1174,41 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     }
   }
 
-  const handleArtifactUpdated = (updated: WorkspaceArtifactItem) => {
-    setArtifacts((previous) =>
-      previous.map((artifact) => (artifact.type === updated.type ? updated : artifact)),
+  const handleArtifactUpdated = (
+    updated: WorkspaceArtifactItem,
+    newSystemGraph?: SystemGraphData | null,
+  ) => {
+    if (newSystemGraph !== undefined) {
+      setSystemGraph(newSystemGraph)
+    }
+    const mergedArtifacts = artifacts.some((artifact) => artifact.type === updated.type)
+      ? artifacts.map((artifact) => (artifact.type === updated.type ? updated : artifact))
+      : [...artifacts, updated]
+
+    setArtifacts(mergedArtifacts)
+    const reconciled = reconcileGenerationStateAfterArtifactUpdate({
+      state: generationState,
+      artifacts: mergedArtifacts,
+      updatedType: updated.type,
+      projectStatus,
+      requiredArtifactTypes: initialData.requiredArtifactTypes,
+      hasSkills: initialData.skills.length > 0,
+      hasBacklog: phases.length > 0,
+    })
+    setGenerationState(reconciled)
+
+    const hasAnyFailedStage = Object.values(reconciled.stages).some(
+      (stage) => stage.status === 'failed',
     )
+    if (!hasAnyFailedStage) {
+      if (
+        reconciled.stages.documents.status === 'complete' &&
+        (projectStatus === 'GENERATION_FAILED' || projectStatus === 'GENERATING')
+      ) {
+        setProjectStatus('READY')
+      }
+      setGenMessage(null)
+    }
   }
 
   const workspaceNavigation = (
@@ -1181,7 +1236,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       <div className="mt-8">
         <p className="text-xs font-bold text-[var(--workspace-muted)]">{t('workspaceSections')}</p>
         <nav aria-label={t('workspaceSections')} className="mt-3 space-y-1">
-          {SECTION_ITEMS.map((section) => {
+          {sectionItems.map((section) => {
             const Icon = section.icon
             const isActive = activeTab === section.id
             return (
@@ -1206,7 +1261,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${BUTTON_FOCUS_CLASS} ${isActive ? 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]' : 'text-[var(--workspace-muted)] hover:bg-[var(--workspace-blue-soft)] hover:text-[var(--workspace-ink)]'}`}
               >
                 <Icon aria-hidden="true" className="size-4" />
-                {t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}
+                {t(getSectionTabKey(section.id) as Parameters<typeof t>[0])}
               </button>
             )
           })}
@@ -1231,8 +1286,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     event: KeyboardEvent<HTMLButtonElement>,
     currentSection: WorkspaceSection,
   ) => {
-    const currentIndex = SECTION_ITEMS.findIndex((section) => section.id === currentSection)
-    const lastIndex = SECTION_ITEMS.length - 1
+    const currentIndex = sectionItems.findIndex((section) => section.id === currentSection)
+    const lastIndex = sectionItems.length - 1
     let nextIndex: number | null = null
 
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
@@ -1248,9 +1303,32 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     if (nextIndex === null) return
 
     event.preventDefault()
-    const nextSection = SECTION_ITEMS[nextIndex].id
+    const nextSection = sectionItems[nextIndex].id
     selectTab(nextSection)
     sectionTabRefs.current.get(nextSection)?.focus()
+  }
+
+  const handleRepairSystemGraph = async () => {
+    if (isRepairingSystemGraph || isGenerating) return
+    setIsRepairingSystemGraph(true)
+    setSystemGraphError(null)
+    try {
+      const result = await requestProjectStage<{ systemGraph?: SystemGraphData | null }>(
+        'generate',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'SYSTEM_GRAPH' }),
+        },
+        t('systemGraphRepairFailed'),
+      )
+      setSystemGraph(result.systemGraph ?? null)
+      router.refresh()
+    } catch (error) {
+      setSystemGraphError(error instanceof Error ? error.message : t('systemGraphRepairFailed'))
+    } finally {
+      setIsRepairingSystemGraph(false)
+    }
   }
 
   const requestProjectStage = async <T,>(
@@ -1316,7 +1394,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       setProjectStatus('CONTEXT_READY')
       setDiscoveryMessage({ type: 'status', text: t('contextReadyMessage') })
       setIsAnalyzing(false)
-      selectTab('backlog')
+      selectTab('documents')
       await runGenerationRef.current('initial', true)
     } catch (error) {
       setDiscoveryMessage({
@@ -1508,7 +1586,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     }
   }
 
-  const generationStageRequest = async (stage: GenerationStageId) => {
+  const generationStageRequest = async (stage: GenerationStageId, retryIncomplete = false) => {
     switch (stage) {
       case 'planner':
         await requestProjectStage<{ plan?: { artifacts?: Array<{ type: string; isRequired?: boolean }> } }>(
@@ -1520,9 +1598,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       case 'documents': {
         const result = await requestProjectStage<{
           artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; version?: number; error?: string }>
+          systemGraph?: SystemGraphData | null
         }>(
           'generate',
-          { method: 'POST' },
+          retryIncomplete
+            ? {
+                method: 'POST',
+                body: JSON.stringify({ regenerateFailed: true }),
+                headers: { 'Content-Type': 'application/json' },
+              }
+            : { method: 'POST' },
           t('documentGenerationFailed'),
         )
         const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
@@ -1574,6 +1659,55 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     }
   }
 
+  const handleRegenerateBacklog = async () => {
+    if (isGenerating) return
+
+    setIsGenerating(true)
+    setGenerationOperation('retry')
+    setProjectStatus('GENERATING')
+    setGenMessage(null)
+    let state = markGenerationStageRunning(generationState, 'backlog')
+    updateGenerationState(state)
+
+    try {
+      const result = await generationStageRequest('backlog') as {
+        artifact?: { id: string; type: string; path: string; status: string; content?: string; updatedAt?: string }
+        phases?: typeof initialData.phases
+      }
+      if (result.phases) {
+        setPhases(result.phases)
+        setBacklogRevision((revision) => revision + 1)
+      }
+      if (result.artifact) {
+        const artifact = result.artifact
+        const updatedArtifact: WorkspaceArtifactItem = {
+          id: artifact.id,
+          type: artifact.type,
+          path: artifact.path,
+          content: artifact.content ?? '',
+          status: artifact.status,
+          updatedAt: artifact.updatedAt ?? new Date().toISOString(),
+        }
+        const mergedArtifacts = artifacts.some((item) => item.type === updatedArtifact.type)
+          ? artifacts.map((item) => (item.type === updatedArtifact.type ? updatedArtifact : item))
+          : [...artifacts, updatedArtifact]
+        setArtifacts(mergedArtifacts)
+      }
+      state = markGenerationStageComplete(state, 'backlog')
+      updateGenerationState(state)
+      setProjectStatus('READY')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t('backlogGenerationFailed')
+      state = markGenerationStageFailed(state, 'backlog', message)
+      updateGenerationState(state)
+      setProjectStatus('GENERATION_FAILED')
+      setGenMessage({ type: 'error', text: message })
+    } finally {
+      setIsGenerating(false)
+      setGenerationOperation(null)
+    }
+  }
+
   const runGeneration = async (operation: 'initial' | 'retry', contextIsReady = contextReady) => {
     if (!contextIsReady || isGenerating) return
 
@@ -1603,10 +1737,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
         try {
           if (stage === 'documents' || stage === 'agentRules' || stage === 'backlog') {
-            const result = await generationStageRequest(stage) as {
+            const result = await generationStageRequest(stage, operation === 'retry') as {
               artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; version?: number }>
               artifact?: { id: string; type: string; path: string; status: string; content?: string; updatedAt?: string }
+              systemGraph?: SystemGraphData | null
               phases?: typeof initialData.phases
+            }
+            if (stage === 'documents' && result.systemGraph !== undefined) {
+              setSystemGraph(result.systemGraph)
             }
             if (stage === 'backlog' && result.phases) {
               setPhases(result.phases)
@@ -1690,6 +1828,75 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         type: 'error',
         text: error instanceof Error ? error.message : t('generationRetryFailed'),
       })
+    }
+  }
+
+  const handleRegenerateIncompleteDocuments = async () => {
+    if (!contextReady || isGenerating || retryableDocumentCount === 0) return
+
+    setIsGenerating(true)
+    setGenerationOperation('retry')
+    setProjectStatus('GENERATING')
+    setGenMessage(null)
+
+    try {
+      const result = await requestProjectStage<{
+        artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; error?: string }>
+        readiness?: { isReady: boolean }
+        systemGraph?: SystemGraphData | null
+      }>(
+        'generate',
+        {
+          method: 'POST',
+          body: JSON.stringify({ regenerateFailed: true }),
+          headers: { 'Content-Type': 'application/json' },
+        },
+        t('documentGenerationFailed'),
+      )
+      const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
+      if (failedArtifact) throw new Error(failedArtifact.error ?? t('documentGenerationFailed'))
+
+      const incoming = result.artifacts ?? []
+      const updated = new Map(incoming.map((artifact) => [artifact.type, artifact]))
+      const nextArtifacts = [
+        ...artifacts.filter((artifact) => !updated.has(artifact.type)),
+        ...[...updated.values()].map((artifact) => ({
+          id: artifact.id || artifact.type,
+          type: artifact.type,
+          path: artifact.path,
+          status: artifact.status,
+          content: artifact.content ?? '',
+          updatedAt: artifact.updatedAt ?? new Date().toISOString(),
+        })),
+      ]
+      setArtifacts(nextArtifacts)
+      if (result.systemGraph !== undefined) setSystemGraph(result.systemGraph)
+
+      let reconciled = generationState
+      for (const artifact of incoming) {
+        reconciled = reconcileGenerationStateAfterArtifactUpdate({
+          state: reconciled,
+          artifacts: nextArtifacts,
+          updatedType: artifact.type,
+          projectStatus: result.readiness?.isReady ? 'READY' : 'GENERATION_FAILED',
+          requiredArtifactTypes: initialData.requiredArtifactTypes,
+          hasSkills: initialData.skills.length > 0,
+          hasBacklog: phases.length > 0,
+        })
+      }
+      setGenerationState(reconciled)
+      setProjectStatus(result.readiness?.isReady ? 'EXPORTABLE' : 'GENERATION_FAILED')
+      setGenMessage({ type: 'status', text: t('generationComplete') })
+      router.refresh()
+    } catch (error) {
+      setProjectStatus('GENERATION_FAILED')
+      setGenMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : t('generationRetryFailed'),
+      })
+    } finally {
+      setIsGenerating(false)
+      setGenerationOperation(null)
     }
   }
 
@@ -1938,7 +2145,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               </header>
             )}
 
-            {((showGenerationStatus && activeTab === 'backlog') || (isGenerating && activeTab === 'export')) && (
+            {((showGenerationStatus && activeTab === 'documents') || (isGenerating && activeTab === 'export')) && (
               <div className="mb-6 grid gap-5 lg:grid-cols-[minmax(15rem,.8fr)_minmax(0,1.6fr)]">
                 <aside className="order-2 rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 lg:order-1">
                   <h2 className="text-lg font-semibold">{t('stateBSidebarTitle')}</h2>
@@ -1953,9 +2160,14 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 </aside>
                 <div className="order-1 min-w-0 lg:order-2">
                   {generationProgress}
-                  {(generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && (
+                  {(generationState.stages.documents.status === 'failed' || generationState.stages.agentRules.status === 'failed' || generationState.stages.skills.status === 'failed' || generationState.stages.backlog.status === 'failed' || generationState.stages.validation.status === 'failed') && (() => {
+                    const firstFailedStage = GENERATION_STAGES.find(({ id }) => generationState.stages[id].status === 'failed')?.id
+                    const displayStage = (generationState.activeStage && generationState.stages[generationState.activeStage].status === 'failed')
+                      ? generationState.activeStage
+                      : firstFailedStage
+                    return (
                     <section className="mt-4 rounded-[16px] border border-[var(--workspace-rose)] bg-[var(--workspace-rose-soft)] p-4" aria-labelledby="generation-failure-title">
-                      <h2 id="generation-failure-title" className="font-semibold">{t('stateB2AlertTitle', { stage: generationState.activeStage ? t(getGenerationStageLabelKey(generationState.activeStage) as Parameters<typeof t>[0]) : t('generationStageDocuments') })}</h2>
+                      <h2 id="generation-failure-title" className="font-semibold">{t('stateB2AlertTitle', { stage: displayStage ? t(getGenerationStageLabelKey(displayStage) as Parameters<typeof t>[0]) : t('generationStageDocuments') })}</h2>
                       <p className="mt-2 text-sm leading-6">{t('stateB2Assurance')}</p>
                       <details ref={failureDetailsRef} className="mt-3 text-sm" onToggle={(event) => setShowErrorDetails(event.currentTarget.open)}>
                         <summary className="w-fit cursor-pointer font-semibold underline underline-offset-4">{showErrorDetails ? t('stateB2HideDetails') : t('stateB2ShowDetails')}</summary>
@@ -1963,7 +2175,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                       </details>
                       <button type="button" onClick={handleRegenerateFailed} disabled={isGenerating} className={`mt-4 inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-ink)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}><RefreshCw aria-hidden="true" className="size-4" />{t('stateB2RetryAction')}</button>
                     </section>
-                  )}
+                    )
+                  })()}
                 </div>
               </div>
             )}
@@ -1985,7 +2198,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
             <section className={activeTab === 'overview' ? 'py-0' : 'py-5 sm:py-6'}><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
               <div className="hidden" aria-hidden="true">
-                {SECTION_ITEMS.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(`tab${section.id.charAt(0).toUpperCase() + section.id.slice(1)}` as Parameters<typeof t>[0])}</button>)}
+                {sectionItems.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(getSectionTabKey(section.id) as Parameters<typeof t>[0])}</button>)}
               </div>
               <div className={activeTab === 'overview' ? (briefHasStructuredSections ? 'space-y-4' : 'space-y-0') : 'hidden'}>
                 {overviewStructuredContent}
@@ -2262,23 +2475,96 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 )}
               </div>
 
-              <div className={activeTab === 'documents' ? 'space-y-8' : 'hidden'}>
-                <SectionHeading
-                  title={t('generatedDocuments')}
-                  description={t('generatedDocumentsDesc')}
-                  divided={false}
-                  action={
-                    artifacts.length > 0 ? (
-                      <div
-                        className={`${PANEL_SOFT_CLASS} flex items-center gap-3 px-3 py-2 font-sans text-xs font-semibold text-[var(--workspace-ink)]`}
-                      >
-                        <span>{t('readyCount', { count: readyArtifacts.length })}</span>
-                        <span aria-hidden="true">/</span>
-                        <span>{t('attentionCount', { count: attentionArtifacts.length })}</span>
+              <div className={activeTab === 'design-system' ? 'space-y-8' : 'hidden'}>
+                {systemGraph ? (
+                  <DesignSystemGraph graph={systemGraph} />
+                ) : (
+                  <EmptyState
+                    icon={Network}
+                    title={t('noGraphData')}
+                    description={
+                      initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status))
+                        ? t('noGraphDataReadyArchitectureDesc')
+                        : t('noGraphDataDesc')
+                    }
+                    action={
+                      <div className="space-y-3">
+                        {systemGraphError && <p className="text-sm font-medium text-red-700">{systemGraphError}</p>}
+                        {initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status)) && (
+                          <button
+                            type="button"
+                            onClick={() => void handleRepairSystemGraph()}
+                            disabled={isRepairingSystemGraph || isGenerating}
+                            className={`inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                          >
+                            {isRepairingSystemGraph ? <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                            {isRepairingSystemGraph ? tCommon('loading') : t('buildSystemMap')}
+                          </button>
+                        )}
                       </div>
-                    ) : undefined
-                  }
-                />
+                    }
+                  />
+                )}
+              </div>
+
+              {!isGenerating && (
+                <div className={activeTab === 'documents' ? 'space-y-8' : 'hidden'}>
+                  <SectionHeading
+                    title={t('generatedDocuments')}
+                    description={t('generatedDocumentsDesc')}
+                    divided={false}
+                  />
+
+                {artifacts.length > 0 && (
+                  <div
+                    className="flex flex-col gap-4 rounded-2xl border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] px-5 py-4 text-[var(--workspace-ink)] sm:flex-row sm:items-center sm:justify-between sm:px-6"
+                    role="region"
+                    aria-label={t('regenerateAllBannerLabel')}
+                  >
+                    <div className="flex min-w-0 items-center gap-4">
+                      <span className="flex shrink-0 items-center gap-1.5" aria-hidden="true">
+                        {Array.from({ length: Math.min(5, Math.max(1, artifacts.length)) }).map((_, index) => (
+                          <span
+                            key={index}
+                            className={`size-2.5 rounded-full ${index < readyArtifacts.length ? 'bg-[var(--pass-teal)]' : 'bg-[var(--workspace-muted)]/40'}`}
+                          />
+                        ))}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-5 text-[var(--workspace-ink)] sm:text-base">
+                          {t('documentsReadySummary', { count: readyArtifacts.length })}
+                        </p>
+                        <p className="mt-0.5 text-xs leading-5 text-[var(--workspace-muted)]">
+                          {t('attentionCount', { count: attentionArtifacts.length })} · {t('regenerateAllHint')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {retryableDocumentCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => void handleRegenerateIncompleteDocuments()}
+                          disabled={isGenerating}
+                          className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-4 py-2.5 font-sans text-sm font-semibold text-[var(--workspace-ink)] shadow-none transition-colors hover:bg-[var(--workspace-yellow-soft)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                          aria-busy={isGenerating}
+                        >
+                          {isGenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                          {isGenerating ? tCommon('loading') : t('retryIncompleteDocuments', { count: retryableDocumentCount })}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void handleGenerateAll()}
+                        disabled={isGenerating}
+                        className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--workspace-primary)]/20 bg-[var(--workspace-primary)] px-4 py-2.5 font-sans text-sm font-semibold text-white shadow-none transition-colors hover:bg-[var(--workspace-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                        aria-busy={isGenerating}
+                      >
+                        {isGenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                        {isGenerating ? tCommon('loading') : t('markdownRegenerateAll')}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {artifacts.length === 0 ? (
                   <EmptyState
@@ -2291,10 +2577,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   <MarkdownWorkspace
                     projectId={initialData.id}
                     artifacts={artifacts}
+                    isGeneratingAll={isGenerating}
                     onArtifactUpdated={handleArtifactUpdated}
                   />
                 )}
-              </div>
+                </div>
+              )}
 
               <div className={activeTab === 'backlog' ? 'space-y-8' : 'hidden'}>
                 <SectionHeading
@@ -2321,6 +2609,23 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                     title={t('noImplementationBacklog')}
                     description={t('noImplementationBacklogDesc')}
                     action={generateButton}
+                  />
+                ) : allTasks.length === 0 ? (
+                  <EmptyState
+                    icon={AlertTriangle}
+                    title={t('backlogTasksUnavailable')}
+                    description={t('backlogTasksUnavailableDesc')}
+                    action={
+                      <button
+                        type="button"
+                        onClick={() => void handleRegenerateBacklog()}
+                        disabled={isGenerating}
+                        className={`inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                      >
+                        <RefreshCw aria-hidden="true" className="size-4" />
+                        {t('backlogRegenerateAction')}
+                      </button>
+                    }
                   />
                 ) : (
                   <BacklogKanbanBoard
