@@ -271,6 +271,34 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
     expect(dbMocks.tx.artifact.upsert).toHaveBeenCalled()
   })
 
+  it('rejects an empty phase before replacing the existing backlog', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}' }], artifacts: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC', testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({
+        phases: [{ name: 'Empty phase', order: 1, tasks: [] }],
+      }),
+    })
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' }))
+      .rejects.toThrow('Each backlog phase must contain at least one task')
+    expect(dbMocks.tx.backlogPhase.deleteMany).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
+    expect(dbMocks.tx.artifact.update).toHaveBeenCalledWith({
+      where: { projectId_type: { projectId: 'p-1', type: 'BACKLOG' } },
+      data: { status: 'FAILED' },
+    })
+  })
+
   it('reports a safe failure when atomic replacement rolls back', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
