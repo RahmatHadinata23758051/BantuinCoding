@@ -22,7 +22,7 @@ export const GeneratedBacklogPhaseSchema = z.object({
   name: z.string().describe('e.g., Phase 1 — Project Foundation'),
   order: z.number(),
   description: z.string().optional(),
-  tasks: z.array(GeneratedBacklogTaskSchema),
+  tasks: z.array(GeneratedBacklogTaskSchema).min(1, 'Each backlog phase must contain at least one task'),
 })
 
 export type GeneratedBacklogPhase = z.infer<typeof GeneratedBacklogPhaseSchema>
