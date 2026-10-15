@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Check, Copy, Layers } from 'lucide-react'
 
@@ -94,6 +94,21 @@ export function BacklogKanbanBoard({
   const [copiedTaskKey, setCopiedTaskKey] = useState<string | null>(null)
   const [boardMessage, setBoardMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [copyMessage, setCopyMessage] = useState<string | null>(null)
+  const backlogScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = backlogScrollRef.current
+    if (!container) return
+
+    const handleWheel = (event: WheelEvent) => {
+      if (!event.shiftKey || event.deltaY === 0 || container.scrollWidth <= container.clientWidth) return
+      container.scrollLeft += event.deltaY
+      event.preventDefault()
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [])
 
   const getStatusLabel = (status: TaskStatus) => {
     const key =
@@ -305,7 +320,7 @@ export function BacklogKanbanBoard({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto overscroll-x-contain">
+          <div ref={backlogScrollRef} className="overflow-x-auto overscroll-x-contain">
             <div
               className="grid min-w-max items-start gap-8 px-2 py-3"
               role="list"
