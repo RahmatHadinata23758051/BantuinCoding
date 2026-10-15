@@ -684,6 +684,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   })
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [projectName, setProjectName] = useState(initialData.name)
   const [projectLang, setProjectLang] = useState(initialData.language || 'id')
@@ -1255,6 +1256,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 aria-controls={getSectionPanelId(section.id)}
                 onClick={() => {
                   selectTab(section.id)
+                  setIsMobileNavigationOpen(false)
                 }}
                 onKeyDown={(event) => handleSectionKeyDown(event, section.id)}
                 title={t(section.descriptionKey as Parameters<typeof t>[0])}
@@ -1272,6 +1274,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           type="button"
           onClick={() => {
             setIsSettingsOpen(true)
+            setIsMobileNavigationOpen(false)
           }}
           className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-3 py-2.5 text-left text-sm font-semibold text-[var(--workspace-ink)] transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}
         >
@@ -2064,20 +2067,59 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     discoveryButton
   )
 
+  const isDesignSystemTab = activeTab === 'design-system'
+  const hasDesignSystemGraph = Boolean(systemGraph?.nodes?.length)
+  const isDesignSystemCanvas = isDesignSystemTab && hasDesignSystemGraph
+
   return (
-    <div className="min-h-screen bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]" style={WORKSPACE_STYLE}>
-      <div className="min-h-screen items-start gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden self-start lg:flex lg:flex-col">
+    <div
+      className={`${isDesignSystemCanvas ? 'fixed inset-0 overflow-hidden' : 'min-h-screen'} bg-[var(--workspace-canvas)] text-[var(--workspace-ink)]`}
+      style={WORKSPACE_STYLE}
+    >
+      <div className={`${isDesignSystemCanvas ? 'relative h-full overflow-hidden' : 'min-h-screen items-start gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]'}`}>
+        <aside className={`${isDesignSystemCanvas ? 'absolute left-4 top-4 z-40 hidden w-[18rem] lg:flex lg:flex-col' : 'hidden self-start lg:flex lg:flex-col'}`}>
           <div className="w-full rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
             <div className="flex flex-col">{workspaceNavigation}</div>
           </div>
         </aside>
-        <div className="min-w-0">
-          <aside className="mb-6 rounded-[20px] border border-white/80 bg-[var(--workspace-paper)]/90 px-4 py-4 shadow-[0_8px_22px_rgba(36,35,31,0.06)] lg:hidden">
-            <div className="flex flex-col">{workspaceNavigation}</div>
-          </aside>
+        <div className={`${isDesignSystemCanvas ? 'h-full min-w-0' : 'min-w-0'}`}>
+          {!isDesignSystemCanvas && (
+            <aside className="mb-6 rounded-[20px] border border-white/80 bg-[var(--workspace-paper)]/90 px-4 py-4 shadow-[0_8px_22px_rgba(36,35,31,0.06)] lg:hidden">
+              <div className="flex flex-col">{workspaceNavigation}</div>
+            </aside>
+          )}
 
-          <main className="mx-auto w-full max-w-[1500px] px-0 pb-20 pt-2 sm:px-2 lg:px-10 lg:pt-0 xl:px-14">
+          {isDesignSystemCanvas && (
+            <>
+              <button
+                type="button"
+                aria-label={t('openWorkspaceNavigation')}
+                aria-expanded={isMobileNavigationOpen}
+                onClick={() => setIsMobileNavigationOpen(true)}
+                className={`absolute left-4 top-4 z-40 inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--graph-card-border)] bg-[var(--graph-card-bg)] px-4 text-sm font-semibold text-[var(--workspace-ink)] shadow-[var(--graph-card-shadow)] backdrop-blur-md lg:hidden ${BUTTON_FOCUS_CLASS}`}
+              >
+                <span aria-hidden="true" className="mr-2 text-lg leading-none">☰</span>
+                {t('workspaceSections')}
+              </button>
+              {isMobileNavigationOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden">
+                  <button
+                    type="button"
+                    aria-label={t('closeWorkspaceNavigation')}
+                    className="absolute inset-0 bg-[var(--workspace-ink)]/20 backdrop-blur-[2px]"
+                    onClick={() => setIsMobileNavigationOpen(false)}
+                  />
+                  <aside className="relative flex h-full w-full flex-col p-4">
+                    <div className="flex min-h-0 flex-1 flex-col rounded-[24px] border border-white/80 bg-[var(--workspace-paper)] px-5 py-6 shadow-[var(--graph-card-shadow)]">
+                      <div className="flex min-h-0 flex-1 flex-col">{workspaceNavigation}</div>
+                    </div>
+                  </aside>
+                </div>
+              )}
+            </>
+          )}
+
+          <main className={`${isDesignSystemCanvas ? 'h-full w-full overflow-hidden' : 'mx-auto w-full max-w-[1500px] px-0 pb-20 pt-2 sm:px-2 lg:px-10 lg:pt-0 xl:px-14'}`}>
             {activeTab === 'overview' && (
               <header className="border-b border-[var(--workspace-border)] pb-0">
                 <div
@@ -2196,7 +2238,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
             {activeTab !== 'overview' && <h1 className="sr-only">{initialData.name}</h1>}
 
-            <section className={activeTab === 'overview' ? 'py-0' : 'py-5 sm:py-6'}><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)}>
+            <section className={isDesignSystemCanvas ? 'h-full p-0' : activeTab === 'overview' ? 'py-0' : 'py-5 sm:py-6'}><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)} className={isDesignSystemCanvas ? 'h-full' : undefined}>
               <div className="hidden" aria-hidden="true">
                 {sectionItems.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(getSectionTabKey(section.id) as Parameters<typeof t>[0])}</button>)}
               </div>
@@ -2475,8 +2517,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 )}
               </div>
 
-              <div className={activeTab === 'design-system' ? 'space-y-8' : 'hidden'}>
-                {systemGraph ? (
+              <div className={activeTab === 'design-system' ? (isDesignSystemCanvas ? 'h-full w-full' : 'space-y-8') : 'hidden'}>
+                {hasDesignSystemGraph && systemGraph ? (
                   <DesignSystemGraph graph={systemGraph} />
                 ) : (
                   <EmptyState
