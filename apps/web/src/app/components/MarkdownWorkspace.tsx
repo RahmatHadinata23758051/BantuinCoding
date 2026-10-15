@@ -8,15 +8,14 @@ import {
   Eye,
   FileText,
   Loader2,
-  PanelLeft,
   PencilLine,
-  RefreshCw,
-  Save,
+  RotateCcw,
 } from 'lucide-react'
 
 import { getArtifactStatusBadgeStyle } from '@/lib/artifacts/artifact-service'
 import { renderMarkdownToHtml } from '@/lib/artifacts/sanitizer'
 import { cn } from '@/lib/ui'
+import type { SystemGraphData } from '@repo/types'
 
 import { Button, Panel, StatusBadge } from './ui'
 
@@ -32,7 +31,8 @@ export interface WorkspaceArtifactItem {
 interface MarkdownWorkspaceProps {
   projectId: string
   artifacts: WorkspaceArtifactItem[]
-  onArtifactUpdated?: (updated: WorkspaceArtifactItem) => void
+  isGeneratingAll?: boolean
+  onArtifactUpdated?: (updated: WorkspaceArtifactItem, systemGraph?: SystemGraphData | null) => void
 }
 
 type WorkspaceMode = 'editor' | 'preview' | 'split'
@@ -114,6 +114,7 @@ function formatUpdatedAt(value: string) {
 export function MarkdownWorkspace({
   projectId,
   artifacts,
+  isGeneratingAll = false,
   onArtifactUpdated,
 }: MarkdownWorkspaceProps) {
   const t = useTranslations('Workspace')
@@ -170,6 +171,7 @@ export function MarkdownWorkspace({
       const data = (await response.json()) as {
         artifacts?: Array<WorkspaceArtifactItem & { error?: string }>
         backlog?: { backlog_md_content: string }
+        systemGraph?: SystemGraphData | null
       }
       let newContent = ''
       let errorMsg = ''
@@ -186,7 +188,10 @@ export function MarkdownWorkspace({
       else if (newContent) {
         setContent(newContent)
         announce(t('markdownRegenerated'))
-        onArtifactUpdated?.({ ...activeArtifact, content: newContent, status: 'READY', updatedAt: new Date().toISOString() })
+        onArtifactUpdated?.(
+          { ...activeArtifact, content: newContent, status: 'READY', updatedAt: new Date().toISOString() },
+          data.systemGraph,
+        )
       } else {
         announce(t('markdownRefreshing'))
         window.location.reload()
@@ -250,12 +255,8 @@ export function MarkdownWorkspace({
       <aside
         className="flex min-h-0 w-full flex-col overflow-hidden border-b border-[var(--workspace-border)] bg-[var(--workspace-canvas)] lg:h-full lg:max-h-full lg:w-80 lg:flex-shrink-0 lg:border-b-0 lg:border-r"
       >
-        <div className="flex shrink-0 items-start gap-3 border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-4">
-          <PanelLeft className="mt-0.5 size-5 flex-shrink-0 text-[var(--workspace-primary)]" aria-hidden="true" />
-          <div className="min-w-0">
-            <h2 className="text-base font-semibold tracking-[-0.02em] text-[var(--workspace-ink)]">{t('markdownDocuments')}</h2>
-            <p className="mt-1 text-xs leading-5 text-[var(--workspace-muted)]">{t('markdownDocumentsDesc')}</p>
-          </div>
+        <div className="flex shrink-0 items-center border-b border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-3.5">
+          <h2 className="text-sm font-semibold tracking-tight text-[var(--workspace-ink)]">{t('markdownDocuments')}</h2>
         </div>
 
         <nav
@@ -367,12 +368,12 @@ export function MarkdownWorkspace({
                   <Button
                     type="button"
                     onClick={handleRegenerate}
-                    disabled={isRegenerating || isSaving}
+                    disabled={isRegenerating || isSaving || isGeneratingAll}
                     variant="secondary"
-                    className="gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)]"
+                    className="gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)] hover:bg-[var(--workspace-yellow-soft)]"
                     aria-busy={isRegenerating}
                   >
-                    {isRegenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                    {isRegenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RotateCcw className="size-4" aria-hidden="true" />}
                     {isRegenerating ? t('markdownRegenerating') : t('markdownRegenerate')}
                   </Button>
                 )}
@@ -381,10 +382,14 @@ export function MarkdownWorkspace({
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  variant="success"
-                  className="bg-[var(--workspace-mint-soft)] text-[var(--workspace-deep)] hover:bg-[var(--workspace-mint)]"
+                  variant="neutral"
+                  className="gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-ink)] hover:bg-[var(--workspace-canvas)]"
                 >
-                  {isSaving ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : saveMessageType === 'status' && saveMessage ? <CheckCircle2 className="size-4" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
+                  {isSaving ? (
+                    <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" />
+                  ) : saveMessageType === 'status' && saveMessage ? (
+                    <CheckCircle2 className="size-4 text-[#1b6a4e]" aria-hidden="true" />
+                  ) : null}
                   {isSaving ? t('markdownSaving') : t('markdownSave')}
                 </Button>
               </div>
