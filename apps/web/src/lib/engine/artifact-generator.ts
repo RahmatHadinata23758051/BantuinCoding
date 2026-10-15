@@ -11,14 +11,88 @@ import {
   ARCHITECTURE_GENERATOR_SYSTEM_PROMPT,
   ArchitectureDocumentSchema,
   buildArchitectureGeneratorUserPrompt,
+  buildArchitectureSystemGraph,
+  parseMermaidSystemGraph,
 } from '@/lib/prompts/architecture-generator'
 import { generateDesignArtifactContent } from '@/lib/engine/design-generator'
 import { scanContentForSecrets } from '@/lib/export/export-service'
 
+const SAMPLE_VALUE_MARKERS = /(?:^|[-_ .])(?:dummy|example|placeholder|replace[-_ ]?me|change[-_ ]?me|changeme|sample|your|insert|set[-_ ]?me|todo)(?:$|[-_ .])/i
+const SAMPLE_CREDENTIAL_MARKERS = /(?:^|[-_. ])(?:password|pass|secret|token|api[-_ ]?key|key|admin|user|root|postgres|mysql|mongo|mongodb|example|dummy|placeholder|changeme|test|demo)(?:$|[-_. ])/i
+const SAMPLE_HOSTS = /^(?:localhost|127\.0\.0\.1|::1|0\.0\.0\.0|db|db-host|postgres|mysql|mongo|mongodb|database|host|server|my-db|mydb)$/i
+const DATABASE_URL_VARIABLE = /^(?:[A-Z0-9_]*(?:DATABASE_URL|DIRECT_URL|DB_URL))$/i
+const SENSITIVE_VARIABLE = /^(?:API_KEY|[A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)$/i
+const DATABASE_URL_SCHEME = /^(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\//i
+
+function isSafeUnresolvedPlaceholder(value: string): boolean {
+  return value === '' || /^\$\{[^}\n]+\}$/.test(value) || /^<[^>\n]+>$/.test(value)
+}
+
+function hasGenuineApiKeyPattern(value: string): boolean {
+  return (
+    /sk-[a-zA-Z0-9]{20,}/i.test(value) ||
+    /gsk_[a-zA-Z0-9]{20,}/i.test(value) ||
+    /AIzaSy[a-zA-Z0-9_\-]{33}/i.test(value) ||
+    /lin_api_[a-zA-Z0-9]{20,}/i.test(value) ||
+    /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/i.test(value) ||
+    /\beyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\b/.test(value)
+  )
+}
+
+function isClearlySampleValue(value: string): boolean {
+  const normalized = value.trim()
+  return !isSafeUnresolvedPlaceholder(normalized) && (
+    SAMPLE_VALUE_MARKERS.test(normalized) ||
+    /^(?:password|pass|secret|token|api[-_ ]?key|key|value|xxx+)$/i.test(normalized)
+  )
+}
+
+function isClearlySampleCredential(value: string): boolean {
+  const normalized = value.trim()
+  return isSafeUnresolvedPlaceholder(normalized) || SAMPLE_CREDENTIAL_MARKERS.test(normalized)
+}
+
+function isClearlySampleDatabaseUrl(value: string): boolean {
+  if (!DATABASE_URL_SCHEME.test(value) || hasGenuineApiKeyPattern(value)) return false
+
+  try {
+    const url = new URL(value)
+    const username = decodeURIComponent(url.username)
+    const password = decodeURIComponent(url.password)
+    const hasCredentials = Boolean(username || password)
+    const isSampleHost = SAMPLE_HOSTS.test(url.hostname)
+
+    return hasCredentials
+      ? isClearlySampleCredential(username) || isClearlySampleCredential(password)
+      : isSampleHost
+  } catch {
+    return false
+  }
+}
+
+function isClearlySampleSecretValue(value: string): boolean {
+  if (hasGenuineApiKeyPattern(value)) return false
+  return isClearlySampleValue(value) || /^[a-f0-9]{32,}$/i.test(value)
+}
+
+/**
+ * Replaces clearly dummy environment examples before the final secret scan.
+ * Values that do not unambiguously look like examples remain untouched and
+ * are rejected by the scanner instead of being silently hidden.
+ * ponytail: line-based regex sanitizer handles conventional .env assignments; upgrade to AST/code-block parser if multi-line assignments appear.
+ */
 export function scrubSampleSecrets(markdown: string): string {
-  return markdown
-    .replace(/\b([A-Z0-9_]*(?:DATABASE_URL|DIRECT_URL|DB_URL))\s*=\s*(["'])(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s"']*\2/gi, '$1=""')
-    .replace(/\b([A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*)\s*=\s*(["'])[a-f0-9]{32,}\2/gi, '$1=""')
+  return markdown.replace(
+    /^(\s*(?:export\s+)?)([A-Z][A-Z0-9_]*)(\s*=\s*)(?:(\"|')([^\"'\n]*?)\4|([^\s#\n]+))(.*)$/gim,
+    (line, prefix: string, variable: string, equals: string, _quote: string | undefined, quotedValue: string | undefined, unquotedValue: string | undefined, suffix: string) => {
+      const value = (quotedValue ?? unquotedValue ?? '').trim()
+      const shouldScrub = DATABASE_URL_VARIABLE.test(variable)
+        ? isClearlySampleDatabaseUrl(value)
+        : SENSITIVE_VARIABLE.test(variable) && isClearlySampleSecretValue(value)
+
+      return shouldScrub ? `${prefix}${variable}${equals}\"\"${suffix}` : line
+    },
+  )
 }
 
 export interface GenerateArtifactsOptions {
@@ -349,6 +423,21 @@ export async function generateCoreArtifacts({
       },
     })
 
+    if (artifactType === 'ARCHITECTURE') {
+      await db.artifact.upsert({
+        where: { projectId_type: { projectId, type: 'SYSTEM_GRAPH' } },
+        update: { status: 'GENERATING', contextId: currentContextRecord.id, content: '' },
+        create: {
+          projectId,
+          contextId: currentContextRecord.id,
+          type: 'SYSTEM_GRAPH',
+          path: '.system-graph.json',
+          content: '',
+          status: 'GENERATING',
+        },
+      })
+    }
+
     try {
       let markdownContent = ''
 
@@ -368,6 +457,37 @@ export async function generateCoreArtifacts({
           temperature: 0.2,
         })
         markdownContent = res.markdown_content
+
+        const effectiveGraph =
+          res.system_graph && Array.isArray(res.system_graph.nodes) && res.system_graph.nodes.length > 0
+            ? res.system_graph
+            : (parseMermaidSystemGraph(res.markdown_content) ?? buildArchitectureSystemGraph(res))
+
+        if (effectiveGraph && Array.isArray(effectiveGraph.nodes) && effectiveGraph.nodes.length > 0) {
+          const nodeIds = new Set(effectiveGraph.nodes.map((n) => n.id))
+          const validEdges = (effectiveGraph.edges || []).filter(
+            (e) => nodeIds.has(e.source) && nodeIds.has(e.target),
+          )
+          const sanitizedGraph = {
+            nodes: effectiveGraph.nodes,
+            edges: validEdges,
+          }
+          const graphJson = JSON.stringify(sanitizedGraph)
+          await db.artifact.update({
+            where: { projectId_type: { projectId, type: 'SYSTEM_GRAPH' } },
+            data: {
+              content: graphJson,
+              status: 'READY',
+              contextId: currentContextRecord.id,
+              provider: providerConfig?.provider ?? 'FALLBACK',
+              model: providerConfig?.model ?? 'BASELINE',
+            },
+          })
+        } else {
+          await db.artifact.delete({
+            where: { projectId_type: { projectId, type: 'SYSTEM_GRAPH' } },
+          })
+        }
       } else if (artifactType === 'DESIGN') {
         markdownContent = await generateDesignArtifactContent(
           provider,
@@ -412,6 +532,12 @@ export async function generateCoreArtifacts({
         where: { projectId_type: { projectId, type: artifactType } },
         data: { status: 'FAILED' },
       })
+      if (artifactType === 'ARCHITECTURE') {
+        await db.artifact.update({
+          where: { projectId_type: { projectId, type: 'SYSTEM_GRAPH' } },
+          data: { status: 'FAILED', content: '' },
+        })
+      }
 
       results.push({
         type: artifactType,
@@ -476,6 +602,9 @@ export async function regenerateFailedArtifacts({
   const typesToGenerate = coreCandidateTypes.filter((type) =>
     requiredPlanTypes.has(type) && !readyOrModified.has(type),
   )
+
+  // Agent.md is handled by the dedicated generator; BACKLOG.md is a separate
+  // pipeline stage and must not be regenerated by this core-document helper.
 
   if (typesToGenerate.length === 0 && requiredPlanTypes.size > 0) {
     return []
