@@ -19,6 +19,7 @@ import {
   buildDesignGeneratorUserPrompt,
   DESIGN_GENERATOR_SYSTEM_PROMPT,
 } from '@/lib/prompts/design-generator'
+import { scanContentForSecrets } from '@/lib/export/export-service'
 import {
   generateCoreArtifacts,
   scrubSampleSecrets,
@@ -36,6 +37,7 @@ vi.mock('@repo/db', () => ({
     artifact: {
       upsert: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }))
@@ -128,6 +130,13 @@ describe('Artifact Generation Prompts & Schemas', () => {
       data_flow: [{ flow_name: 'Login flow', description: 'Flow desc' }],
       security_architecture: ['BYOK Key isolation'],
       deployment_strategy: 'Vercel auto-deploy',
+      system_graph: {
+        nodes: [
+          { id: 'client', label: 'Web client', category: 'client', description: 'Browser entry point' },
+          { id: 'api', label: 'Project API', category: 'api', description: 'Request boundary' },
+        ],
+        edges: [{ source: 'client', target: 'api', label: 'requests' }],
+      },
       markdown_content: '# ARCHITECTURE\n\nContent',
     }
     const result = ArchitectureDocumentSchema.safeParse(archData)
@@ -316,6 +325,60 @@ describe('Generated sample secret sanitizer', () => {
       'NEXTAUTH_SECRET=""',
       'API_TOKEN=${API_TOKEN}',
     ].join('\n'))
+  })
+
+  it('sanitizes quoted, unquoted, exported, and named sample values', () => {
+    const content = [
+      'export DATABASE_URL=postgresql://user:password@localhost:5432/db # local example',
+      'DATABASE_URL="postgresql://localhost:5432/db"',
+      'NEXTAUTH_SECRET="your-secret"',
+      'JWT_SECRET=placeholder',
+      'API_KEY=your_api_key_here',
+      'API_TOKEN=${API_TOKEN}',
+      'OTHER_SECRET=<set-me>',
+    ].join('\n')
+
+    expect(scrubSampleSecrets(content)).toBe([
+      'export DATABASE_URL="" # local example',
+      'DATABASE_URL=""',
+      'NEXTAUTH_SECRET=""',
+      'JWT_SECRET=""',
+      'API_KEY=""',
+      'API_TOKEN=${API_TOKEN}',
+      'OTHER_SECRET=<set-me>',
+    ].join('\n'))
+  })
+
+  it('leaves ambiguous credentials untouched so the final scanner can reject them', () => {
+    const content = [
+      'DATABASE_URL=postgresql://service:9f7d3a8c2b1e@production-db.example.net/app',
+      'API_KEY=production_live_value_unmasked',
+    ].join('\n')
+
+    expect(scrubSampleSecrets(content)).toBe(content)
+  })
+
+  it('allows scrubbed sample content to pass strict scanner while blocking real secrets', () => {
+    const generatedSample = [
+      '# ARCHITECTURE.md',
+      'DATABASE_URL="postgresql://pos_admin:secure_password@db-host:5432/resto_pos"',
+      'NEXTAUTH_SECRET="your-secret-key"',
+      'JWT_SECRET="changeme"',
+      'API_TOKEN=${API_TOKEN}',
+    ].join('\n')
+
+    const scrubbed = scrubSampleSecrets(generatedSample)
+    expect(() => scanContentForSecrets(scrubbed, 'ARCHITECTURE.md')).not.toThrow()
+
+    const genuineSecret = [
+      '# ARCHITECTURE.md',
+      'API_KEY="sk-1234567890abcdef1234567890"',
+    ].join('\n')
+
+    const scrubbedGenuine = scrubSampleSecrets(genuineSecret)
+    expect(() => scanContentForSecrets(scrubbedGenuine, 'ARCHITECTURE.md')).toThrow(
+      'SECURITY ALERT: Potential API key leakage detected in ARCHITECTURE.md',
+    )
   })
 })
 
@@ -593,6 +656,182 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
       where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } },
       data: { status: 'FAILED' },
     })
+  })
+
+  it('persists the same-call architecture graph and removes invalid edges', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Graph Project',
+      contexts: [{
+        id: 'ctx-1',
+        version: 1,
+        contentJson: '{}',
+        artifactPlans: [{ type: 'ARCHITECTURE', isRequired: true }],
+      }],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'claude-sonnet-4-5',
+      apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({
+        markdown_content: '# Architecture',
+        system_graph: {
+          nodes: [{ id: 'client', label: 'Client', category: 'client', description: 'Browser' }],
+          edges: [
+            { source: 'client', target: 'missing', label: 'ignored' },
+          ],
+        },
+      }),
+    })
+
+    await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['ARCHITECTURE'] })
+
+    const graphUpdate = vi.mocked(db.artifact.update).mock.calls.find(
+      ([call]) => call.where?.projectId_type?.type === 'SYSTEM_GRAPH',
+    )
+    expect(graphUpdate?.[0]).toEqual(expect.objectContaining({
+      where: { projectId_type: { projectId: 'p-1', type: 'SYSTEM_GRAPH' } },
+      data: expect.objectContaining({
+        status: 'READY',
+        content: JSON.stringify({
+          nodes: [{ id: 'client', label: 'Client', category: 'client', description: 'Browser' }],
+          edges: [],
+        }),
+      }),
+    }))
+  })
+
+  it('falls back to validated architecture components when provider omits graph data', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Fallback Graph Project',
+      contexts: [{
+        id: 'ctx-1',
+        version: 1,
+        contentJson: '{}',
+        artifactPlans: [{ type: 'ARCHITECTURE', isRequired: true }],
+      }],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({
+        markdown_content: '# Architecture',
+        components: [
+          { name: 'Web Client', responsibility: 'Browser UI', boundary: 'Client' },
+          { name: 'Project API', responsibility: 'Request handling', boundary: 'Server' },
+        ],
+        data_flow: [{ flow_name: 'Browser requests API', description: 'Web Client sends requests to Project API' }],
+      }),
+    })
+
+    await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['ARCHITECTURE'] })
+
+    const graphUpdate = vi.mocked(db.artifact.update).mock.calls.find(
+      ([call]) => call.where?.projectId_type?.type === 'SYSTEM_GRAPH',
+    )
+    expect(graphUpdate?.[0]?.data).toEqual(expect.objectContaining({
+      status: 'READY',
+      content: JSON.stringify({
+        nodes: [
+          { id: 'web-client', label: 'Web Client', category: 'client', description: 'Browser UI' },
+          { id: 'project-api', label: 'Project API', category: 'api', description: 'Request handling' },
+        ],
+        edges: [{ source: 'web-client', target: 'project-api', label: 'Browser requests API' }],
+      }),
+    }))
+  })
+
+  it('deletes system graph when no usable graph or components are present', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Empty Architecture Project',
+      contexts: [{
+        id: 'ctx-1',
+        version: 1,
+        contentJson: '{}',
+        artifactPlans: [{ type: 'ARCHITECTURE', isRequired: true }],
+      }],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({
+        markdown_content: '# Architecture',
+        components: [],
+        data_flow: [],
+      }),
+    })
+
+    await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['ARCHITECTURE'] })
+
+    expect(db.artifact.delete).toHaveBeenCalledWith({
+      where: { projectId_type: { projectId: 'p-1', type: 'SYSTEM_GRAPH' } },
+    })
+  })
+
+  it('retries only incomplete planned core artifacts', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    const mockProject = {
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Retry Project',
+      contexts: [{
+        id: 'ctx-1',
+        version: 1,
+        contentJson: '{}',
+        artifactPlans: [
+          { type: 'PRD', isRequired: true },
+          { type: 'DESIGN', isRequired: true },
+          { type: 'BACKLOG', isRequired: true },
+        ],
+      }],
+      artifacts: [
+        { type: 'PRD', contextId: 'ctx-1', status: 'READY' },
+        { type: 'DESIGN', contextId: 'ctx-1', status: 'FAILED' },
+      ],
+    } as never
+
+    vi.mocked(db.project.findFirst).mockResolvedValue(mockProject)
+
+    vi.mocked(getProviderConfig).mockReturnValue({ provider: 'ANTHROPIC', model: 'model', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValue({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValueOnce({ markdown_content: '# Design' }),
+    })
+
+    const { regenerateFailedArtifacts } = await import('@/lib/engine/artifact-generator')
+    const results = await regenerateFailedArtifacts({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(results[0]).toEqual(expect.objectContaining({ type: 'DESIGN', status: 'READY' }))
+    expect(db.artifact.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } },
+    }))
   })
 
   it('uses AI provider when BYOK session is active', async () => {
