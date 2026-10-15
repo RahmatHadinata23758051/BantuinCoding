@@ -6,6 +6,7 @@ import {
 } from '@/lib/prompts/agent-rules-generator'
 import {
   generateAgentAndRulesArtifacts,
+  regenerateIncompleteAgentArtifacts,
   generateFallbackAgentMd,
   generateFallbackRulesMd,
 } from '@/lib/engine/agent-rules-generator'
@@ -138,6 +139,37 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
 
     expect(results[0]?.content).toBe('# AI Agent.md')
     expect(results[1]).toBeUndefined()
+  })
+
+  it('preserves a current READY Agent artifact during incomplete retry', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      contexts: [{
+        id: 'ctx-1',
+        isCurrent: true,
+        contentJson: '{}',
+        artifactPlans: [{ type: 'AGENT', isRequired: true }],
+      }],
+      artifacts: [{ type: 'AGENT', contextId: 'ctx-1', status: 'READY' }],
+    } as never)
+
+    await expect(regenerateIncompleteAgentArtifacts({ userId: 'u-1', projectId: 'p-1' })).resolves.toEqual([])
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
+  })
+
+  it('skips Agent retry when Agent is not in the current plan', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}', artifactPlans: [] }],
+      artifacts: [],
+    } as never)
+
+    await expect(regenerateIncompleteAgentArtifacts({ userId: 'u-1', projectId: 'p-1' })).resolves.toEqual([])
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
   })
 
   it('marks Agent & Rules artifacts FAILED when AI provider throws', async () => {
