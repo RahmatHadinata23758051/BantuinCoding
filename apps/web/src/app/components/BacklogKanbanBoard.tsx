@@ -246,8 +246,8 @@ export function BacklogKanbanBoard({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 rounded-[var(--radius-cards)] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex w-full min-w-0 max-w-full flex-wrap items-center gap-3">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
             <Layers size={16} className="text-[var(--workspace-primary)]" aria-hidden="true" />
             <label htmlFor="phase-filter" className="text-xs font-medium text-[var(--workspace-body)]">
               {t('phaseLabel')}
@@ -256,7 +256,7 @@ export function BacklogKanbanBoard({
               id="phase-filter"
               value={selectedPhase}
               onChange={(event) => setSelectedPhase(event.target.value)}
-              className="rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-2.5 py-1.5 font-sans text-xs font-medium text-[var(--workspace-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
+              className="min-w-0 max-w-full truncate rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-2.5 py-1.5 font-sans text-xs font-medium text-[var(--workspace-ink)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
             >
               <option value="ALL">{t('allPhases', { count: phases.length })}</option>
               {phases.map((phase) => (
@@ -273,7 +273,7 @@ export function BacklogKanbanBoard({
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder={t('backlogSearch')}
             aria-label={t('backlogSearch')}
-            className="w-48 rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-3 py-1.5 font-sans text-xs font-medium text-[var(--workspace-ink)] placeholder:text-[var(--workspace-muted)] focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
+            className="w-full rounded-[var(--radius-buttons)] border border-[var(--workspace-border)] bg-[var(--workspace-canvas)] px-3 py-1.5 font-sans text-xs font-medium text-[var(--workspace-ink)] placeholder:text-[var(--workspace-muted)] sm:w-48 sm:focus:w-64 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--workspace-primary)]"
           />
         </div>
       </div>
