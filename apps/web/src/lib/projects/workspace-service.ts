@@ -2,18 +2,37 @@ import { db } from '@repo/db'
 import type { SystemGraphData } from '@repo/types'
 import { parseMermaidSystemGraph } from '@/lib/prompts/architecture-generator'
 
+function normalizeGraphText(value: string) {
+  return value.replace(/<br\s*\/?\s*>/gi, '\n').replace(/\r\n?/g, '\n').trim()
+}
+
+function normalizeGraph(graph: SystemGraphData): SystemGraphData {
+  return {
+    nodes: graph.nodes.map((node) => ({
+      ...node,
+      label: normalizeGraphText(node.label),
+      description: normalizeGraphText(node.description),
+    })),
+    edges: graph.edges.map((edge) => ({
+      ...edge,
+      ...(edge.label === undefined ? {} : { label: normalizeGraphText(edge.label) }),
+    })),
+  }
+}
+
 export function parseWorkspaceSystemGraph(content: string): SystemGraphData | null {
   try {
     const parsed = JSON.parse(content) as SystemGraphData
     if (Array.isArray(parsed.nodes) && parsed.nodes.length > 0 && Array.isArray(parsed.edges)) {
       const nodeIds = new Set(parsed.nodes.map((node) => node.id))
-      return {
+      return normalizeGraph({
         nodes: parsed.nodes,
         edges: parsed.edges.filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)),
-      }
+      })
     }
   } catch {}
-  return parseMermaidSystemGraph(content)
+  const parsed = parseMermaidSystemGraph(content)
+  return parsed ? normalizeGraph(parsed) : null
 }
 
 export async function repairMissingSystemGraph({ userId, projectId }: { userId: string; projectId: string }) {
