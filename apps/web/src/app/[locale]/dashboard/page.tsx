@@ -143,7 +143,7 @@ export default async function DashboardPage() {
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#706b64]">{t('emptyDesc')}</p>
             </div>
           ) : (
-            <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {projects.map((project) => {
                 const tone = STATUS_TONE[project.status] ?? 'neutral'
                 const isPendingClassification = project.classificationStatus === 'PENDING'
