@@ -143,8 +143,8 @@ const ALL_SECTIONS: {
 }[] = [
   { id: 'overview', labelKey: 'sectionOverview', descriptionKey: 'sectionOverviewDesc', icon: ClipboardCheck },
   { id: 'context', labelKey: 'sectionContext', descriptionKey: 'sectionContextDesc', icon: Braces },
-  { id: 'design-system', labelKey: 'sectionDesignSystem', descriptionKey: 'sectionDesignSystemDesc', icon: Network },
   { id: 'documents', labelKey: 'sectionDocuments', descriptionKey: 'sectionDocumentsDesc', icon: Files },
+  { id: 'design-system', labelKey: 'sectionDesignSystem', descriptionKey: 'sectionDesignSystemDesc', icon: Network },
   { id: 'backlog', labelKey: 'sectionBacklog', descriptionKey: 'sectionBacklogDesc', icon: ListChecks },
   { id: 'export', labelKey: 'sectionExport', descriptionKey: 'sectionExportDesc', icon: Package },
 ]
