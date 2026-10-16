@@ -145,7 +145,11 @@ export function validateRuleBasedConsistency(
 
   // Rule 2: Backlog Doc References Check
   if (backlog) {
-    const docRefs = new Set(backlog.match(/[A-Z0-9_\-]+\.md/gi) || [])
+    const relevantDocsLines = backlog.match(/(?:\*\*Relevant Docs:\*\*|Relevant Docs:)[^\n]*/gi)
+    const rawRefs = relevantDocsLines
+      ? relevantDocsLines.flatMap((line) => line.match(/[A-Z0-9_\-]+\.md/gi) || [])
+      : (backlog.match(/[A-Z0-9_\-]+\.md/gi) || [])
+    const docRefs = new Set(rawRefs)
     const existingPaths = new Set(artifacts.map((a) => a.path.toLowerCase()))
 
     for (const ref of docRefs) {
