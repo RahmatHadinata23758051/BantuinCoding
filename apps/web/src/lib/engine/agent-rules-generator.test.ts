@@ -45,24 +45,61 @@ describe('Agent Rules Prompt & Schema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('builds user prompt with target agent and context', () => {
-    const prompt = buildAgentRulesGeneratorUserPrompt('Acme', 'CLAUDE_CODE', '{"name":"Acme"}')
+  it('builds user prompt with exact resolved skill details', () => {
+    const prompt = buildAgentRulesGeneratorUserPrompt(
+      'Acme',
+      'CLAUDE_CODE',
+      '{"name":"Acme"}',
+      [{
+        name: 'ui-ux-pro-max',
+        source: 'skillsllm.com',
+        purpose: 'Improves accessible UI implementation.',
+        trigger: 'When building frontend screens.',
+        installationHint: 'npx skills-llm install ui-ux-pro-max',
+      }],
+    )
+
     expect(prompt).toContain('Project Name: Acme')
     expect(prompt).toContain('Target: Any modern AI coding agent')
+    expect(prompt).toContain('ui-ux-pro-max')
+    expect(prompt).toContain('Improves accessible UI implementation.')
+    expect(prompt).toContain('When building frontend screens.')
+    expect(prompt).toContain('npx skills-llm install ui-ux-pro-max')
+    expect(prompt).toContain('Recommended Agent Skills')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('unified operational contract')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain(
       'DESIGN for visual/interaction scope',
     )
   })
+
+  it('does not invent skills when recommendations are unresolved', () => {
+    const prompt = buildAgentRulesGeneratorUserPrompt('Acme', '{}')
+
+    expect(prompt).toContain('Skill recommendations have not been resolved yet')
+    expect(prompt).toContain('do not invent skills')
+  })
 })
 
 describe('Agent Rules Fallback Generators', () => {
-  it('generates fallback Agent.md markdown', () => {
+  it('generates fallback Agent.md markdown without inventing unresolved skills', () => {
     const md = generateFallbackAgentMd('Acme App', 'CLAUDE_CODE')
     expect(md).toContain('# Agent.md — Universal Operational Contract for AI Coding Agents')
     expect(md).toContain('Project: Acme App')
     expect(md).toContain('Document Hierarchy Precedence')
     expect(md).toContain('DESIGN.md (visual and interaction scope)')
+    expect(md).toContain('Skill recommendations have not been resolved yet')
+    expect(md).not.toContain('ui-ux-pro-max')
+  })
+
+  it('renders only explicitly supplied fallback skills', () => {
+    const md = generateFallbackAgentMd('Acme App', 'CLAUDE_CODE', [{
+      name: 'catalog-skill',
+      purpose: 'Catalog purpose',
+      trigger: 'When the catalog skill applies.',
+    }])
+
+    expect(md).toContain('catalog-skill')
+    expect(md).not.toContain('ui-ux-pro-max')
   })
 
   it('generates fallback RULES.md markdown', () => {
@@ -117,6 +154,13 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
       name: 'Test Project',
       targetAgent: 'CLAUDE_CODE',
       contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}' }],
+      skillRecommendations: [{
+        name: 'ui-ux-pro-max',
+        source: 'skillsllm.com',
+        purpose: 'Improves accessible UI implementation.',
+        trigger: 'When building frontend screens.',
+        metadata: JSON.stringify({ installation_hint: 'npx skills-llm install ui-ux-pro-max' }),
+      }],
     } as never)
 
     vi.mocked(getProviderConfig).mockReturnValueOnce({
@@ -139,6 +183,13 @@ describe('Agent Rules Engine — generateAgentAndRulesArtifacts', () => {
 
     expect(results[0]?.content).toBe('# AI Agent.md')
     expect(results[1]).toBeUndefined()
+
+    const provider = vi.mocked(createProvider).mock.results[0]?.value
+    expect(provider?.generateStructured).toHaveBeenCalledWith(
+      expect.stringContaining('ui-ux-pro-max'),
+      AgentRulesDocumentSchema,
+      expect.any(Object),
+    )
   })
 
   it('preserves a current READY Agent artifact during incomplete retry', async () => {
