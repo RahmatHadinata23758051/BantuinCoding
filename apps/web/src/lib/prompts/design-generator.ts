@@ -86,20 +86,20 @@ export function validateDesignStructure(markdown: string): string[] {
   return violations
 }
 
-export const DesignDocumentSchema = z
-  .object({
-    title: z.string().default('DESIGN.md'),
-    markdown_content: z.string().describe('Full formatted DESIGN.md content in Markdown'),
-  })
-  .superRefine((value, ctx) => {
-    for (const message of validateDesignStructure(value.markdown_content || '')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['markdown_content'],
-        message,
-      })
-    }
-  })
+export const DesignDocumentPayloadSchema = z.object({
+  title: z.string().default('DESIGN.md'),
+  markdown_content: z.string().describe('Full formatted DESIGN.md content in Markdown'),
+})
+
+export const DesignDocumentSchema = DesignDocumentPayloadSchema.superRefine((value, ctx) => {
+  for (const message of validateDesignStructure(value.markdown_content || '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['markdown_content'],
+      message,
+    })
+  }
+})
 
 export type DesignDocumentOutput = z.infer<typeof DesignDocumentSchema>
 
