@@ -84,6 +84,23 @@ describe('Rule-Based Consistency Validator', () => {
     expect(report.issues.filter((issue) => issue.category === 'INVALID_BACKLOG_DOC_REF')).toHaveLength(1)
   })
 
+  it('does not treat markdown filenames mentioned in task descriptions as backlog document references', () => {
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'BACKLOG',
+        path: 'BACKLOG.md',
+        content: `### TASK-007 — Build specification compiler
+**Description:** Generates standard markdown files ('prd.md', 'system-architecture.md', 'task-breakdown.md').
+**Relevant Docs:** PRD.md, ARCHITECTURE.md`,
+      },
+      { type: 'PRD', path: 'PRD.md', content: '# PRD' },
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: '# Architecture' },
+    ])
+
+    expect(report.issues.filter((issue) => issue.category === 'INVALID_BACKLOG_DOC_REF')).toHaveLength(0)
+    expect(report.isConsistent).toBe(true)
+  })
+
   it('blocks secret-containing artifacts and reports no matched secret values', () => {
     const report = validateRuleBasedConsistency([
       {
