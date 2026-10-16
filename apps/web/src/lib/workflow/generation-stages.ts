@@ -10,14 +10,14 @@ export const GENERATION_STAGES = [
     descriptionKey: 'generationStageDocumentsDesc',
   },
   {
-    id: 'agentRules',
-    labelKey: 'generationStageAgentRules',
-    descriptionKey: 'generationStageAgentRulesDesc',
-  },
-  {
     id: 'skills',
     labelKey: 'generationStageSkills',
     descriptionKey: 'generationStageSkillsDesc',
+  },
+  {
+    id: 'agentRules',
+    labelKey: 'generationStageAgentRules',
+    descriptionKey: 'generationStageAgentRulesDesc',
   },
   {
     id: 'backlog',
