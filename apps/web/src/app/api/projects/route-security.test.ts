@@ -221,6 +221,68 @@ describe('BK-025 workflow route security', () => {
     expect(mocks.updateProject).not.toHaveBeenCalled()
   })
 
+  it('validate route rejects unready projects with 400 and blocks export transitions', async () => {
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'READY' })
+    mocks.getProjectReadiness.mockResolvedValue({
+      isReady: false,
+      requiredTypes: ['PRD'],
+      missingTypes: ['PRD'],
+      blockingTypes: [],
+    })
+
+    const response = await validate(postRequest(), params)
+    const json = await body<{ error?: string }>(response)
+
+    expect(response.status).toBe(400)
+    expect(json.error).toContain('Project documents are not ready for validation. Missing or incomplete: PRD.')
+    expect(mocks.auditProjectConsistency).not.toHaveBeenCalled()
+    expect(mocks.updateProject).not.toHaveBeenCalled()
+  })
+
+  it('validate route promotes consistent project to EXPORTABLE', async () => {
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'READY' })
+    mocks.getProjectReadiness.mockResolvedValue({
+      isReady: true,
+      requiredTypes: ['PRD'],
+      missingTypes: [],
+      blockingTypes: [],
+    })
+    mocks.auditProjectConsistency.mockResolvedValue({
+      isConsistent: true,
+      score: 100,
+      issues: [],
+    })
+
+    const response = await validate(postRequest(), params)
+    const json = await body<{ report?: { isConsistent?: boolean } }>(response)
+
+    expect(response.status).toBe(200)
+    expect(json.report?.isConsistent).toBe(true)
+    expect(mocks.updateProject).toHaveBeenCalledWith('user-1', 'project-1', { status: 'EXPORTABLE' })
+  })
+
+  it('validate route demotes inconsistent project back to READY', async () => {
+    mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'EXPORTABLE' })
+    mocks.getProjectReadiness.mockResolvedValue({
+      isReady: true,
+      requiredTypes: ['PRD'],
+      missingTypes: [],
+      blockingTypes: [],
+    })
+    mocks.auditProjectConsistency.mockResolvedValue({
+      isConsistent: false,
+      score: 60,
+      issues: [{ category: 'DATABASE_MISMATCH', message: 'DB mismatch', severity: 'error' }],
+    })
+
+    const response = await validate(postRequest(), params)
+    const json = await body<{ report?: { isConsistent?: boolean } }>(response)
+
+    expect(response.status).toBe(200)
+    expect(json.report?.isConsistent).toBe(false)
+    expect(mocks.updateProject).toHaveBeenCalledWith('user-1', 'project-1', { status: 'READY' })
+  })
+
   it('generate route returns the persisted system graph for client synchronization', async () => {
     mocks.requireProjectAction.mockResolvedValue({ id: 'project-1', status: 'GENERATING' })
     mocks.generateCoreArtifacts.mockResolvedValue([
