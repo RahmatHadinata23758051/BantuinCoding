@@ -6,6 +6,7 @@ import {
   AGENT_RULES_GENERATOR_SYSTEM_PROMPT,
   AgentRulesDocumentSchema,
   buildAgentRulesGeneratorUserPrompt,
+  type AgentSkillRecommendation,
 } from '@/lib/prompts/agent-rules-generator'
 import type { GeneratedArtifactResult } from '@/lib/engine/artifact-generator'
 
@@ -20,8 +21,19 @@ export interface GenerateAgentRulesOptions {
 export function generateFallbackAgentMd(
   projectName: string,
   _targetAgent?: string,
+  skills?: AgentSkillRecommendation[],
 ): string {
   void _targetAgent
+
+  const skillsMarkdown = skills && skills.length > 0
+    ? skills
+        .map(
+          (s) =>
+            `- **\`${s.name}\`**: ${s.purpose}\n  - *Trigger*: ${s.trigger}${s.installationHint ? `\n  - *Install*: \`${s.installationHint}\`` : ''}`,
+        )
+        .join('\n')
+    : '_Skill recommendations have not been resolved yet._'
+
   return `# Agent.md — Universal Operational Contract for AI Coding Agents
 
 ## Project: ${projectName}
@@ -52,7 +64,10 @@ You are the primary coding agent assigned to implement ${projectName}.
 - [ ] No secrets exposed
 - [ ] Acceptance criteria met
 
-### 5. Definition of Done
+### 5. Recommended Agent Skills & Triggers
+${skillsMarkdown}
+
+### 6. Definition of Done
 Task is complete only when all quality gate checks pass.
 `
 }
@@ -89,6 +104,7 @@ export async function generateAgentAndRulesArtifacts({
         where: { isCurrent: true },
         take: 1,
       },
+      skillRecommendations: true,
     },
   })
 
@@ -107,9 +123,34 @@ export async function generateAgentAndRulesArtifacts({
 
   await updateProject(userId, projectId, { status: 'GENERATING' })
 
+  const recommendations: AgentSkillRecommendation[] = (project.skillRecommendations ?? []).map((skill) => {
+    let metadata: {
+      applicable_phases?: string[]
+      applicable_task_types?: string[]
+      installation_hint?: string
+    } = {}
+    if (skill.metadata) {
+      try {
+        metadata = JSON.parse(skill.metadata)
+      } catch {}
+    }
+
+    return {
+      name: skill.name,
+      purpose: skill.purpose,
+      trigger: skill.trigger,
+      source: skill.source,
+      installationHint: metadata.installation_hint,
+      applicablePhases: metadata.applicable_phases,
+      applicableTaskTypes: metadata.applicable_task_types,
+    }
+  })
+
   const userPrompt = buildAgentRulesGeneratorUserPrompt(
     project.name,
     currentContextRecord.contentJson,
+    undefined,
+    recommendations,
   )
 
   const items = [
