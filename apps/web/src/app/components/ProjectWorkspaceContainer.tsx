@@ -1613,7 +1613,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             : { method: 'POST' },
           t('documentGenerationFailed'),
         )
-        const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
+        const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED' || artifact.status === 'OUTDATED')
         if (failedArtifact) {
           throw new Error(failedArtifact.error ?? `${failedArtifact.type}.md generation failed.`)
         }
@@ -1632,7 +1632,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           },
           t('agentRulesGenerationFailed'),
         )
-        const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
+        const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED' || artifact.status === 'OUTDATED')
         if (failedArtifact) throw new Error(failedArtifact.error ?? t('agentGenerationFailed'))
         if (!result.artifacts?.length) throw new Error(t('agentInstructionsEmpty'))
         return result
@@ -1696,7 +1696,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           : [...artifacts, updatedArtifact]
         setArtifacts(mergedArtifacts)
       }
-      state = markGenerationStageComplete(state, 'backlog')
+      state = {
+        ...markGenerationStageComplete(state, 'backlog'),
+        activeStage: null,
+        isRunning: false,
+      }
       updateGenerationState(state)
       setProjectStatus('READY')
     } catch (error) {
@@ -1841,6 +1845,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     setGenerationOperation('retry')
     setProjectStatus('GENERATING')
     setGenMessage(null)
+    let state = markGenerationStageRunning(generationState, 'documents')
+    updateGenerationState(state)
 
     try {
       const result = await requestProjectStage<{
@@ -1856,10 +1862,12 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         },
         t('documentGenerationFailed'),
       )
-      const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED')
+      const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED' || artifact.status === 'OUTDATED')
       if (failedArtifact) throw new Error(failedArtifact.error ?? t('documentGenerationFailed'))
 
       const incoming = result.artifacts ?? []
+      if (!incoming.length) throw new Error(t('documentGenerationEmpty'))
+
       const updated = new Map(incoming.map((artifact) => [artifact.type, artifact]))
       const nextArtifacts = [
         ...artifacts.filter((artifact) => !updated.has(artifact.type)),
@@ -1875,7 +1883,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       setArtifacts(nextArtifacts)
       if (result.systemGraph !== undefined) setSystemGraph(result.systemGraph)
 
-      let reconciled = generationState
+      let reconciled = state
       for (const artifact of incoming) {
         reconciled = reconcileGenerationStateAfterArtifactUpdate({
           state: reconciled,
@@ -1887,15 +1895,18 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
           hasBacklog: phases.length > 0,
         })
       }
-      setGenerationState(reconciled)
-      setProjectStatus(result.readiness?.isReady ? 'EXPORTABLE' : 'GENERATION_FAILED')
+      updateGenerationState({ ...reconciled, activeStage: null, isRunning: false })
+      setProjectStatus(result.readiness?.isReady ? 'READY' : 'GENERATION_FAILED')
       setGenMessage({ type: 'status', text: t('generationComplete') })
       router.refresh()
     } catch (error) {
+      const message = error instanceof Error ? error.message : t('generationRetryFailed')
+      state = markGenerationStageFailed(state, 'documents', message)
+      updateGenerationState(state)
       setProjectStatus('GENERATION_FAILED')
       setGenMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : t('generationRetryFailed'),
+        text: message,
       })
     } finally {
       setIsGenerating(false)
