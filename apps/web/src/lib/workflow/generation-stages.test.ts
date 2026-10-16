@@ -88,6 +88,33 @@ describe('generation stages', () => {
     expect(complete.activeStage).toBe('documents')
   })
 
+  it('stops after completing the final validation stage', () => {
+    const running = markGenerationStageRunning(createQueuedGenerationState(), 'validation')
+    const complete = markGenerationStageComplete(running, 'validation')
+
+    expect(complete.stages.validation.status).toBe('complete')
+    expect(complete.activeStage).toBeNull()
+    expect(complete.isRunning).toBe(false)
+  })
+
+  it('does not reconcile a failed document artifact as complete', () => {
+    const state = markGenerationStageRunning(createQueuedGenerationState(), 'documents')
+    const reconciled = reconcileGenerationStateAfterArtifactUpdate({
+      state,
+      artifacts: [
+        { type: 'PRD', status: 'READY' },
+        { type: 'ARCHITECTURE', status: 'OUTDATED' },
+      ],
+      updatedType: 'ARCHITECTURE',
+      projectStatus: 'GENERATION_FAILED',
+      requiredArtifactTypes: ['PRD', 'ARCHITECTURE'],
+    })
+
+    expect(reconciled.stages.documents.status).toBe('failed')
+    expect(reconciled.activeStage).toBe('documents')
+    expect(reconciled.isRunning).toBe(false)
+  })
+
   it('preserves completed stages and skips downstream work after failure', () => {
     let state = createQueuedGenerationState()
     state = markGenerationStageComplete(state, 'planner')
