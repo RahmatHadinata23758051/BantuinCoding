@@ -106,4 +106,48 @@ describe('project readiness', () => {
       data: { status: 'READY' },
     })
   })
+
+  it.each(['OUTDATED', 'FAILED'])('demotes EXPORTABLE when a current required artifact is %s', async (status) => {
+    dbMock.project.findFirst
+      .mockResolvedValueOnce({ status: 'EXPORTABLE' })
+      .mockResolvedValueOnce(projectWith({
+        requiredTypes: ['PRD'],
+        artifacts: [{ type: 'PRD', contextId: 'ctx-current', status }],
+      }))
+    dbMock.project.update.mockResolvedValue({ status: 'READY' })
+
+    await recomputeProjectReadiness('u-1', 'p-1')
+
+    expect(dbMock.project.update).toHaveBeenCalledWith({
+      where: { id: 'p-1' },
+      data: { status: 'READY' },
+    })
+  })
+
+  it('demotes EXPORTABLE when a required current artifact is missing', async () => {
+    dbMock.project.findFirst
+      .mockResolvedValueOnce({ status: 'EXPORTABLE' })
+      .mockResolvedValueOnce(projectWith({ requiredTypes: ['PRD'] }))
+    dbMock.project.update.mockResolvedValue({ status: 'READY' })
+
+    await recomputeProjectReadiness('u-1', 'p-1')
+
+    expect(dbMock.project.update).toHaveBeenCalledWith({
+      where: { id: 'p-1' },
+      data: { status: 'READY' },
+    })
+  })
+
+  it('does not update READY when readiness is blocked', async () => {
+    dbMock.project.findFirst
+      .mockResolvedValueOnce({ status: 'READY' })
+      .mockResolvedValueOnce(projectWith({
+        requiredTypes: ['PRD'],
+        artifacts: [{ type: 'PRD', contextId: 'ctx-old', status: 'READY' }],
+      }))
+
+    await recomputeProjectReadiness('u-1', 'p-1')
+
+    expect(dbMock.project.update).not.toHaveBeenCalled()
+  })
 })
