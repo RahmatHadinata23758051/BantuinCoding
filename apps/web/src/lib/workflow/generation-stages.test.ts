@@ -21,8 +21,8 @@ describe('generation stages', () => {
     expect(GENERATION_STAGES.map((stage) => stage.id)).toEqual([
       'planner',
       'documents',
-      'agentRules',
       'skills',
+      'agentRules',
       'backlog',
       'validation',
     ])
@@ -136,8 +136,8 @@ describe('generation stages', () => {
 
     expect(getRetryableGenerationStages(state)).toEqual([
       'documents',
-      'agentRules',
       'skills',
+      'agentRules',
       'backlog',
       'validation',
     ])
