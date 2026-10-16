@@ -339,14 +339,14 @@ export function DesignSystemGraph({ graph }: { graph: SystemGraphData }) {
                 key={node.id}
                 type="button"
                 aria-pressed={isSelected}
-                aria-label={`${node.label}, ${categoryLabel(node.category)}`}
+                aria-label={`${node.label.replace(/\s+/g, ' ')}, ${categoryLabel(node.category)}`}
                 onPointerDown={(event) => handleNodePointerDown(event, node.id)}
                 onClick={() => setSelectedId(node.id)}
                 className="absolute flex flex-col justify-center rounded-xl border-[1.5px] px-3.5 py-3 text-left transition-[box-shadow,border-color] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--graph-edge-selected)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--graph-canvas-bg)] motion-reduce:transition-none"
                 style={{ ...nodeStyle, left: point.x, top: point.y, width: GRAPH_NODE_WIDTH, height: GRAPH_NODE_HEIGHT }}
               >
                 <span className="text-[9.5px] font-bold uppercase tracking-[0.08em]" style={{ color: style.labelColor }}>{categoryLabel(node.category)}</span>
-                <span className="mt-1 line-clamp-2 text-[13px] font-semibold leading-4" style={{ color: style.nameColor }}>{node.label}</span>
+                <span className="mt-1 line-clamp-2 whitespace-pre-line text-[13px] font-semibold leading-4" style={{ color: style.nameColor }}>{node.label}</span>
               </button>
             )
           })}
@@ -376,8 +376,8 @@ export function DesignSystemGraph({ graph }: { graph: SystemGraphData }) {
         {selectedNode && (
           <>
             <p className="mt-3 inline-flex rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-[0.08em]" style={{ borderColor: CATEGORY_STYLES[selectedNode.category]?.borderColor ?? CATEGORY_STYLES.external.borderColor, color: CATEGORY_STYLES[selectedNode.category]?.labelColor ?? CATEGORY_STYLES.external.labelColor, backgroundColor: CATEGORY_STYLES[selectedNode.category]?.background ?? CATEGORY_STYLES.external.background }}>{categoryLabel(selectedNode.category)}</p>
-            <p className="mt-2 text-xl font-bold tracking-[-0.03em] text-[var(--workspace-ink)]">{selectedNode.label}</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">{selectedNode.description}</p>
+            <p className="mt-2 whitespace-pre-line text-xl font-bold tracking-[-0.03em] text-[var(--workspace-ink)]">{selectedNode.label}</p>
+            <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--workspace-muted)]">{selectedNode.description}</p>
             <div className="mt-5 border-t border-[var(--workspace-border-subtle)] pt-4">
               <h4 className="text-sm font-bold text-[var(--workspace-ink)]">{t('connections')}</h4>
               <div className="mt-3 space-y-4 text-xs">
