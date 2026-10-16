@@ -36,7 +36,7 @@ describe('End-to-End Pipeline & Final Quality Control Suite', () => {
 
     // 2. Skill Catalog Resolution
     expect(internalCatalogFallback.length).toBeGreaterThan(0)
-    expect(internalCatalogFallback[0]?.source).toBe('skillsllm.com')
+    expect(internalCatalogFallback[0]?.source).toBe('internal-fallback')
 
     // 3. Backlog Dependency Graph Validation & Readiness
     const samplePhases = [
