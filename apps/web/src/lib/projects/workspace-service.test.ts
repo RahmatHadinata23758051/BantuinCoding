@@ -33,6 +33,34 @@ describe('workspace system graph parsing', () => {
     })
   })
 
+  it('normalizes generated line-break markers without interpreting other markup', () => {
+    expect(parseWorkspaceSystemGraph(JSON.stringify({
+      nodes: [{
+        id: 'admin',
+        label: 'Administrator Browser<br/>Catalog and circulation operations',
+        category: 'client',
+        description: 'Manage <strong>catalog</strong><BR /> records',
+      }],
+      edges: [{
+        source: 'admin',
+        target: 'admin',
+        label: 'Open <em>catalog</em><br> flow',
+      }],
+    }))).toEqual({
+      nodes: [{
+        id: 'admin',
+        label: 'Administrator Browser\nCatalog and circulation operations',
+        category: 'client',
+        description: 'Manage <strong>catalog</strong>\n records',
+      }],
+      edges: [{
+        source: 'admin',
+        target: 'admin',
+        label: 'Open <em>catalog</em>\n flow',
+      }],
+    })
+  })
+
   it('returns null for malformed or empty graphs', () => {
     expect(parseWorkspaceSystemGraph('not-json')).toBeNull()
     expect(parseWorkspaceSystemGraph(JSON.stringify({ nodes: [], edges: [] }))).toBeNull()
