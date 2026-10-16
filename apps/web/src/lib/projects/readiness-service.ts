@@ -92,6 +92,9 @@ export async function recomputeProjectReadiness(userId: string, projectId: strin
 
   if (readiness.isReady && currentStatus === 'GENERATING') {
     await updateProject(userId, projectId, { status: 'READY' })
+  } else if (!readiness.isReady && currentStatus === 'EXPORTABLE') {
+    // An exportable project must lose its export gate when its current pack is no longer usable.
+    await updateProject(userId, projectId, { status: 'READY' })
   }
 
   return readiness
