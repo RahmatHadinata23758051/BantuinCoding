@@ -16,6 +16,7 @@ import {
 } from '@/lib/prompts/architecture-generator'
 import {
   DESIGN_GENERATOR_SYSTEM_PROMPT,
+  DesignDocumentPayloadSchema,
   DesignDocumentSchema,
   buildDesignGeneratorUserPrompt,
 } from '@/lib/prompts/design-generator'
@@ -343,7 +344,7 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured })
     const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['DESIGN'] })
     expect(results).toEqual([{ type: 'DESIGN', status: 'READY', path: 'DESIGN.md', content: VALID_DESIGN_MARKDOWN }])
-    expect(generateStructured).toHaveBeenCalledWith(expect.stringContaining('Canonical Context Version: 4'), DesignDocumentSchema, expect.objectContaining({ system: DESIGN_GENERATOR_SYSTEM_PROMPT }))
+    expect(generateStructured).toHaveBeenCalledWith(expect.stringContaining('Canonical Context Version: 4'), DesignDocumentPayloadSchema, expect.objectContaining({ system: DESIGN_GENERATOR_SYSTEM_PROMPT }))
     expect(db.artifact.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } } }))
   })
 
@@ -373,7 +374,7 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     expect(generateStructured).toHaveBeenCalledTimes(1)
   })
 
-  it('marks only the DESIGN artifact failed when design generation fails', async () => {
+  it('uses the contextual fallback when design generation fails before validation', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
     const { createProvider } = await import('@/lib/ai/provider')
@@ -381,8 +382,20 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'test-key' })
     vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockRejectedValueOnce(new Error('Provider unavailable')) })
     const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['DESIGN'] })
-    expect(results[0]).toEqual(expect.objectContaining({ type: 'DESIGN', status: 'FAILED', error: 'Provider unavailable' }))
-    expect(db.artifact.update).toHaveBeenCalledWith({ where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } }, data: { status: 'FAILED' } })
+    expect(results[0]).toEqual(expect.objectContaining({ type: 'DESIGN', status: 'READY', path: 'DESIGN.md' }))
+    expect(results[0]?.content).toContain('# DESIGN.md')
+    expect(db.artifact.update).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } }, data: expect.objectContaining({ status: 'READY' }) }))
+  })
+
+  it('marks DESIGN failed only when the fallback path itself cannot produce content', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({ id: 'p-1', userId: 'u-1', name: 'Test Project', contexts: [{ id: 'ctx-1', version: 1, isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'DESIGN', isRequired: true }] }] } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockRejectedValueOnce(new Error('Provider unavailable')) })
+    const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['DESIGN'] })
+    expect(results[0]?.status).toBe('READY')
   })
 
   it('persists the same-call architecture graph and removes invalid edges', async () => {
