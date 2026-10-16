@@ -1215,7 +1215,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     }
   }
 
-  const workspaceNavigation = (
+  const renderWorkspaceNavigation = (variant: 'desktop' | 'mobile') => (
     <>
       <div className="min-w-0 border-b border-[var(--workspace-border)] pb-5">
         <BrandLogo imageSize={28} textClassName="text-xl font-semibold tracking-[-0.04em]" />
@@ -1239,7 +1239,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       </div>
       <div className="mt-8">
         <p className="text-xs font-bold text-[var(--workspace-muted)]">{t('workspaceSections')}</p>
-        <nav aria-label={t('workspaceSections')} className="mt-3 space-y-1">
+        <nav role="tablist" aria-orientation="vertical" aria-label={t('workspaceSections')} className="mt-3 space-y-1">
           {sectionItems.map((section) => {
             const Icon = section.icon
             const isActive = activeTab === section.id
@@ -1247,10 +1247,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
               <button
                 key={section.id}
                 ref={(element) => {
-                  if (element) sectionTabRefs.current.set(section.id, element)
-                  else sectionTabRefs.current.delete(section.id)
+                  if (variant === 'desktop') {
+                    if (element) sectionTabRefs.current.set(section.id, element)
+                    else sectionTabRefs.current.delete(section.id)
+                  }
                 }}
-                id={getSectionTabId(section.id)}
+                id={variant === 'desktop' ? getSectionTabId(section.id) : `mobile-${getSectionTabId(section.id)}`}
+                data-section={section.id}
                 type="button"
                 role="tab"
                 tabIndex={isActive ? 0 : -1}
@@ -1311,7 +1314,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     event.preventDefault()
     const nextSection = sectionItems[nextIndex].id
     selectTab(nextSection)
-    sectionTabRefs.current.get(nextSection)?.focus()
+    const container = event.currentTarget.closest('[role="tablist"]')
+    const targetElement = container?.querySelector<HTMLButtonElement>(`button[data-section="${nextSection}"]`)
+    if (targetElement) {
+      targetElement.focus()
+    } else {
+      sectionTabRefs.current.get(nextSection)?.focus()
+    }
   }
 
   const handleRepairSystemGraph = async () => {
@@ -2093,13 +2102,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       <div className={`${isDesignSystemCanvas ? 'relative h-full overflow-hidden' : 'min-h-screen items-start gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]'}`}>
         <aside className={`${isDesignSystemCanvas ? 'absolute left-4 top-4 z-40 hidden w-[18rem] lg:flex lg:flex-col' : 'hidden self-start lg:flex lg:flex-col'}`}>
           <div className="w-full rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
-            <div className="flex flex-col">{workspaceNavigation}</div>
+            <div className="flex flex-col">{renderWorkspaceNavigation('desktop')}</div>
           </div>
         </aside>
         <div className={`${isDesignSystemCanvas ? 'h-full min-w-0' : 'min-w-0'}`}>
           {!isDesignSystemCanvas && (
             <aside className="mb-6 rounded-[20px] border border-white/80 bg-[var(--workspace-paper)]/90 px-4 py-4 shadow-[0_8px_22px_rgba(36,35,31,0.06)] lg:hidden">
-              <div className="flex flex-col">{workspaceNavigation}</div>
+              <div className="flex flex-col">{renderWorkspaceNavigation('mobile')}</div>
             </aside>
           )}
 
@@ -2125,7 +2134,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   />
                   <aside className="relative flex h-full w-full flex-col p-4">
                     <div className="flex min-h-0 flex-1 flex-col rounded-[24px] border border-white/80 bg-[var(--workspace-paper)] px-5 py-6 shadow-[var(--graph-card-shadow)]">
-                      <div className="flex min-h-0 flex-1 flex-col">{workspaceNavigation}</div>
+                      <div className="flex min-h-0 flex-1 flex-col">{renderWorkspaceNavigation('mobile')}</div>
                     </div>
                   </aside>
                 </div>
@@ -2253,9 +2262,6 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
             {activeTab !== 'overview' && <h1 className="sr-only">{initialData.name}</h1>}
 
             <section className={isDesignSystemCanvas ? 'h-full p-0' : activeTab === 'overview' ? 'py-0' : 'py-5 sm:py-6'}><div id={getSectionPanelId(activeTab)} role="tabpanel" tabIndex={0} aria-labelledby={getSectionTabId(activeTab)} className={isDesignSystemCanvas ? 'h-full' : undefined}>
-              <div className="hidden" aria-hidden="true">
-                {sectionItems.map((section) => <button key={section.id} id={getSectionTabId(section.id)} role="tab" aria-selected={activeTab === section.id} aria-controls={getSectionPanelId(section.id)} tabIndex={-1} onClick={() => selectTab(section.id)}>{t(getSectionTabKey(section.id) as Parameters<typeof t>[0])}</button>)}
-              </div>
               <div className={activeTab === 'overview' ? (briefHasStructuredSections ? 'space-y-4' : 'space-y-0') : 'hidden'}>
                 {overviewStructuredContent}
                 <section aria-labelledby="overview-status-title" className="border-t border-[var(--workspace-border-subtle)] pt-5">
