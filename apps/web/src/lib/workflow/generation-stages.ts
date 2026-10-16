@@ -214,12 +214,15 @@ export function markGenerationStageComplete(
     ...state.stages,
     [stage]: { status: 'complete' },
   }
-  const nextStage = GENERATION_STAGES[GENERATION_STAGES.findIndex(({ id }) => id === stage) + 1]?.id ?? null
+  // ponytail: linear stage sequence; upgrade to DAG execution if pipeline stages become concurrent.
+  const stageIndex = GENERATION_STAGES.findIndex(({ id }) => id === stage)
+  const nextStage = GENERATION_STAGES[stageIndex + 1]?.id ?? null
+  const hasNextStage = nextStage !== null
 
   return {
     stages,
-    activeStage: nextStage,
-    isRunning: nextStage !== null,
+    activeStage: hasNextStage ? nextStage : null,
+    isRunning: hasNextStage,
   }
 }
 
