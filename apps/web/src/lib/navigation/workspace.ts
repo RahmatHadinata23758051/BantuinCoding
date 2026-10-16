@@ -1,8 +1,8 @@
 export const WORKSPACE_SECTIONS = [
   'overview',
   'context',
-  'design-system',
   'documents',
+  'design-system',
   'backlog',
   'export',
 ] as const
