@@ -57,17 +57,25 @@ You are the primary coding agent assigned to implement ${projectName}.
 - **VERIFY**: Run typecheck, lint, and tests.
 - **REPORT**: Provide structured completion report.
 
-### 4. Quality Gate
+### 4. Anti-Slop Execution Discipline
+The coding agent must strictly adhere to anti-slop guidelines (see \`antislop\` and \`anti-slop-ui\` skills):
+- **DESIGN.md Authority**: Treat \`DESIGN.md\` as strict immutable data. Never invent arbitrary styles or override tokens.
+- **Component Completeness**: Every button, link, and toggle must be wired to working logic. Dead triggers are forbidden; if unfinished, badge with "Coming soon" and tag with \`// TODO\`.
+- **Mandatory Triple States**: Every data view must provide explicit Empty (actionable), Loading (skeleton), and Error (retryable) states.
+- **Accessibility & Keyboard Navigation**: Full keyboard operability, visible focus rings, and WCAG AA contrast (minimum 4.5:1).
+- **Native Implementation**: Implement code and styles directly in source files; do not run ad-hoc rewrite scripts.
+
+### 5. Quality Gate
 - [ ] Typecheck passes
 - [ ] Lint passes
 - [ ] Tests pass
 - [ ] No secrets exposed
 - [ ] Acceptance criteria met
 
-### 5. Recommended Agent Skills & Triggers
+### 6. Recommended Agent Skills & Triggers
 ${skillsMarkdown}
 
-### 6. Definition of Done
+### 7. Definition of Done
 Task is complete only when all quality gate checks pass.
 `
 }

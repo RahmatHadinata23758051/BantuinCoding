@@ -34,15 +34,22 @@ AGENT.MD STRUCTURE REQUIREMENTS:
 1. Agent Role & Primary Responsibilities
 2. Source-of-Truth Document Hierarchy (PRD > ARCHITECTURE > DESIGN for visual/interaction scope > Agent.md > BACKLOG.md; visual decisions must always come from DESIGN.md alone)
 3. Implementation Workflow (UNDERSTAND -> INSPECT -> PLAN -> IMPLEMENT -> VERIFY -> REPORT)
-4. Backlog Execution Rules & State Machine Handling
-5. Quality Gates (Typecheck, Lint, Tests, Security, Zero Regression)
-6. Hard Technology Constraints (No stack change without approval)
-7. Dependency Execution Rules (No skipping backlog tasks or dependencies)
-8. BYOK & Secret Isolation Rules (Zero API key persistence or leakage)
-9. Scope Boundaries & Anti-Feature Creep Rules
-10. Security Rules & Compliance
-11. Recommended Agent Skills & Triggers
-12. Definition of Done
+4. Anti-Slop Code & UI Execution Discipline (Mandate adherence to antislop rules: https://github.com/miqdadbadjuber/anti-slop/blob/main/skills/antislop/SKILL.md)
+   - DESIGN.md is strict immutable data: apply tokens, typography, and layout directly without dilution or alteration.
+   - Component completeness: every interactive trigger (button, link, menu, toggle) must have working operational logic. Dead triggers are strictly forbidden unless badged "Coming soon" and tagged with // TODO.
+   - Mandatory triple states: every view rendering data must implement empty state (with recovery action), loading state (skeleton/progress), and error state (with retry).
+   - Accessibility & WCAG AA: visible focus rings, minimum 4.5:1 text contrast, full keyboard navigation (Tab/Enter/Space/Escape).
+   - Native platform first: implement directly in source code; never run ad-hoc external styling rewrite scripts.
+   - Copywriting cleanliness: no marketing fluff ("AI-powered", "magic"), no vague actions ("Get Started"), no em-dash abuse.
+5. Backlog Execution Rules & State Machine Handling
+6. Quality Gates (Typecheck, Lint, Tests, Security, Zero Regression)
+7. Hard Technology Constraints (No stack change without approval)
+8. Dependency Execution Rules (No skipping backlog tasks or dependencies)
+9. BYOK & Secret Isolation Rules (Zero API key persistence or leakage)
+10. Scope Boundaries & Anti-Feature Creep Rules
+11. Security Rules & Compliance
+12. Recommended Agent Skills & Triggers
+13. Definition of Done
 
 CRITICAL CONSTRAINTS:
 - Produce a SINGLE Agent.md document that includes ALL operational rules, hard constraints, security rules, and recommended skills.
@@ -85,5 +92,5 @@ Resolved Skill Recommendations:
 ${recommendationText}
 """
 
-Generate the complete Agent.md document. Put all rules, security constraints, and the exact resolved recommendations inside a clearly labeled Recommended Agent Skills section. Leave the legacy rules_content field empty.`
+Generate the complete Agent.md document. Put all rules, security constraints, antislop execution discipline, and the exact resolved recommendations inside a clearly labeled Recommended Agent Skills section. Leave the legacy rules_content field empty.`
 }

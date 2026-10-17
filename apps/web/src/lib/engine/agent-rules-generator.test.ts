@@ -70,6 +70,8 @@ describe('Agent Rules Prompt & Schema', () => {
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain(
       'DESIGN for visual/interaction scope',
     )
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('Anti-Slop Code & UI Execution Discipline')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('https://github.com/miqdadbadjuber/anti-slop/blob/main/skills/antislop/SKILL.md')
   })
 
   it('does not invent skills when recommendations are unresolved', () => {
@@ -87,6 +89,11 @@ describe('Agent Rules Fallback Generators', () => {
     expect(md).toContain('Project: Acme App')
     expect(md).toContain('Document Hierarchy Precedence')
     expect(md).toContain('DESIGN.md (visual and interaction scope)')
+    expect(md).toContain('Anti-Slop Execution Discipline')
+    expect(md).toContain('DESIGN.md Authority')
+    expect(md).toContain('Component Completeness')
+    expect(md).toContain('Mandatory Triple States')
+    expect(md).toContain('Accessibility & Keyboard Navigation')
     expect(md).toContain('Skill recommendations have not been resolved yet')
     expect(md).not.toContain('ui-ux-pro-max')
   })
