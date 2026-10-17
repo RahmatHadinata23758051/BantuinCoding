@@ -5,7 +5,7 @@ import { routing } from './i18n/routing'
 const intlMiddleware = createMiddleware(routing)
 
 // Define routes that do not require authentication
-const publicPages = ['/', '/login', '/register']
+const publicPages = ['/', '/login', '/register', '/design-lab']
 
 export default auth((req) => {
   const isAuth = !!req.auth
