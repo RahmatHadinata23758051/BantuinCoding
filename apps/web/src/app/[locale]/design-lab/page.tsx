@@ -14,18 +14,14 @@ import {
 
 import { THEMES, getTheme } from '@/lib/design-lab/themes'
 import { TEMPLATES, getTemplate } from '@/lib/design-lab/templates'
-import { themeToCssVars, grammarStyle } from '@/lib/design-lab/css-vars'
+import { themeToCssVars } from '@/lib/design-lab/css-vars'
 import { CONTOH_CATATAN, CONTOH_SUMMARY } from '@/lib/design-lab/fixtures'
 import { recommend } from '@/lib/design-lab/recommend'
 import type { Theme, Template } from '@/lib/design-lab/schemas'
 
-// ─── Token shortcuts ─────────────────────────────────────────────────────────
-
-function tv(theme: Theme, key: keyof Theme['palette']): string {
-  return theme.palette[key] as string
-}
-
 // ─── ArtboardShell ───────────────────────────────────────────────────────────
+// The artboard IS the paper surface — not a panel inside a panel.
+// It sets CSS vars, then children render directly on the canvas background.
 
 function ArtboardShell({
   label,
@@ -39,28 +35,34 @@ function ArtboardShell({
   children: React.ReactNode
 }) {
   const cssVars = useMemo(() => themeToCssVars(theme), [theme])
+  const p = theme.palette
+  const ty = theme.typography
   return (
     <div
       className="shrink-0 overflow-hidden"
+      data-artboard
+      data-theme={theme.id}
+      data-grammar={theme.surface_grammar.separator}
+      data-container-budget={theme.surface_grammar.max_visible_containers}
       style={{
         width,
-        border: `2px solid ${tv(theme, 'border')}`,
-        background: tv(theme, 'surface'),
-        borderRadius: theme.radius.sm,
-        boxShadow: theme.elevation.raised,
+        background: p.canvas,
+        // Paper edge: single hairline — the artboard frame, not a container
+        border: `1px solid ${p.border}`,
         ...cssVars,
       } as React.CSSProperties}
     >
+      {/* Artboard label bar — not a container, part of the artboard chrome */}
       <div
-        className="px-4 py-2"
+        data-exempt="chrome"
         style={{
-          background: tv(theme, 'canvas'),
-          borderBottom: `1px solid ${tv(theme, 'border')}`,
-          fontFamily: theme.typography.monoFamily,
-          fontSize: '10px',
+          borderBottom: `1px solid ${p.border}`,
+          padding: '4px 12px',
+          fontFamily: ty.monoFamily,
+          fontSize: '9px',
           fontWeight: 500,
-          letterSpacing: '0.06em',
-          color: tv(theme, 'ink_muted'),
+          letterSpacing: '0.08em',
+          color: p.ink_muted,
           textTransform: 'uppercase',
         }}
       >
@@ -68,6 +70,45 @@ function ArtboardShell({
       </div>
       {children}
     </div>
+  )
+}
+
+// ─── Stamp helper (signature move: attention status only) ─────────────────────
+// Used exclusively for TERVERIFIKASI and PERLU_TINJAUAN.
+// Box budget: stamps are explicitly excluded from the container count.
+
+function StatusStamp({
+  label,
+  color,
+  fontFamily,
+}: {
+  label: string
+  color: string
+  fontFamily: string
+}) {
+  return (
+    <span
+      data-exempt="stamp"
+      style={{
+        display: 'inline-block',
+        fontFamily,
+        fontSize: '9px',
+        fontWeight: 600,
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
+        color,
+        // Double border: 2px solid + 1px outline with 1px gap = stamp effect
+        border: `2px solid ${color}`,
+        outline: `1px solid ${color}`,
+        outlineOffset: '1px',
+        background: 'transparent',
+        padding: '1px 5px',
+        transform: 'rotate(-2deg)',
+        // ponytail: inline-block transform requires no table-cell parent
+      }}
+    >
+      {label}
+    </span>
   )
 }
 
@@ -99,10 +140,10 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
   ]
 
   return (
-    <ArtboardShell label="01 / Foundation · Ledger Kertas" width={380} theme={theme}>
-      <div className="space-y-5 p-5" style={{ background: p.surface }}>
+    <ArtboardShell label={`01 / Foundation · ${theme.name}`} width={380} theme={theme}>
+      <div className="space-y-5 p-5">
 
-        {/* Typography */}
+        {/* Typography — no container, just text on canvas */}
         <section>
           <p style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.08em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 8 }}>
             Tipografi
@@ -118,7 +159,7 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
           </p>
         </section>
 
-        {/* Palette */}
+        {/* Palette — swatches are sample boxes, explicitly excluded from container budget */}
         <section>
           <p style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.08em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 8 }}>
             Palet · peran
@@ -126,14 +167,15 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
             {paletteRoles.map(([role, hex]) => (
               <div key={role} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: 32, height: 32, background: hex, border: `1px solid ${p.border}` }} />
+                {/* Swatch box — sample, excluded from container budget */}
+                <div data-exempt="swatch" style={{ width: 32, height: 32, background: hex, border: `1px solid ${p.border}` }} />
                 <span style={{ fontFamily: ty.monoFamily, fontSize: '8px', color: p.ink_muted, textAlign: 'center' }}>{role}</span>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Signature moves */}
+        {/* Signature moves — no container wrapper, just ruled lines */}
         <section>
           <p style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.08em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 8 }}>
             Signature moves
@@ -146,7 +188,7 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
           ))}
         </section>
 
-        {/* Spacing scale */}
+        {/* Spacing scale — sample boxes, excluded from container budget */}
         <section>
           <p style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.08em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 8 }}>
             Skala spasi
@@ -156,7 +198,8 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
               const px = parseInt(val)
               return (
                 <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: px, height: px, background: p.accent, opacity: 0.7 }} />
+                  {/* Sample spacing box — excluded from container budget */}
+                  <div data-exempt="sample-scale" style={{ width: px, height: px, background: p.accent, opacity: 0.7 }} />
                   <span style={{ fontFamily: ty.monoFamily, fontSize: '8px', color: p.ink_muted }}>{val}</span>
                 </div>
               )
@@ -164,7 +207,7 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
           </div>
         </section>
 
-        {/* Radius scale */}
+        {/* Radius scale — sample boxes, excluded from container budget */}
         <section>
           <p style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.08em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 8 }}>
             Radius
@@ -172,31 +215,45 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {radiusEntries.map(([key, val]) => (
               <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <div style={{ width: 32, height: 32, borderRadius: val, background: p.canvas, border: `1px solid ${p.border}` }} />
+                {/* Sample radius box — excluded from container budget */}
+                <div data-exempt="sample-scale" style={{ width: 32, height: 32, borderRadius: val, background: p.canvas, border: `1px solid ${p.border}` }} />
                 <span style={{ fontFamily: ty.monoFamily, fontSize: '8px', color: p.ink_muted }}>{key}</span>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Grammar surface demo */}
+        {/* Surface grammar sample — rendered with the actual theme grammar (fix #7) */}
         <section>
           <p style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.08em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 8 }}>
-            Surface grammar · rule
+            Surface grammar · {theme.surface_grammar.separator}
           </p>
-          <div style={{ background: p.canvas, border: `1px solid ${p.border}` }}>
-            {['Baris pertama', 'Baris kedua', 'Baris ketiga'].map((row, i) => (
-              <div key={i} style={{
-                padding: '6px 12px',
-                borderBottom: i < 2 ? `1px solid ${p.border}` : undefined,
-                fontFamily: ty.bodyFamily,
-                fontSize: '11px',
-                color: p.ink,
-              }}>
+          {['Baris pertama', 'Baris kedua', 'Baris ketiga'].map((row, i, arr) => {
+            const isBandOdd = i % 2 === 1
+            const rowStyle: React.CSSProperties = (() => {
+              switch (theme.surface_grammar.separator) {
+                case 'rule':
+                  return { padding: '6px 0', borderBottom: i < arr.length - 1 ? `1px solid ${p.border}` : undefined }
+                case 'space':
+                  return { padding: '6px 0', marginBottom: i < arr.length - 1 ? 6 : 0 }
+                case 'band':
+                  return { padding: '6px 8px', background: isBandOdd ? p.surface_subtle : p.canvas }
+                case 'box':
+                  return { padding: '6px 8px', border: `1px solid ${p.border}`, marginBottom: i < arr.length - 1 ? 6 : 0 }
+                default:
+                  return { padding: '6px 0' }
+              }
+            })()
+            return (
+              <div
+                key={i}
+                data-exempt="sample-grammar"
+                style={{ ...rowStyle, fontFamily: ty.bodyFamily, fontSize: '11px', color: p.ink }}
+              >
                 {row}
               </div>
-            ))}
-          </div>
+            )
+          })}
         </section>
       </div>
     </ArtboardShell>
@@ -204,40 +261,70 @@ function FoundationArtboard({ theme }: { theme: Theme }) {
 }
 
 // ─── Artboard 02: List-table screen (Daftar Catatan) ─────────────────────────
+// Box budget for Ledger Kertas (rule grammar):
+//   Container 1: primary filled "+" button (background ≠ parent) — 1 of 2 max
+//   Container 2: saldo row has special border-top + double-bottom — not a box container
+//   Stamps are excluded from budget
+// nesting_depth = 0 → no container inside another container
 
 function ListTableArtboard({ theme, template }: { theme: Theme; template: Template }) {
   const p = theme.palette
   const ty = theme.typography
   const grammar = theme.surface_grammar
-  const gs = grammarStyle(grammar.separator)
+  const sep = grammar.separator
 
   const headers = ['Kode', 'Keterangan', 'Akun', 'Jumlah', 'Status']
 
-  // Signal tones derived only from theme tokens (no hardcoded colors)
   const signalColor = p.signal ?? p.accent
-  function statusStyle(status: string): React.CSSProperties {
+
+  // Status rendering per grammar (fix #5)
+  // rule/space/box: TERCATAT = plain text; TERVERIFIKASI/PERLU_TINJAUAN = stamp
+  // band: all statuses as colored text (band grammar relies on row color, not stamps)
+  function renderStatus(status: string) {
+    if (sep === 'band') {
+      // Instrumen band theme: status as colored text, no stamp
+      switch (status) {
+        case 'TERVERIFIKASI': return <span style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.06em', color: p.accent, fontWeight: 600 }}>{status}</span>
+        case 'PERLU_TINJAUAN': return <span style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.06em', color: signalColor, fontWeight: 600 }}>{status}</span>
+        default: return <span style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.04em', color: p.ink_muted }}>{status}</span>
+      }
+    }
+    // rule / space / box → stamp for attention, plain text for normal
     switch (status) {
-      case 'TERVERIFIKASI': return { color: p.accent, background: `${p.accent}11`, border: `1px solid ${p.accent}55` }
-      case 'TERCATAT':      return { color: p.ink_muted, background: p.surface_subtle, border: `1px solid ${p.border}` }
-      case 'PERLU_TINJAUAN': return { color: signalColor, background: `${signalColor}11`, border: `1px solid ${signalColor}55` }
-      default: return { color: p.ink_muted }
+      case 'TERVERIFIKASI':
+        return <StatusStamp label={status} color={p.accent} fontFamily={ty.monoFamily} />
+      case 'PERLU_TINJAUAN':
+        return <StatusStamp label={status} color={signalColor} fontFamily={ty.monoFamily} />
+      default:
+        // TERCATAT: plain text — no box, no chip (fix #5)
+        return <span style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.04em', color: p.ink_muted }}>{status}</span>
     }
   }
 
-  // Row separator per grammar
-  function rowBorder(i: number): React.CSSProperties {
-    switch (grammar.separator) {
-      case 'rule':  return { borderBottom: gs.rowSeparator }
+  // Row separator per grammar (fix #1)
+  function rowStyle(i: number): React.CSSProperties {
+    switch (sep) {
+      case 'rule':  return { borderBottom: `1px solid ${p.border}` }
       case 'space': return { marginBottom: '6px' }
       case 'band':  return { background: i % 2 === 0 ? p.canvas : p.surface_subtle }
-      case 'box':   return { border: gs.groupBorder, marginBottom: '4px' }
+      case 'box':   return { border: `2px solid ${p.ink}`, marginBottom: '4px' }
     }
   }
+
+  // Header row bottom border per grammar
+  const headerBorder = sep === 'rule'
+    ? `3px double ${p.border}`   // signature move: double rule under header
+    : sep === 'box'
+    ? `2px solid ${p.ink}`
+    : `1px solid ${p.border}`
+
+  // Header background — only band/box get a fill; rule has no header fill (fix #1)
+  const headerBg = sep === 'band' ? p.surface : sep === 'box' ? p.surface : 'transparent'
 
   return (
     <ArtboardShell label={`02 / ${template.name.toUpperCase()}`} width={580} theme={theme}>
       {/* App topbar */}
-      <div style={{ background: p.canvas, borderBottom: `1px solid ${p.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px' }}>
+      <div style={{ borderBottom: `1px solid ${p.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 14, height: 14, background: p.accent }} />
           <span style={{ fontFamily: ty.bodyFamily, fontSize: '12px', fontWeight: 700, color: p.ink }}>Buku Kas</span>
@@ -249,9 +336,9 @@ function ListTableArtboard({ theme, template }: { theme: Theme; template: Templa
         </div>
       </div>
 
-      <div style={{ background: p.surface, padding: '12px 16px' }}>
-        {/* Header slot */}
-        <div style={{ borderBottom: grammar.separator === 'rule' ? `2px solid ${p.border}` : `1px solid ${p.border}`, paddingBottom: 10, marginBottom: 10 }}>
+      <div style={{ padding: '12px 16px' }}>
+        {/* Header slot — section title with double-rule below (rule grammar) or 1px border */}
+        <div style={{ borderBottom: headerBorder, paddingBottom: 10, marginBottom: 10 }}>
           <p style={{ fontFamily: ty.displayFamily, fontSize: '16px', fontWeight: 600, color: p.ink }}>{CONTOH_SUMMARY.label}</p>
           <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
             {[
@@ -260,57 +347,114 @@ function ListTableArtboard({ theme, template }: { theme: Theme; template: Templa
               ['Saldo Akhir', CONTOH_SUMMARY.saldoAkhir],
             ].map(([k, v]) => (
               <span key={k} style={{ fontFamily: ty.monoFamily, fontSize: '11px', color: p.ink_muted }}>
-                <span style={{ color: p.ink_muted }}>{k}: </span>
+                <span>{k}: </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', color: p.ink, fontWeight: 600 }}>{v}</span>
               </span>
             ))}
           </div>
         </div>
 
-        {/* Toolbar slot */}
+        {/* Toolbar slot — fix #2 (search = underline-only), fix #4 (FILTER = underlined text) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <div style={{ flex: 1, height: 28, background: p.canvas, border: `1px solid ${p.border}`, display: 'flex', alignItems: 'center', padding: '0 10px' }}>
+          {/* Search: bottom-border only, transparent background (fix #2) */}
+          <div style={{
+            flex: 1,
+            borderBottom: `1px solid ${p.border}`,
+            background: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '4px 0',
+          }}>
             <span style={{ fontFamily: ty.bodyFamily, fontSize: '11px', color: p.ink_muted }}>Cari transaksi…</span>
           </div>
-          <div style={{ padding: '5px 10px', background: p.canvas, border: `1px solid ${p.border}`, fontFamily: ty.monoFamily, fontSize: '10px', color: p.ink_muted, letterSpacing: '0.04em' }}>FILTER</div>
-          <div style={{ padding: '5px 10px', background: p.accent, fontFamily: ty.monoFamily, fontSize: '10px', color: p.accent_fg, letterSpacing: '0.04em', fontWeight: 600 }}>+ CATAT</div>
+          {/* Secondary action: underlined text, no box (fix #4) */}
+          <button
+            type="button"
+            style={{
+              fontFamily: ty.monoFamily,
+              fontSize: '10px',
+              letterSpacing: '0.04em',
+              color: p.ink_muted,
+              background: 'transparent',
+              border: 'none',
+              borderBottom: `1px solid ${p.ink_muted}`,
+              padding: '0 0 1px 0',
+              cursor: 'pointer',
+            }}
+          >
+            FILTER
+          </button>
+          {/* Primary action: ONE filled button per screen (fix #4, container #1) */}
+          <button
+            type="button"
+            style={{
+              padding: '5px 10px',
+              background: p.accent,
+              fontFamily: ty.monoFamily,
+              fontSize: '10px',
+              color: p.accent_fg,
+              letterSpacing: '0.04em',
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            + CATAT
+          </button>
         </div>
 
-        {/* Primary slot — table */}
-        <div style={{ border: grammar.separator === 'box' ? `2px solid ${p.ink}` : `1px solid ${p.border}` }}>
-          {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 120px 100px 110px', background: p.canvas, borderBottom: `${grammar.separator === 'rule' ? '2px' : '1px'} solid ${p.border}`, padding: '6px 12px', gap: 8 }}>
+        {/* Primary slot — table, NO outer border for rule grammar (fix #1) */}
+        <div>
+          {/* Column headers — no background for rule grammar (fix #1) */}
+          <div
+            data-grammar-row="header"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '80px 1fr 120px 100px 110px',
+              background: headerBg,
+              borderBottom: headerBorder,
+              padding: '6px 0',
+              gap: 8,
+            }}>
             {headers.map((h) => (
               <span key={h} style={{ fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.06em', color: p.ink_muted, textTransform: 'uppercase' }}>{h}</span>
             ))}
           </div>
+
           {/* Data rows */}
           {CONTOH_CATATAN.map((row, i) => (
-            <div key={row.id} style={{
-              display: 'grid',
-              gridTemplateColumns: '80px 1fr 120px 100px 110px',
-              padding: '7px 12px',
-              gap: 8,
-              alignItems: 'center',
-              ...rowBorder(i),
-            }}>
+            <div
+              key={row.id}
+              data-grammar-row="body"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '80px 1fr 120px 100px 110px',
+                padding: '7px 0',
+                gap: 8,
+                alignItems: 'center',
+                ...rowStyle(i),
+              }}
+            >
               <span style={{ fontFamily: ty.monoFamily, fontSize: '10px', color: p.ink_muted, fontVariantNumeric: 'tabular-nums' }}>{row.code}</span>
               <span style={{ fontFamily: ty.bodyFamily, fontSize: '11px', color: p.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.description}</span>
               <span style={{ fontFamily: ty.bodyFamily, fontSize: '10px', color: p.ink_muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.account}</span>
               <span style={{ fontFamily: ty.monoFamily, fontSize: '11px', color: row.direction === 'kredit' ? p.accent : p.ink, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-                {row.direction === 'kredit' ? '' : '-'}{row.amount}
+                {row.direction === 'kredit' ? '' : '−'}{row.amount}
               </span>
-              <span style={{
-                fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.06em', fontWeight: 600,
-                padding: '2px 6px', textTransform: 'uppercase',
-                ...statusStyle(row.status),
-              }}>
-                {row.status}
+              <span style={{ display: 'flex', alignItems: 'center' }}>
+                {renderStatus(row.status)}
               </span>
             </div>
           ))}
-          {/* Closing double-rule (signature move) */}
-          <div style={{ borderTop: `3px double ${p.border}`, padding: '6px 12px', display: 'flex', justifyContent: 'flex-end', background: p.canvas }}>
+
+          {/* Closing saldo row — signature move: 2px top rule + 3px double bottom rule (fix #1) */}
+          <div style={{
+            borderTop: `2px solid ${p.border}`,
+            borderBottom: `3px double ${p.border}`,
+            padding: '6px 0',
+            display: 'flex',
+            justifyContent: 'flex-end',
+          }}>
             <span style={{ fontFamily: ty.monoFamily, fontSize: '11px', fontVariantNumeric: 'tabular-nums', color: p.ink, fontWeight: 700 }}>
               Saldo · {CONTOH_SUMMARY.saldoAkhir}
             </span>
@@ -318,7 +462,7 @@ function ListTableArtboard({ theme, template }: { theme: Theme; template: Templa
         </div>
 
         {/* Status slot */}
-        <div style={{ marginTop: 8, display: 'flex', gap: 4, alignItems: 'center' }}>
+        <div style={{ marginTop: 8 }}>
           <span style={{ fontFamily: ty.monoFamily, fontSize: '9px', color: p.ink_muted }}>
             {CONTOH_SUMMARY.tercatatCount} catatan · {CONTOH_SUMMARY.label}
           </span>
@@ -329,10 +473,13 @@ function ListTableArtboard({ theme, template }: { theme: Theme; template: Templa
 }
 
 // ─── Artboard 03: Form screen (add new entry) ────────────────────────────────
+// Box budget for Ledger Kertas: 1 filled button = 1 container
+// nesting_depth = 0 → no nested containers
 
 function FormArtboard({ theme }: { theme: Theme }) {
   const p = theme.palette
   const ty = theme.typography
+  const sep = theme.surface_grammar.separator
 
   const fields = [
     { label: 'Kode Transaksi', value: 'TRX-1047', hint: 'Diisi otomatis' },
@@ -341,27 +488,55 @@ function FormArtboard({ theme }: { theme: Theme }) {
     { label: 'Jumlah (Rp)', value: '850.000' },
   ]
 
-  const statusOptions = ['Tercatat', 'Terverifikasi', 'Perlu Tinjauan']
+  const arahOptions = ['Debit', 'Kredit'] as const
+  const [activeArah] = useState<'Debit' | 'Kredit'>('Debit')
+
+  const statusOptions = ['Tercatat', 'Terverifikasi', 'Perlu Tinjauan'] as const
+  const [activeStatus] = useState<string>('Tercatat')
+
+  // Input field style: bottom-border only, transparent bg — universal component
+  // rule (fix #2), not grammar-dependent: an input is never a box in any theme.
+  const fieldStyle: React.CSSProperties = {
+    borderBottom: `2px solid ${p.border}`,
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
+    background: 'transparent',
+    padding: '6px 0',
+    fontFamily: ty.bodyFamily,
+    fontSize: '12px',
+    color: p.ink,
+  }
 
   return (
     <ArtboardShell label="03 / CATAT TRANSAKSI" width={320} theme={theme}>
-      <div style={{ background: p.surface, padding: '14px 16px' }}>
-        {/* Header */}
-        <div style={{ borderBottom: `2px solid ${p.border}`, paddingBottom: 8, marginBottom: 12 }}>
+      <div style={{ padding: '14px 16px' }}>
+        {/* Section header with double rule below (rule grammar) */}
+        <div style={{
+          borderBottom: sep === 'rule' ? `3px double ${p.border}` : `2px solid ${p.border}`,
+          paddingBottom: 8,
+          marginBottom: 12,
+        }}>
           <p style={{ fontFamily: ty.displayFamily, fontSize: '14px', fontWeight: 600, color: p.ink }}>Catat Transaksi</p>
           <p style={{ fontFamily: ty.bodyFamily, fontSize: '10px', color: p.ink_muted, marginTop: 2 }}>Isi detail transaksi — contoh data</p>
         </div>
 
-        {/* Fields */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+        {/* Fields — bottom-border only for rule grammar (fix #2) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: sep === 'rule' ? 14 : 10, marginBottom: 12 }}>
           {fields.map((f) => (
             <div key={f.label}>
-              <label style={{ display: 'block', fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.06em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 3 }}>
+              <label style={{
+                display: 'block',
+                fontFamily: ty.monoFamily,
+                fontSize: '9px',
+                letterSpacing: '0.06em',
+                color: p.ink_muted,
+                textTransform: 'uppercase',
+                marginBottom: 3,
+              }}>
                 {f.label}
               </label>
-              <div style={{ background: p.canvas, border: `1px solid ${p.border}`, padding: '6px 10px', fontFamily: ty.bodyFamily, fontSize: '12px', color: p.ink }}>
-                {f.value}
-              </div>
+              <div style={fieldStyle}>{f.value}</div>
               {f.hint && (
                 <span style={{ fontFamily: ty.monoFamily, fontSize: '8px', color: p.ink_muted, marginTop: 2, display: 'block' }}>{f.hint}</span>
               )}
@@ -369,53 +544,89 @@ function FormArtboard({ theme }: { theme: Theme }) {
           ))}
         </div>
 
-        {/* Arah transaksi */}
+        {/* Arah transaksi — inline text toggle with active underline (fix #3) */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.06em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 6 }}>
+          <label style={{
+            display: 'block',
+            fontFamily: ty.monoFamily,
+            fontSize: '9px',
+            letterSpacing: '0.06em',
+            color: p.ink_muted,
+            textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>
             Arah
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {['Debit', 'Kredit'].map((opt, i) => (
-              <div key={opt} style={{
-                padding: '6px',
-                textAlign: 'center',
-                fontFamily: ty.monoFamily,
-                fontSize: '10px',
-                letterSpacing: '0.04em',
-                border: `1px solid ${i === 0 ? p.accent : p.border}`,
-                background: i === 0 ? p.accent : p.canvas,
-                color: i === 0 ? p.accent_fg : p.ink_muted,
-              }}>
-                {opt.toUpperCase()}
-              </div>
-            ))}
+          <div style={{ display: 'flex', gap: 20 }}>
+            {arahOptions.map((opt) => {
+              const isActive = opt === activeArah
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  style={{
+                    fontFamily: ty.monoFamily,
+                    fontSize: '11px',
+                    letterSpacing: '0.04em',
+                    fontWeight: isActive ? 700 : 400,
+                    color: isActive ? p.accent : p.ink_muted,
+                    background: 'transparent',
+                    border: 'none',
+                    // Active gets thick underline, no box (fix #3)
+                    borderBottom: isActive ? `3px solid ${p.accent}` : '3px solid transparent',
+                    padding: '0 0 2px 0',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.toUpperCase()}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Status stamp options */}
+        {/* Status awal — inline text toggle with active underline (fix #3) */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ display: 'block', fontFamily: ty.monoFamily, fontSize: '9px', letterSpacing: '0.06em', color: p.ink_muted, textTransform: 'uppercase', marginBottom: 6 }}>
+          <label style={{
+            display: 'block',
+            fontFamily: ty.monoFamily,
+            fontSize: '9px',
+            letterSpacing: '0.06em',
+            color: p.ink_muted,
+            textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>
             Status awal
           </label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {statusOptions.map((s, i) => (
-              <div key={s} style={{
-                padding: '3px 7px',
-                fontFamily: ty.monoFamily,
-                fontSize: '9px',
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-                border: `1px solid ${i === 0 ? p.accent : p.border}`,
-                background: i === 0 ? `${p.accent}11` : p.canvas,
-                color: i === 0 ? p.accent : p.ink_muted,
-              }}>
-                {s}
-              </div>
-            ))}
+          <div style={{ display: 'flex', gap: 16 }}>
+            {statusOptions.map((s) => {
+              const isActive = s === activeStatus
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  style={{
+                    fontFamily: ty.monoFamily,
+                    fontSize: '10px',
+                    letterSpacing: '0.04em',
+                    color: isActive ? p.accent : p.ink_muted,
+                    fontWeight: isActive ? 700 : 400,
+                    background: 'transparent',
+                    border: 'none',
+                    // Active underline — no box, no chip (fix #3)
+                    borderBottom: isActive ? `2px solid ${p.accent}` : '2px solid transparent',
+                    padding: '0 0 1px 0',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {s}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Submit */}
+        {/* Primary action: ONE filled button per screen (fix #4, container #1) */}
         <button
           type="button"
           style={{
@@ -447,7 +658,6 @@ function ThemeCard({ theme, selected, onClick }: { theme: Theme; selected: boole
   const borderStyle = selected ? `2px solid ${p.accent}` : `1.5px solid ${p.border}`
   const bgStyle = selected ? p.surface : p.canvas
 
-  // Mini palette swatches from the theme palette
   const swatchRoles: (keyof typeof p)[] = ['canvas', 'accent', 'ink', 'border']
 
   return (
@@ -465,13 +675,21 @@ function ThemeCard({ theme, selected, onClick }: { theme: Theme; selected: boole
           <div style={{ height: 3, width: 32, background: `${p.ink}33` }} />
           <div style={{ height: 3, width: 20, background: `${p.ink}18`, marginLeft: 'auto' }} />
         </div>
-        {/* Simulated table rows (rule grammar) */}
+        {/* Simulated rows using theme grammar */}
         <div style={{ marginTop: 4 }}>
           {[1, 2, 3].map((i) => (
-            <div key={i} style={{ height: 10, borderBottom: `1px solid ${p.border}`, display: 'flex', alignItems: 'center', gap: 4, padding: '0 2px' }}>
+            <div key={i} style={{
+              height: 10,
+              borderBottom: theme.surface_grammar.separator === 'rule' ? `1px solid ${p.border}` : undefined,
+              background: theme.surface_grammar.separator === 'band' && i % 2 === 0 ? p.surface_subtle : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '0 2px',
+            }}>
               <div style={{ height: 3, width: 20, background: `${p.ink_muted}55` }} />
               <div style={{ height: 3, flex: 1, background: `${p.ink}22` }} />
-              <div style={{ height: 3, width: 28, background: i === 1 ? `${p.accent}99` : `${p.ink}18`, fontVariantNumeric: 'tabular-nums' }} />
+              <div style={{ height: 3, width: 28, background: i === 1 ? `${p.accent}99` : `${p.ink}18` }} />
             </div>
           ))}
         </div>
@@ -514,24 +732,21 @@ function TemplateCard({ tpl, theme, selected, onClick }: { tpl: Template; theme:
       {/* Mini slot diagram */}
       <div style={{ height: 64, background: p.canvas, padding: 6 }}>
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* header slot */}
           <div style={{ height: 10, borderBottom: `1px solid ${p.border}`, display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ height: 4, width: 40, background: `${p.ink}55` }} />
             <div style={{ height: 4, width: 20, background: `${p.accent}66`, marginLeft: 'auto' }} />
           </div>
-          {/* toolbar slot */}
           <div style={{ height: 8, display: 'flex', gap: 3, alignItems: 'center' }}>
             <div style={{ height: 6, flex: 1, background: `${p.border}99` }} />
             <div style={{ height: 6, width: 18, background: `${p.border}66` }} />
             <div style={{ height: 6, width: 18, background: p.accent, opacity: 0.5 }} />
           </div>
-          {/* primary slot (table rows) */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {[0, 1, 2].map((i) => (
               <div key={i} style={{ height: 7, display: 'flex', gap: 3, alignItems: 'center', borderBottom: `1px solid ${p.border}` }}>
                 <div style={{ width: 16, height: 3, background: `${p.ink_muted}44` }} />
                 <div style={{ flex: 1, height: 3, background: `${p.ink}22` }} />
-                <div style={{ width: 22, height: 3, background: i === 0 ? `${p.accent}99` : `${p.ink}18`, fontVariantNumeric: 'tabular-nums' }} />
+                <div style={{ width: 22, height: 3, background: i === 0 ? `${p.accent}99` : `${p.ink}18` }} />
               </div>
             ))}
           </div>
@@ -575,7 +790,6 @@ export default function DesignLabPage() {
   const p = activeTheme.palette
   const ty = activeTheme.typography
 
-  // Canvas label accent — use theme ink, not purple
   const labelColor = p.accent
 
   const displayName = activeTemplate ? `${activeTheme.name} · ${activeTemplate.name}` : activeTheme.name
@@ -597,18 +811,18 @@ export default function DesignLabPage() {
           <span style={{ fontSize: '11px', fontFamily: ty.bodyFamily, fontWeight: 600, color: p.ink }}>Design Lab</span>
         </div>
 
-        <div style={{ border: `1px solid ${p.border}`, padding: '4px 14px', fontSize: '11px', fontFamily: ty.monoFamily, color: p.ink_muted }}>
+        <div className="hidden md:block" style={{ border: `1px solid ${p.border}`, padding: '4px 14px', fontSize: '11px', fontFamily: ty.monoFamily, color: p.ink_muted, whiteSpace: 'nowrap' }}>
           {activeTemplate
             ? `Preview · ${activeTemplate.name}`
             : 'Preview tampilan · belum dipilih'}
         </div>
 
-        <div style={{ width: 128 }} />
+        <div className="hidden md:block" style={{ width: 128 }} />
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Left toolbar ── */}
-        <div className="flex w-11 shrink-0 flex-col items-center gap-1 border-r py-3" style={{ background: p.canvas, borderColor: p.border }}>
+      <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
+        {/* ── Left toolbar (desktop only: pan/zoom chrome is meaningless at 390px) ── */}
+        <div className="hidden w-11 shrink-0 flex-col items-center gap-1 border-r py-3 md:flex" style={{ background: p.canvas, borderColor: p.border }}>
           <button
             type="button"
             onClick={() => setTool('pointer')}
@@ -673,7 +887,7 @@ export default function DesignLabPage() {
           style={{ background: p.surface_subtle, cursor: tool === 'hand' ? 'grab' : 'default' }}
         >
           <div
-            className="flex min-h-full items-start gap-8 p-10"
+            className="design-canvas-content flex min-h-full items-start gap-4 p-4 md:gap-8 md:p-10"
             style={{
               transform: `scale(${zoom / 100})`,
               transformOrigin: 'top left',
@@ -703,7 +917,7 @@ export default function DesignLabPage() {
 
         {/* ── Right sidebar ── */}
         <div
-          className="flex w-72 shrink-0 flex-col border-l"
+          className="flex h-[42vh] w-full shrink-0 flex-col border-t md:h-auto md:w-72 md:border-l md:border-t-0"
           style={{ background: p.canvas, borderColor: p.border }}
         >
           <div className="border-b px-4 py-3" style={{ borderColor: p.border }}>
@@ -760,9 +974,12 @@ export default function DesignLabPage() {
                   fontWeight: 600,
                   letterSpacing: '0.04em',
                   color: sidebarTab === tab ? p.accent : p.ink_muted,
-                  borderBottom: sidebarTab === tab ? `2px solid ${p.accent}` : '2px solid transparent',
                   background: 'transparent',
                   textTransform: 'uppercase',
+                  borderTop: 'none',
+                  borderLeft: 'none',
+                  borderRight: 'none',
+                  borderBottom: sidebarTab === tab ? `2px solid ${p.accent}` : '2px solid transparent',
                 }}
               >
                 {tab === 'tema' ? `Tema ${THEMES.length}` : `Template ${TEMPLATES.length}`}
