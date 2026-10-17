@@ -180,6 +180,42 @@ export function validateRuleBasedConsistency(
     }
   }
 
+  // Rule 4: DESIGN.md System Tokens Check
+  const design = docMap.get('DESIGN') || ''
+  if (design) {
+    const hasFrontMatter = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(design.trim())
+    const hasRequiredTokens =
+      /colors\s*:/i.test(design) &&
+      /typography\s*:/i.test(design) &&
+      /rounded\s*:/i.test(design) &&
+      /spacing\s*:/i.test(design) &&
+      /iconography\s*:/i.test(design)
+
+    if (!hasFrontMatter || !hasRequiredTokens) {
+      issues.push({
+        severity: 'MEDIUM',
+        category: 'INVALID_DESIGN_SYSTEM',
+        description: 'DESIGN.md is missing required machine-readable YAML front matter tokens (colors, typography, rounded, spacing, or iconography).',
+        affected_documents: ['DESIGN.md'],
+        recommendation: 'Ensure DESIGN.md starts with a YAML front matter block specifying colors, typography, rounded, spacing, and iconography tokens.',
+      })
+    }
+  }
+
+  // Rule 5: AGENT.md & DESIGN.md Consistency Check
+  const agent = docMap.get('AGENT') || ''
+  if (agent && design) {
+    if (!agent.includes('DESIGN.md')) {
+      issues.push({
+        severity: 'MEDIUM',
+        category: 'AGENT_DESIGN_HIERARCHY_MISSING',
+        description: 'Agent.md does not establish DESIGN.md in its document hierarchy as the visual authority.',
+        affected_documents: ['Agent.md', 'DESIGN.md'],
+        recommendation: 'Ensure Agent.md establishes DESIGN.md as the sole visual/interaction authority.',
+      })
+    }
+  }
+
   // Calculate consistency score
   const highCount = issues.filter((i) => i.severity === 'HIGH').length
   const medCount = issues.filter((i) => i.severity === 'MEDIUM').length

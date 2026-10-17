@@ -133,6 +133,85 @@ describe('Rule-Based Consistency Validator', () => {
     expect(report.isConsistent).toBe(true)
     expect(report.issues).toEqual([])
   })
+
+  it('detects missing YAML front matter tokens in DESIGN.md', () => {
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'DESIGN',
+        path: 'DESIGN.md',
+        content: '# DESIGN.md\nNo front matter',
+      },
+    ])
+
+    expect(report.issues.some((i) => i.category === 'INVALID_DESIGN_SYSTEM')).toBe(true)
+  })
+
+  it('passes validation when DESIGN.md has valid YAML front matter and Agent.md references DESIGN.md', () => {
+    const validDesign = `---
+name: "Acme Design System"
+archetype: "Contemporary Institutional"
+colors:
+  canvas: "#FFF"
+typography:
+  body: { fontFamily: "Inter" }
+rounded:
+  sm: "2px"
+spacing:
+  sm: "8px"
+iconography:
+  library: "lucide-react"
+---
+# DESIGN.md`
+
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'DESIGN',
+        path: 'DESIGN.md',
+        content: validDesign,
+      },
+      {
+        type: 'AGENT',
+        path: 'Agent.md',
+        content: '# Agent.md\nPrecedence: DESIGN.md is visual authority',
+      },
+    ])
+
+    expect(report.issues).toHaveLength(0)
+    expect(report.isConsistent).toBe(true)
+  })
+
+  it('detects when Agent.md fails to reference DESIGN.md', () => {
+    const validDesign = `---
+name: "Acme Design System"
+archetype: "Contemporary Institutional"
+colors:
+  canvas: "#FFF"
+typography:
+  body: { fontFamily: "Inter" }
+rounded:
+  sm: "2px"
+spacing:
+  sm: "8px"
+iconography:
+  library: "lucide-react"
+---
+# DESIGN.md`
+
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'DESIGN',
+        path: 'DESIGN.md',
+        content: validDesign,
+      },
+      {
+        type: 'AGENT',
+        path: 'Agent.md',
+        content: '# Agent.md\nNo mention of design document',
+      },
+    ])
+
+    expect(report.issues.some((i) => i.category === 'AGENT_DESIGN_HIERARCHY_MISSING')).toBe(true)
+  })
 })
 
 describe('Consistency Validator Engine — auditProjectConsistency', () => {
