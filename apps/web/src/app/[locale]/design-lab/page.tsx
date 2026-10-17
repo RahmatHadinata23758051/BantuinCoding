@@ -127,11 +127,26 @@ const THEMES: ThemeDef[] = [
 
 type Tone = 'ok' | 'warn' | 'bad' | 'accent' | 'muted'
 
+/**
+ * Composition primitives — the DESIGN of a screen, not its data.
+ * A template is a `layout` (ordered blocks, each with a rendering variant),
+ * which is what actually makes two templates look different rather than
+ * merely say different things.
+ */
+type Block =
+  | { k: 'kpi'; variant: 'rail' | 'inline' | 'tiles' | 'stack' }
+  | { k: 'chart'; variant: 'bars' | 'line' | 'donut' | 'spark' }
+  | { k: 'list'; variant: 'ledger' | 'rows' | 'cards' | 'airy' }
+  | { k: 'feed' }
+  | { k: 'split'; ratio?: '2:1' | '1:1'; left: Block[]; right: Block[] }
+
 interface ScreenSet {
   /** Artboard 02 label + topbar brand */
   heroLabel: string
   brand: string
   nav: string[]
+  /** Screen composition, top to bottom */
+  layout: Block[]
   stats: { label: string; value: string; delta: string }[]
   chart: { title: string; caption: string; bars: number[] }
   table: { headers: string[]; rows: { cells: string[]; tone?: Tone }[] }
@@ -139,6 +154,8 @@ interface ScreenSet {
   form: {
     title: string
     subtitle: string
+    /** 'stack' = single column; 'inline' = two-column field grid */
+    variant?: 'stack' | 'inline'
     fields: { label: string; value: string }[]
     segmented?: { options: string[]; active: number }
     submit: string
@@ -149,6 +166,11 @@ const DEFAULT_SCREEN: ScreenSet = {
   heroLabel: 'Dashboard Screen',
   brand: 'Workspace',
   nav: ['Dashboard', 'Projects', 'Reports'],
+  layout: [
+    { k: 'kpi', variant: 'rail' },
+    { k: 'chart', variant: 'bars' },
+    { k: 'list', variant: 'ledger' },
+  ],
   stats: [
     { label: 'Revenue', value: 'Rp 84.2M', delta: '+12%' },
     { label: 'Active Users', value: '3,847', delta: '+8%' },
@@ -207,6 +229,12 @@ const TEMPLATES: TemplateDef[] = [
       heroLabel: 'Compact Deal Ledger',
       brand: 'Deals Ledger',
       nav: ['Pipeline', 'Contacts', 'Reports'],
+      layout: [
+        { k: 'kpi', variant: 'rail' },
+        { k: 'chart', variant: 'bars' },
+        { k: 'feed' },
+        { k: 'list', variant: 'ledger' },
+      ],
       stats: [
         { label: 'Deal Value', value: 'Rp 1.24M', delta: '+18%' },
         { label: 'Win Rate', value: '34%', delta: '+3%' },
@@ -248,19 +276,25 @@ const TEMPLATES: TemplateDef[] = [
     id: 'marketing-dashboard',
     name: 'Marketing Sales Dashboard',
     category: 'Analytics',
-    desc: 'Revenue chart, campaign table, KPI rail',
+    desc: 'Chart-first analytics, line graph, campaign rows',
     palette: ['#FAFAF9', '#FFFFFF', '#6366F1', '#1A1A1A'],
     screen: {
       heroLabel: 'Marketing Sales Dashboard',
       brand: 'Campaign HQ',
       nav: ['Campaigns', 'Audience', 'Attribution'],
+      // Chart FIRST, followed by 2 large KPI tiles, then campaigns
+      layout: [
+        { k: 'chart', variant: 'line' },
+        { k: 'kpi', variant: 'tiles' },
+        { k: 'list', variant: 'rows' },
+      ],
       stats: [
         { label: 'ROAS', value: '4.2x', delta: '+0.6x' },
         { label: 'Spend', value: 'Rp 62.8M', delta: '+9%' },
         { label: 'CTR', value: '2.9%', delta: '+0.3%' },
         { label: 'Leads', value: '1,204', delta: '+14%' },
       ],
-      chart: { title: 'Spend vs Return', caption: 'Last 14 days', bars: [50, 65, 42, 88, 74, 60, 95] },
+      chart: { title: 'Spend vs Return (ROAS)', caption: 'Last 14 days · Smooth curve', bars: [20, 35, 28, 60, 48, 85, 92] },
       table: {
         headers: ['Campaign', 'Channel', 'Status', 'CTR'],
         rows: [
@@ -281,6 +315,7 @@ const TEMPLATES: TemplateDef[] = [
       form: {
         title: 'New Campaign',
         subtitle: 'Configure channel, budget and flight dates',
+        variant: 'inline',
         fields: [
           { label: 'Campaign Name', value: 'Independence Day Blast' },
           { label: 'Channel', value: 'Meta Ads + YouTube' },
@@ -295,19 +330,32 @@ const TEMPLATES: TemplateDef[] = [
     id: 'dashboard-crm',
     name: 'Dashboard CRM',
     category: 'CRM',
-    desc: 'Activity feed, contact tree, task queue',
+    desc: 'Split layout: contact tree alongside live feed',
     palette: ['#F7F6F3', '#FFFFFF', '#059669', '#111827'],
     screen: {
       heroLabel: 'Contact Hub Overview',
       brand: 'Contact Hub',
       nav: ['Contacts', 'Tasks', 'Pipeline'],
+      // Split layout: 2:1 column with chart/list on left, full feed on right
+      layout: [
+        { k: 'kpi', variant: 'inline' },
+        {
+          k: 'split',
+          ratio: '2:1',
+          left: [
+            { k: 'chart', variant: 'bars' },
+            { k: 'list', variant: 'cards' },
+          ],
+          right: [{ k: 'feed' }],
+        },
+      ],
       stats: [
         { label: 'Contacts', value: '8,412', delta: '+126' },
         { label: 'Tasks Due', value: '14', delta: '-5' },
         { label: 'Response', value: '2h 41m', delta: '-18m' },
         { label: 'Health', value: '91%', delta: '+2%' },
       ],
-      chart: { title: 'Interaction Volume', caption: 'Touchpoints / day', bars: [45, 72, 58, 90, 66, 80, 70] },
+      chart: { title: 'Touchpoint Volume', caption: 'Interactions / day', bars: [45, 72, 58, 90, 66, 80, 70] },
       table: {
         headers: ['Contact', 'Last Touch', 'Status', 'Owner'],
         rows: [
@@ -323,6 +371,7 @@ const TEMPLATES: TemplateDef[] = [
           { tag: 'NOTE', text: 'Dewi asked for enterprise pricing', time: '12m' },
           { tag: 'TASK', text: 'Follow up with Citra Lestari', time: '2h' },
           { tag: 'MEET', text: 'Demo scheduled — Eko Prasetyo', time: '4h' },
+          { tag: 'CALL', text: 'Call wrap with Sentra Retail', time: '5h' },
         ],
       },
       form: {
@@ -342,19 +391,26 @@ const TEMPLATES: TemplateDef[] = [
     id: 'nuvio-support',
     name: 'Nuvio Support Dashboard',
     category: 'Support',
-    desc: 'Ticket list, SLA status, agent queue',
+    desc: 'Donut breakdown, urgent ticket cards, agent stack',
     palette: ['#18181B', '#27272A', '#A78BFA', '#FAFAFA'],
     screen: {
       heroLabel: 'Support Ticket Console',
       brand: 'Nuvio Support',
       nav: ['Tickets', 'Agents', 'SLA'],
+      // Donut chart + ticket cards instead of table
+      layout: [
+        { k: 'kpi', variant: 'stack' },
+        { k: 'chart', variant: 'donut' },
+        { k: 'list', variant: 'cards' },
+        { k: 'feed' },
+      ],
       stats: [
         { label: 'Open Tickets', value: '132', delta: '-12' },
         { label: 'First Reply', value: '14m', delta: '-3m' },
         { label: 'CSAT', value: '4.7', delta: '+0.2' },
         { label: 'SLA Breach', value: '3', delta: '+1' },
       ],
-      chart: { title: 'Ticket Inflow', caption: 'Created / resolved', bars: [70, 55, 85, 48, 92, 60, 74] },
+      chart: { title: 'Ticket Distribution by Priority', caption: 'Urgent · High · Normal · Low', bars: [45, 30, 15, 10] },
       table: {
         headers: ['Ticket', 'Priority', 'SLA', 'Agent'],
         rows: [
@@ -389,19 +445,25 @@ const TEMPLATES: TemplateDef[] = [
     id: 'clean-modern',
     name: 'Clean Modern Dashboard',
     category: 'General',
-    desc: 'Stat grid, table, filter panel',
+    desc: 'Minimal airy layout, sparkline trend, inline metrics',
     palette: ['#F8FAFC', '#FFFFFF', '#0EA5E9', '#0F172A'],
     screen: {
       heroLabel: 'General Overview',
       brand: 'Overview',
       nav: ['Home', 'Reports', 'Settings'],
+      // Minimal airy: inline KPIs, sparkline, airy table (no feed, no cards)
+      layout: [
+        { k: 'kpi', variant: 'inline' },
+        { k: 'chart', variant: 'spark' },
+        { k: 'list', variant: 'airy' },
+      ],
       stats: [
         { label: 'Visits', value: '48.3K', delta: '+6%' },
         { label: 'Signups', value: '1,092', delta: '+11%' },
         { label: 'Retention', value: '64%', delta: '+1%' },
         { label: 'Errors', value: '0.4%', delta: '-0.2%' },
       ],
-      chart: { title: 'Weekly Visits', caption: 'Mon – Sun', bars: [55, 68, 72, 64, 86, 78, 50] },
+      chart: { title: 'Traffic Sparkline', caption: '7-day momentum', bars: [30, 45, 60, 52, 75, 88, 95] },
       table: {
         headers: ['Item', 'Status', 'Owner', 'Updated'],
         rows: [
@@ -430,16 +492,11 @@ const TEMPLATES: TemplateDef[] = [
 
 function toneColor(tone: Tone | undefined, t: ThemeDef['tokens']) {
   switch (tone) {
-    case 'ok':
-      return { fg: '#16A34A', bg: '#16A34A22' }
-    case 'warn':
-      return { fg: '#D97706', bg: '#D9770622' }
-    case 'bad':
-      return { fg: '#DC2626', bg: '#DC262622' }
-    case 'accent':
-      return { fg: t.accent, bg: `${t.accent}22` }
-    default:
-      return { fg: t.textMuted, bg: `${t.textMuted}22` }
+    case 'ok':    return { fg: '#16A34A', bg: '#16A34A22' }
+    case 'warn':  return { fg: '#D97706', bg: '#D9770622' }
+    case 'bad':   return { fg: '#DC2626', bg: '#DC262622' }
+    case 'accent': return { fg: t.accent, bg: `${t.accent}22` }
+    default:      return { fg: t.textMuted, bg: `${t.textMuted}22` }
   }
 }
 
@@ -534,19 +591,338 @@ function FoundationArtboard({ theme }: { theme: ThemeDef }) {
   )
 }
 
-// ─── Artboard 02: Dashboard (template-driven) ────────────────────────────────
+// ─── Block renderers — each renders ONE structural block ─────────────────────
+
+/** KPI variants: rail (4-col tight), inline (borderless row), tiles (2 large hero cards), stack (vertical list) */
+function KpiBlock({ variant, stats, theme }: { variant: 'rail' | 'inline' | 'tiles' | 'stack'; stats: ScreenSet['stats']; theme: ThemeDef }) {
+  const t = theme.tokens
+  if (variant === 'rail') {
+    return (
+      <div className="grid grid-cols-4 gap-2">
+        {stats.map((s) => (
+          <div key={s.label} className="space-y-1 rounded-[4px] p-3" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+            <p className="text-[9px] font-medium" style={{ color: t.textMuted }}>{s.label}</p>
+            <p className="text-sm font-bold tabular-nums" style={{ color: t.text }}>{s.value}</p>
+            <p className="text-[9px] font-semibold" style={{ color: t.accent }}>{s.delta}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (variant === 'inline') {
+    return (
+      <div className="flex gap-6 border-b pb-3" style={{ borderColor: t.border }}>
+        {stats.map((s) => (
+          <div key={s.label} className="flex items-baseline gap-2">
+            <span className="text-lg font-bold tabular-nums" style={{ color: t.text }}>{s.value}</span>
+            <span className="text-[9px]" style={{ color: t.textMuted }}>{s.label}</span>
+            <span className="text-[9px] font-semibold" style={{ color: t.accent }}>{s.delta}</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (variant === 'tiles') {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {stats.slice(0, 2).map((s) => (
+          <div key={s.label} className="rounded-[6px] p-4" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+            <p className="text-[10px] font-medium mb-1" style={{ color: t.textMuted }}>{s.label}</p>
+            <p className="text-2xl font-bold tabular-nums" style={{ color: t.text }}>{s.value}</p>
+            <p className="text-[10px] font-semibold mt-1" style={{ color: t.accent }}>{s.delta} vs last period</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+  // stack: vertical dense list
+  return (
+    <div className="space-y-1.5">
+      {stats.map((s) => (
+        <div key={s.label} className="flex items-center justify-between rounded-[4px] px-3 py-2" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+          <span className="text-[10px]" style={{ color: t.textMuted }}>{s.label}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold tabular-nums" style={{ color: t.text }}>{s.value}</span>
+            <span className="text-[9px] font-semibold w-10 text-right" style={{ color: t.accent }}>{s.delta}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Chart variants: bars (classic bar), line (smooth area), donut (priority ring), spark (minimal sparkline) */
+function ChartBlock({ variant, chart, theme }: { variant: 'bars' | 'line' | 'donut' | 'spark'; chart: ScreenSet['chart']; theme: ThemeDef }) {
+  const t = theme.tokens
+  const peak = Math.max(...chart.bars)
+
+  if (variant === 'bars') {
+    return (
+      <div className="space-y-2 rounded-[4px] p-3" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-semibold" style={{ color: t.text }}>{chart.title}</span>
+          <span className="text-[9px]" style={{ color: t.textMuted }}>{chart.caption}</span>
+        </div>
+        <div className="flex h-14 items-end gap-1">
+          {chart.bars.map((h, i) => (
+            <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: t.accent, opacity: h === peak ? 1 : 0.35 }} />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (variant === 'line') {
+    const w = 460; const h = 64; const pts = chart.bars
+    const xs = pts.map((_, i) => (i / (pts.length - 1)) * w)
+    const ys = pts.map((v) => h - (v / 100) * (h - 8))
+    const d = xs.map((x, i) => (i === 0 ? `M${x},${ys[i]}` : `C${xs[i-1]+30},${ys[i-1]} ${x-30},${ys[i]} ${x},${ys[i]}`)).join(' ')
+    const area = `${d} L${w},${h} L0,${h} Z`
+    return (
+      <div className="rounded-[4px] p-3" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold" style={{ color: t.text }}>{chart.title}</span>
+          <span className="text-[9px]" style={{ color: t.textMuted }}>{chart.caption}</span>
+        </div>
+        <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ height: 64 }}>
+          <defs>
+            <linearGradient id="lg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={t.accent} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={t.accent} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <path d={area} fill="url(#lg)" />
+          <path d={d} fill="none" stroke={t.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Last point dot */}
+          <circle cx={xs[xs.length-1]} cy={ys[ys.length-1]} r="3" fill={t.accent} />
+        </svg>
+      </div>
+    )
+  }
+
+  if (variant === 'donut') {
+    // bars[0..3] = Urgent, High, Normal, Low percentages
+    const slices = [
+      { label: 'Urgent', pct: chart.bars[0] ?? 45, color: '#DC2626' },
+      { label: 'High',   pct: chart.bars[1] ?? 30, color: '#D97706' },
+      { label: 'Normal', pct: chart.bars[2] ?? 15, color: t.accent },
+      { label: 'Low',    pct: chart.bars[3] ?? 10, color: t.textMuted },
+    ]
+    const total = slices.reduce((a, s) => a + s.pct, 0)
+    const cx = 50; const cy = 50; const r = 38; const ri = 24
+    let angle = -90
+    const paths = slices.map((s) => {
+      const sweep = (s.pct / total) * 360
+      const rad = (a: number) => (a * Math.PI) / 180
+      const x1 = cx + r * Math.cos(rad(angle))
+      const y1 = cy + r * Math.sin(rad(angle))
+      const x2 = cx + r * Math.cos(rad(angle + sweep))
+      const y2 = cy + r * Math.sin(rad(angle + sweep))
+      const xi1 = cx + ri * Math.cos(rad(angle))
+      const yi1 = cy + ri * Math.sin(rad(angle))
+      const xi2 = cx + ri * Math.cos(rad(angle + sweep))
+      const yi2 = cy + ri * Math.sin(rad(angle + sweep))
+      const large = sweep > 180 ? 1 : 0
+      const path = `M${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} L${xi2},${yi2} A${ri},${ri} 0 ${large},0 ${xi1},${yi1} Z`
+      angle += sweep
+      return { ...s, path }
+    })
+    return (
+      <div className="rounded-[4px] p-3" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold" style={{ color: t.text }}>{chart.title}</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <svg viewBox="0 0 100 100" style={{ width: 80, height: 80, flexShrink: 0 }}>
+            {paths.map((p) => <path key={p.label} d={p.path} fill={p.color} />)}
+          </svg>
+          <div className="space-y-1.5">
+            {slices.map((s) => (
+              <div key={s.label} className="flex items-center gap-2">
+                <div className="size-2 rounded-full" style={{ background: s.color }} />
+                <span className="text-[10px]" style={{ color: t.textMuted }}>{s.label}</span>
+                <span className="font-mono text-[10px] font-bold ml-auto" style={{ color: t.text }}>{s.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // spark: thin minimal sparkline with trend arrow
+  const w = 460; const h = 32; const pts = chart.bars
+  const xs = pts.map((_, i) => (i / (pts.length - 1)) * w)
+  const ys = pts.map((v) => h - (v / 100) * (h - 4))
+  const d = xs.map((x, i) => (i === 0 ? `M${x},${ys[i]}` : `L${x},${ys[i]}`)).join(' ')
+  const trend = pts[pts.length - 1] > pts[0]
+  return (
+    <div className="flex items-center gap-3 rounded-[4px] px-3 py-2" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[9px]" style={{ color: t.textMuted }}>{chart.title}</span>
+          <span className="text-[9px] font-semibold" style={{ color: trend ? '#16A34A' : '#DC2626' }}>{trend ? '↑' : '↓'} {chart.caption}</span>
+        </div>
+        <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ height: 32 }}>
+          <path d={d} fill="none" stroke={t.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+/** List variants: ledger (dense 4-col bordered), rows (comfortable rows with colored status pill), cards (ticket/contact card per row), airy (spacious row with dividers only) */
+function ListBlock({ variant, table, theme }: { variant: 'ledger' | 'rows' | 'cards' | 'airy'; table: ScreenSet['table']; theme: ThemeDef }) {
+  const t = theme.tokens
+  if (variant === 'ledger') {
+    return (
+      <div className="overflow-hidden rounded-[4px]" style={{ border: `1px solid ${t.border}` }}>
+        <div className="grid grid-cols-4 px-3 py-1.5" style={{ background: t.canvas, borderBottom: `1px solid ${t.border}` }}>
+          {table.headers.map((h) => (
+            <span key={h} className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: t.textMuted }}>{h}</span>
+          ))}
+        </div>
+        {table.rows.map((row, i) => {
+          const c = toneColor(row.tone, t)
+          return (
+            <div key={`${row.cells[0]}-${i}`} className="grid grid-cols-4 items-center px-3 py-2" style={{
+              background: i % 2 === 0 ? t.surface : t.canvas,
+              borderBottom: i < table.rows.length - 1 ? `1px solid ${t.border}` : undefined,
+            }}>
+              <span className="truncate text-[10px] font-medium" style={{ color: t.text }}>{row.cells[0]}</span>
+              <span className="w-fit rounded-[3px] px-1.5 py-0.5 text-[8px] font-semibold" style={{ background: c.bg, color: c.fg }}>{row.cells[1]}</span>
+              <span className="text-[10px] tabular-nums" style={{ color: t.textMuted }}>{row.cells[2]}</span>
+              <span className="text-[10px] font-semibold" style={{ color: t.accent }}>{row.cells[3]}</span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (variant === 'rows') {
+    return (
+      <div className="space-y-1.5">
+        {table.headers.length > 0 && (
+          <div className="flex gap-3 px-1 pb-1" style={{ borderBottom: `1px solid ${t.border}` }}>
+            {table.headers.map((h, i) => (
+              <span key={h} className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: t.textMuted, flex: i === 0 ? 2 : 1 }}>{h}</span>
+            ))}
+          </div>
+        )}
+        {table.rows.map((row, i) => {
+          const c = toneColor(row.tone, t)
+          return (
+            <div key={`${row.cells[0]}-${i}`} className="flex items-center gap-3 rounded-[4px] px-3 py-2.5" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+              <span className="text-[11px] font-medium flex-[2]" style={{ color: t.text }}>{row.cells[0]}</span>
+              <span className="text-[10px] flex-1" style={{ color: t.textMuted }}>{row.cells[1]}</span>
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold" style={{ background: c.bg, color: c.fg }}>{row.cells[2]}</span>
+              <span className="text-[10px] font-bold flex-1 text-right" style={{ color: t.text }}>{row.cells[3]}</span>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (variant === 'cards') {
+    return (
+      <div className="space-y-2">
+        {table.rows.map((row, i) => {
+          const c = toneColor(row.tone, t)
+          return (
+            <div key={`${row.cells[0]}-${i}`} className="flex items-center gap-3 rounded-[6px] p-3" style={{ background: t.canvas, border: `2px solid ${c.bg}`, borderLeft: `3px solid ${c.fg}` }}>
+              <div className="flex-1">
+                <p className="text-[11px] font-semibold" style={{ color: t.text }}>{row.cells[0]}</p>
+                <p className="text-[9px] mt-0.5" style={{ color: t.textMuted }}>{row.cells[1]}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold" style={{ color: c.fg }}>{row.cells[2]}</p>
+                <p className="text-[9px]" style={{ color: t.textMuted }}>{row.cells[3]}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // airy: large divider-only rows
+  return (
+    <div>
+      {table.rows.map((row, i) => {
+        const c = toneColor(row.tone, t)
+        return (
+          <div key={`${row.cells[0]}-${i}`} className="flex items-center gap-4 py-3 px-1" style={{ borderBottom: `1px solid ${t.border}` }}>
+            <div className="size-1.5 rounded-full" style={{ background: c.fg }} />
+            <span className="text-[12px] font-medium flex-1" style={{ color: t.text }}>{row.cells[0]}</span>
+            <span className="text-[10px]" style={{ color: t.textMuted }}>{row.cells[1]}</span>
+            <span className="text-[10px]" style={{ color: t.textMuted }}>{row.cells[2]}</span>
+            <span className="text-[10px] font-semibold" style={{ color: t.accent }}>{row.cells[3]}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Feed block — always the same structure, rendered when the template includes one */
+function FeedBlock({ feed, theme }: { feed: NonNullable<ScreenSet['feed']>; theme: ThemeDef }) {
+  const t = theme.tokens
+  return (
+    <div className="rounded-[4px] p-3" style={{ background: t.canvas, border: `1px solid ${t.border}` }}>
+      <p className="mb-2 text-[10px] font-semibold" style={{ color: t.text }}>{feed.title}</p>
+      <div className="space-y-1.5">
+        {feed.items.map((item) => (
+          <div key={item.text} className="flex items-center gap-2">
+            <span className="rounded-[3px] px-1.5 py-0.5 font-mono text-[8px] font-bold" style={{ background: `${t.accent}22`, color: t.accent }}>
+              {item.tag}
+            </span>
+            <span className="flex-1 truncate text-[10px]" style={{ color: t.text }}>{item.text}</span>
+            <span className="font-mono text-[9px]" style={{ color: t.textMuted }}>{item.time}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Artboard 02: Dashboard — layout-driven compositor ───────────────────────
 
 function DashboardArtboard({ theme, screen }: { theme: ThemeDef; screen: ScreenSet }) {
   const t = theme.tokens
-  const peak = Math.max(...screen.chart.bars)
+
+  function renderBlock(block: Block, idx: number): React.ReactNode {
+    switch (block.k) {
+      case 'kpi':
+        return <KpiBlock key={idx} variant={block.variant} stats={screen.stats} theme={theme} />
+      case 'chart':
+        return <ChartBlock key={idx} variant={block.variant} chart={screen.chart} theme={theme} />
+      case 'list':
+        return <ListBlock key={idx} variant={block.variant} table={screen.table} theme={theme} />
+      case 'feed':
+        return screen.feed ? <FeedBlock key={idx} feed={screen.feed} theme={theme} /> : null
+      case 'split': {
+        const ratio = block.ratio ?? '2:1'
+        const [lw, rw] = ratio === '1:1' ? ['flex-1', 'flex-1'] : ['flex-[2]', 'flex-1']
+        return (
+          <div key={idx} className="flex gap-3">
+            <div className={`${lw} space-y-3`}>
+              {block.left.map((b, i) => renderBlock(b, i))}
+            </div>
+            <div className={`${rw} space-y-3`}>
+              {block.right.map((b, i) => renderBlock(b, i))}
+            </div>
+          </div>
+        )
+      }
+    }
+  }
 
   return (
-    <ArtboardShell label={screen.heroLabel} width={520} theme={theme}>
+    <ArtboardShell label={screen.heroLabel} width={560} theme={theme}>
       {/* App topbar */}
-      <div
-        className="flex items-center justify-between px-4 py-2.5"
-        style={{ background: t.canvas, borderBottom: `1px solid ${t.border}` }}
-      >
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ background: t.canvas, borderBottom: `1px solid ${t.border}` }}>
         <div className="flex items-center gap-2">
           <div className="size-4 rounded-[3px]" style={{ background: t.accent }} />
           <span className="text-[11px] font-bold" style={{ color: t.text }}>{screen.brand}</span>
@@ -559,102 +935,8 @@ function DashboardArtboard({ theme, screen }: { theme: ThemeDef; screen: ScreenS
         </div>
       </div>
 
-      <div className="space-y-4 p-4" style={{ background: t.surface }}>
-        {/* Stat rail */}
-        <div className="grid grid-cols-4 gap-2">
-          {screen.stats.map((s) => (
-            <div
-              key={s.label}
-              className="space-y-1 rounded-[4px] p-3"
-              style={{ background: t.canvas, border: `1px solid ${t.border}` }}
-            >
-              <p className="text-[9px] font-medium" style={{ color: t.textMuted }}>{s.label}</p>
-              <p className="text-sm font-bold tabular-nums" style={{ color: t.text }}>{s.value}</p>
-              <p className="text-[9px] font-semibold" style={{ color: t.accent }}>{s.delta}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Chart */}
-        <div
-          className="space-y-2 rounded-[4px] p-3"
-          style={{ background: t.canvas, border: `1px solid ${t.border}` }}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold" style={{ color: t.text }}>{screen.chart.title}</span>
-            <span className="text-[9px]" style={{ color: t.textMuted }}>{screen.chart.caption}</span>
-          </div>
-          <div className="flex h-10 items-end gap-1">
-            {screen.chart.bars.map((h, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-sm"
-                style={{ height: `${h}%`, background: t.accent, opacity: h === peak ? 1 : 0.4 }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Optional feed block */}
-        {screen.feed && (
-          <div
-            className="rounded-[4px] p-3"
-            style={{ background: t.canvas, border: `1px solid ${t.border}` }}
-          >
-            <p className="mb-2 text-[10px] font-semibold" style={{ color: t.text }}>{screen.feed.title}</p>
-            <div className="space-y-1.5">
-              {screen.feed.items.map((item) => (
-                <div key={item.text} className="flex items-center gap-2">
-                  <span
-                    className="rounded-[3px] px-1.5 py-0.5 font-mono text-[8px] font-bold"
-                    style={{ background: `${t.accent}22`, color: t.accent }}
-                  >
-                    {item.tag}
-                  </span>
-                  <span className="flex-1 truncate text-[10px]" style={{ color: t.text }}>{item.text}</span>
-                  <span className="font-mono text-[9px]" style={{ color: t.textMuted }}>{item.time}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-[4px]" style={{ border: `1px solid ${t.border}` }}>
-          <div
-            className="grid grid-cols-4 px-3 py-1.5"
-            style={{ background: t.canvas, borderBottom: `1px solid ${t.border}` }}
-          >
-            {screen.table.headers.map((h) => (
-              <span key={h} className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: t.textMuted }}>
-                {h}
-              </span>
-            ))}
-          </div>
-          {screen.table.rows.map((row, i) => {
-            const c = toneColor(row.tone, t)
-            return (
-              <div
-                key={`${row.cells[0]}-${i}`}
-                className="grid grid-cols-4 items-center px-3 py-2"
-                style={{
-                  background: i % 2 === 0 ? t.surface : t.canvas,
-                  borderBottom: i < screen.table.rows.length - 1 ? `1px solid ${t.border}` : undefined,
-                }}
-              >
-                <span className="truncate text-[10px] font-medium" style={{ color: t.text }}>{row.cells[0]}</span>
-                <span
-                  className="w-fit rounded-[3px] px-1.5 py-0.5 text-[8px] font-semibold"
-                  style={{ background: c.bg, color: c.fg }}
-                >
-                  {row.cells[1]}
-                </span>
-                <span className="text-[10px] tabular-nums" style={{ color: t.textMuted }}>{row.cells[2]}</span>
-                <span className="text-[10px] font-semibold" style={{ color: t.accent }}>{row.cells[3]}</span>
-              </div>
-            )
-          })}
-        </div>
+      <div className="space-y-3 p-4" style={{ background: t.surface }}>
+        {screen.layout.map((block, i) => renderBlock(block, i))}
       </div>
     </ArtboardShell>
   )
@@ -665,26 +947,29 @@ function DashboardArtboard({ theme, screen }: { theme: ThemeDef; screen: ScreenS
 function FormArtboard({ theme, screen }: { theme: ThemeDef; screen: ScreenSet }) {
   const t = theme.tokens
   const f = screen.form
+  const inline = f.variant === 'inline'
 
   return (
-    <ArtboardShell label={f.title} width={320} theme={theme}>
+    <ArtboardShell label={f.title} width={inline ? 380 : 320} theme={theme}>
       <div className="space-y-3 p-4" style={{ background: t.surface }}>
         <div>
           <p className="mb-1 text-xs font-semibold" style={{ color: t.text }}>{f.title}</p>
           <p className="text-[10px]" style={{ color: t.textMuted }}>{f.subtitle}</p>
         </div>
 
-        {f.fields.map((field) => (
-          <div key={field.label} className="space-y-1">
-            <label className="text-[10px] font-semibold" style={{ color: t.text }}>{field.label}</label>
-            <div
-              className="rounded-[4px] px-3 py-2 text-[11px]"
-              style={{ background: t.canvas, border: `1px solid ${t.border}`, color: t.text }}
-            >
-              {field.value}
+        <div className={inline ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
+          {f.fields.map((field) => (
+            <div key={field.label} className="space-y-1">
+              <label className="text-[10px] font-semibold" style={{ color: t.text }}>{field.label}</label>
+              <div
+                className="rounded-[4px] px-3 py-2 text-[11px]"
+                style={{ background: t.canvas, border: `1px solid ${t.border}`, color: t.text }}
+              >
+                {field.value}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
         {f.segmented && (
           <div className="space-y-1">
@@ -775,8 +1060,146 @@ function ThemeCard({ theme, selected, onClick }: { theme: ThemeDef; selected: bo
   )
 }
 
+/** Sidebar thumbnail: mirrors the template's real block composition, so the
+ *  card you pick looks like the screen you get. */
+function TemplateThumb({ tpl }: { tpl: TemplateDef }) {
+  const [bg, , accent, ink] = tpl.palette
+  const bars = tpl.screen.chart.bars
+  const peak = Math.max(...bars)
+  const dim = (a: number) => `${ink}${a}`
+  const blockCount = tpl.screen.layout.length
+
+  function mini(block: Block, key: number, dense = false): React.ReactNode {
+    const h = dense ? 9 : 14
+    switch (block.k) {
+      case 'kpi':
+        if (block.variant === 'tiles')
+          return (
+            <div key={key} className="grid grid-cols-2 gap-0.5" style={{ height: h + 3 }}>
+              {tpl.screen.stats.slice(0, 4).map((_, i) => (
+                <div key={i} className="flex items-center gap-0.5 border px-0.5" style={{ borderColor: dim(0x22), background: `${ink}08` }}>
+                  <div className="h-1 w-1/3 rounded-full" style={{ background: dim(0x33) }} />
+                  <div className="h-1 flex-1 rounded-full" style={{ background: i === 0 ? accent : dim(0x55) }} />
+                </div>
+              ))}
+            </div>
+          )
+        if (block.variant === 'stack')
+          return (
+            <div key={key} className="flex flex-col justify-between" style={{ height: h + 2 }}>
+              {tpl.screen.stats.slice(0, 3).map((_, i) => (
+                <div key={i} className="flex items-center gap-1 border-b pb-px" style={{ borderColor: dim(0x22) }}>
+                  <div className="h-1 w-1/3 rounded-full" style={{ background: dim(0x44) }} />
+                  <div className="h-1 w-1/4 rounded-full" style={{ background: i === 0 ? accent : dim(0x33) }} />
+                  <div className="ml-auto h-1 w-1/6 rounded-full" style={{ background: dim(0x22) }} />
+                </div>
+              ))}
+            </div>
+          )
+        return (
+          <div key={key} className={`flex ${block.variant === 'rail' ? 'divide-x' : 'gap-1'}`} style={{ height: h }}>
+            {tpl.screen.stats.slice(0, 4).map((_, i) => (
+              <div key={i} className="flex flex-1 items-center gap-0.5 px-0.5" style={{ borderColor: dim(0x22) }}>
+                {block.variant === 'inline' && <div className="size-1 rounded-full" style={{ background: i === 0 ? accent : dim(0x33) }} />}
+                <div className="h-1 flex-1 rounded-full" style={{ background: i === 0 ? accent : dim(0x44) }} />
+              </div>
+            ))}
+          </div>
+        )
+      case 'chart':
+        if (block.variant === 'donut')
+          return (
+            <div key={key} className="flex items-center gap-1" style={{ height: h }}>
+              <div className="size-3.5 rounded-full" style={{ background: `conic-gradient(${accent} 0 45%, #DC2626 45% 75%, #D97706 75% 90%, ${dim(0x44)} 90%)` }} />
+              <div className="flex-1 space-y-0.5">
+                <div className="h-1 w-2/3 rounded-full" style={{ background: dim(0x44) }} />
+                <div className="h-1 w-1/3 rounded-full" style={{ background: dim(0x22) }} />
+              </div>
+            </div>
+          )
+        if (block.variant === 'line')
+          return (
+            <div key={key} style={{ height: h }}>
+              <svg width="100%" height={h} viewBox="0 0 100 14" preserveAspectRatio="none">
+                <path
+                  d={bars.map((v, i) => `${i === 0 ? 'M' : 'L'}${(i / (bars.length - 1)) * 100},${14 - (v / 100) * 12}`).join(' ')}
+                  fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          )
+        if (block.variant === 'spark')
+          return (
+            <div key={key} className="flex items-center gap-1" style={{ height: h }}>
+              <div className="h-px flex-1" style={{ background: dim(0x33) }} />
+              <svg width="60%" height={h} viewBox="0 0 100 14" preserveAspectRatio="none">
+                <path
+                  d={bars.map((v, i) => `${i === 0 ? 'M' : 'L'}${(i / (bars.length - 1)) * 100},${14 - (v / 100) * 12}`).join(' ')}
+                  fill="none" stroke={accent} strokeWidth="1.5" opacity="0.8"
+                />
+              </svg>
+            </div>
+          )
+        return (
+          <div key={key} className="flex items-end gap-0.5" style={{ height: h }}>
+            {bars.map((v, i) => (
+              <div key={i} className="flex-1 rounded-[1px]" style={{ height: `${v}%`, background: accent, opacity: v === peak ? 1 : 0.4 }} />
+            ))}
+          </div>
+        )
+      case 'list': {
+        const rows = tpl.screen.table.rows.slice(0, block.variant === 'airy' ? 2 : 3)
+        return (
+          <div key={key} className="space-y-0.5">
+            {rows.map((_, i) => (
+              <div key={i} className="flex items-center gap-1" style={{ height: dense ? 4 : 5 }}>
+                {block.variant === 'cards' && <div className="h-full w-0.5 rounded-full" style={{ background: accent }} />}
+                {block.variant === 'airy' && <div className="size-1 rounded-full" style={{ background: dim(0x55) }} />}
+                <div className="h-full flex-1 rounded-full" style={{ background: block.variant === 'airy' ? dim(0x22) : dim(0x44) }} />
+                <div className="h-full w-1/4 rounded-full" style={{ background: dim(0x22) }} />
+              </div>
+            ))}
+          </div>
+        )
+      }
+      case 'feed':
+        return (
+          <div key={key} className="space-y-0.5">
+            {[0, 1].map((i) => (
+              <div key={i} className="flex items-center gap-1" style={{ height: dense ? 4 : 5 }}>
+                <div className="h-full w-1/4 rounded-full" style={{ background: `${accent}66` }} />
+                <div className="h-full flex-1 rounded-full" style={{ background: dim(0x33) }} />
+              </div>
+            ))}
+          </div>
+        )
+      case 'split':
+        return (
+          <div key={key} className="flex gap-1">
+            <div className="flex-[2] space-y-0.5">{block.left.map((b, i) => mini(b, i, true))}</div>
+            <div className="flex-1 space-y-0.5">{block.right.map((b, i) => mini(b, i, true))}</div>
+          </div>
+        )
+    }
+  }
+
+  return (
+    <div className="relative overflow-hidden p-1.5" style={{ background: bg, height: 74 }}>
+      {/* brand bar */}
+      <div className="mb-1 flex items-center gap-1">
+        <div className="size-1.5 rounded-[1px]" style={{ background: accent }} />
+        <div className="h-1 w-6 rounded-full" style={{ background: dim(0x55) }} />
+        <div className="ml-auto h-1 w-3 rounded-full" style={{ background: dim(0x33) }} />
+        <div className="h-1 w-3 rounded-full" style={{ background: dim(0x33) }} />
+      </div>
+      <div className={`space-y-1 ${blockCount > 3 ? 'scale-y-90 origin-top' : ''}`}>
+        {tpl.screen.layout.map((b, i) => mini(b, i))}
+      </div>
+    </div>
+  )
+}
+
 function TemplateCard({ tpl, selected, onClick }: { tpl: TemplateDef; selected: boolean; onClick: () => void }) {
-  const s = tpl.screen
   return (
     <button
       type="button"
@@ -787,31 +1210,7 @@ function TemplateCard({ tpl, selected, onClick }: { tpl: TemplateDef; selected: 
         background: selected ? '#F5F3FF' : '#FFFFFF',
       }}
     >
-      {/* Miniature of the real screen structure: stat row + chart + table */}
-      <div className="relative h-16 overflow-hidden p-1.5" style={{ background: tpl.palette[0] }}>
-        <div className="flex gap-1">
-          {s.stats.slice(0, 4).map((st, i) => (
-            <div key={i} className="h-3 flex-1 rounded-[2px]" style={{ background: i === 0 ? tpl.palette[2] : `${tpl.palette[3]}33` }} />
-          ))}
-        </div>
-        <div className="mt-1 flex h-5 items-end gap-0.5">
-          {s.chart.bars.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-[1px]"
-              style={{ height: `${h}%`, background: tpl.palette[2], opacity: h === Math.max(...s.chart.bars) ? 1 : 0.45 }}
-            />
-          ))}
-        </div>
-        <div className="mt-1 space-y-0.5">
-          {s.table.rows.slice(0, 3).map((_, i) => (
-            <div key={i} className="flex gap-1">
-              <div className="h-1.5 w-1/2 rounded-full" style={{ background: `${tpl.palette[3]}44` }} />
-              <div className="h-1.5 w-1/4 rounded-full" style={{ background: `${tpl.palette[3]}22` }} />
-            </div>
-          ))}
-        </div>
-      </div>
+      <TemplateThumb tpl={tpl} />
 
       <div className="space-y-0.5 px-3 py-2">
         <div className="flex items-center justify-between">
