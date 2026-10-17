@@ -81,6 +81,8 @@ describe('SkillsLLM Catalog Adapter & Fallback', () => {
   it('keeps skills as structured recommendations for Agent.md', () => {
     expect(internalCatalogFallback[0]?.name).toBe('typescript-backend')
     expect(internalCatalogFallback[0]?.purpose).toBeTruthy()
+    expect(internalCatalogFallback.some((s) => s.name === 'antislop')).toBe(true)
+    expect(internalCatalogFallback.some((s) => s.name === 'anti-slop-ui')).toBe(true)
   })
 })
 
