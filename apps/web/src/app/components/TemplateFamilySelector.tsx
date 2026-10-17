@@ -14,6 +14,11 @@ import {
   listTemplateFamilies,
   TemplateFamilyId,
   StructuredEnterpriseShowcase,
+  EditorialCraftShowcase,
+  PrecisionTechnicalShowcase,
+  ExpressiveCreativeShowcase,
+  CalmAndHumanShowcase,
+  RefinedLuxuryShowcase,
   DesignBlueprint,
 } from '@repo/design-templates'
 
@@ -69,6 +74,155 @@ export function TemplateFamilySelector({
     ],
     constraintsPassed: true,
     status: isSynthesized ? 'APPROVED' : 'DRAFT',
+  }
+
+  const renderMiniPreview = (familyId: TemplateFamilyId) => {
+    switch (familyId) {
+      case 'structured-enterprise':
+        return (
+          <div className="h-20 w-full bg-[#F4F6F8] border border-[#D5DFE7] rounded-[4px] p-2 flex flex-col justify-between overflow-hidden">
+            <div className="flex items-center justify-between pb-1 border-b border-[#D5DFE7]">
+              <div className="h-2 w-16 bg-[#245E84] rounded-[2px]" />
+              <div className="h-2 w-8 bg-[#20755D]/30 rounded-[2px]" />
+            </div>
+            <div className="grid grid-cols-[1fr_40px] gap-1.5 items-center">
+              <div className="space-y-1">
+                <div className="h-1.5 w-full bg-[#D5DFE7] rounded-[1px]" />
+                <div className="h-1.5 w-3/4 bg-[#D5DFE7] rounded-[1px]" />
+                <div className="h-1.5 w-5/6 bg-[#D5DFE7] rounded-[1px]" />
+              </div>
+              <div className="h-9 bg-white border border-[#D5DFE7] rounded-[2px] p-1 flex flex-col justify-between">
+                <div className="h-1 w-full bg-[#245E84]" />
+                <div className="h-1 w-full bg-[#546575]/40" />
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'editorial-craft':
+        return (
+          <div className="h-20 w-full bg-[#FAF8F5] border border-[#CEC3B3] rounded-[4px] p-2 flex flex-col justify-between overflow-hidden">
+            <div className="flex items-center justify-between pb-1 border-b border-[#CEC3B3]">
+              <div className="h-2.5 w-24 bg-[#25231F] rounded-[1px]" />
+              <div className="h-2 w-6 bg-[#8B4335]/40 rounded-[1px]" />
+            </div>
+            <div className="grid grid-cols-[1fr_36px] gap-2 items-center">
+              <div className="space-y-1 pl-1.5 border-l-2 border-[#8B4335]">
+                <div className="h-1.5 w-full bg-[#CEC3B3]" />
+                <div className="h-1.5 w-4/5 bg-[#CEC3B3]" />
+              </div>
+              <div className="h-9 bg-[#F4F0E7] border border-[#CEC3B3] rounded-[1px] p-1 flex flex-col justify-center items-center">
+                <div className="h-2 w-4 bg-[#8B4335]" />
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'precision-technical':
+        return (
+          <div className="h-20 w-full bg-[#0E1216] border border-[#35424A] rounded-[4px] p-2 flex flex-col justify-between overflow-hidden font-mono">
+            <div className="flex items-center justify-between pb-1 border-b border-[#35424A]">
+              <div className="flex items-center gap-1">
+                <div className="size-1.5 rounded-full bg-[#74BEA0]" />
+                <div className="h-2 w-16 bg-[#58B3C2] rounded-[1px]" />
+              </div>
+              <div className="h-1.5 w-6 bg-[#35424A]" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 space-y-1">
+                <div className="h-1.5 w-full bg-[#222B31]" />
+                <div className="h-1.5 w-3/4 bg-[#58B3C2]/40" />
+              </div>
+              <div className="h-8 w-12 bg-[#161C21] border border-[#35424A] rounded-[1px] flex flex-col items-center justify-center gap-1">
+                <div className="h-1.5 w-8 bg-[#74BEA0]" />
+                <div className="h-1 w-5 bg-[#35424A]" />
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'expressive-creative':
+        return (
+          <div className="h-20 w-full bg-[#F1EDDF] border-2 border-[#27282B] rounded-[4px] p-2 flex flex-col justify-between overflow-hidden shadow-[2px_2px_0px_#27282B]">
+            <div className="flex items-center justify-between pb-1 border-b border-[#27282B]">
+              <div className="h-2.5 w-20 bg-[#16171A] rounded-[1px]" />
+              <div className="h-2 w-6 bg-[#E34B2F] rounded-[1px]" />
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="h-8 bg-[#FFFCF5] border border-[#27282B] p-1 flex flex-col justify-between shadow-[1px_1px_0px_#27282B]">
+                <div className="h-1.5 w-3/4 bg-[#E34B2F]" />
+                <div className="h-1 w-full bg-[#27282B]/30" />
+              </div>
+              <div className="h-8 bg-[#16171A] text-white p-1 flex flex-col justify-between">
+                <div className="h-1.5 w-2/3 bg-white" />
+                <div className="h-1 w-full bg-[#E34B2F]" />
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'calm-and-human':
+        return (
+          <div className="h-20 w-full bg-[#F5F7F3] border border-[#CDDCD1] rounded-[6px] p-2 flex flex-col justify-between overflow-hidden">
+            <div className="flex items-center justify-between pb-1 border-b border-[#CDDCD1]">
+              <div className="h-2.5 w-20 bg-[#326F5C] rounded-full" />
+              <div className="h-2 w-8 bg-[#E8F0EA] rounded-full" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="w-full bg-[#E8F0EA] h-1.5 rounded-full overflow-hidden">
+                <div className="bg-[#326F5C] h-full w-2/3 rounded-full" />
+              </div>
+              <div className="h-7 bg-white border border-[#CDDCD1] rounded-[6px] p-1.5 flex items-center gap-2">
+                <div className="size-4 rounded-full bg-[#E8F0EA]" />
+                <div className="h-1.5 w-20 bg-[#CDDCD1] rounded-full" />
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'refined-luxury':
+        return (
+          <div className="h-20 w-full bg-[#F6F2EA] border border-[#CFC4B7] rounded-[4px] p-2 flex flex-col justify-between overflow-hidden font-serif">
+            <div className="flex items-center justify-between pb-1 border-b border-[#CFC4B7]">
+              <div className="h-2.5 w-24 bg-[#24211D]" />
+              <div className="h-1.5 w-8 bg-[#665144]" />
+            </div>
+            <div className="space-y-1.5 py-0.5">
+              <div className="h-1 w-full bg-[#CFC4B7]" />
+              <div className="grid grid-cols-3 gap-1">
+                <div className="h-5 bg-[#FFFCF8] border border-[#CFC4B7] p-1 flex flex-col justify-center items-center">
+                  <div className="h-1 w-4 bg-[#665144]" />
+                </div>
+                <div className="h-5 bg-[#FFFCF8] border border-[#CFC4B7] p-1 flex flex-col justify-center items-center">
+                  <div className="h-1 w-4 bg-[#665144]" />
+                </div>
+                <div className="h-5 bg-[#FFFCF8] border border-[#CFC4B7] p-1 flex flex-col justify-center items-center">
+                  <div className="h-1 w-4 bg-[#665144]" />
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+    }
+  }
+
+  const renderActiveShowcase = () => {
+    switch (selectedFamily.id) {
+      case 'structured-enterprise':
+        return <StructuredEnterpriseShowcase />
+      case 'editorial-craft':
+        return <EditorialCraftShowcase />
+      case 'precision-technical':
+        return <PrecisionTechnicalShowcase />
+      case 'expressive-creative':
+        return <ExpressiveCreativeShowcase />
+      case 'calm-and-human':
+        return <CalmAndHumanShowcase />
+      case 'refined-luxury':
+        return <RefinedLuxuryShowcase />
+      default:
+        return <StructuredEnterpriseShowcase />
+    }
   }
 
   const handleApply = () => {
@@ -142,10 +296,9 @@ export function TemplateFamilySelector({
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {families.map((family) => {
                 const isSelected = selectedId === family.id
-                const isImplemented = family.id === 'structured-enterprise'
 
                 return (
                   <button
@@ -154,27 +307,32 @@ export function TemplateFamilySelector({
                     onClick={() => handleSelect(family.id)}
                     className={`p-4 text-left rounded-[8px] border transition-all flex flex-col justify-between select-none ${
                       isSelected
-                        ? 'bg-white border-[#245E84] ring-2 ring-[#245E84]/20 shadow-sm'
+                        ? 'bg-white border-[#245E84] ring-2 ring-[#245E84]/25 shadow-md'
                         : 'bg-white border-[#D5DFE7] hover:border-[#8898AA] hover:bg-[#F8FAFC]'
                     }`}
                   >
-                    <div>
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-sm text-[#17222D]">
                           {family.name}
                         </span>
-                        {isImplemented ? (
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E9F5F1] text-[#20755D] border border-[#BFE4D8]">
-                            Active Reference UI
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F4F6F8] text-[#546575] border border-[#D5DFE7]">
-                            Spec Draft
-                          </span>
-                        )}
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            isSelected
+                              ? 'bg-[#E7EFF5] text-[#245E84] border-[#245E84]/30'
+                              : 'bg-[#E9F5F1] text-[#20755D] border-[#BFE4D8]'
+                          }`}
+                        >
+                          Live Preview
+                        </span>
                       </div>
 
-                      <p className="mt-1.5 text-xs text-[#546575] line-clamp-2">
+                      {/* Mini Visual DNA Preview Thumbnail */}
+                      <div className="rounded-[4px] overflow-hidden shadow-xs border border-black/5">
+                        {renderMiniPreview(family.id)}
+                      </div>
+
+                      <p className="text-xs text-[#546575] line-clamp-2 leading-relaxed">
                         {family.thesis}
                       </p>
                     </div>
@@ -296,31 +454,9 @@ export function TemplateFamilySelector({
               </span>
             </div>
 
-            {selectedFamily.id === 'structured-enterprise' ? (
-              <div className="border border-[#D5DFE7] rounded-[8px] overflow-hidden shadow-sm">
-                <StructuredEnterpriseShowcase />
-              </div>
-            ) : (
-              <div className="bg-white border border-[#D5DFE7] rounded-[8px] p-12 text-center text-sm text-[#546575] space-y-3">
-                <p className="font-semibold text-[#17222D]">
-                  {selectedFamily.name} specification available in repository
-                </p>
-                <p className="text-xs max-w-md mx-auto text-[#8898AA]">
-                  The master art-direction specification exists in{' '}
-                  <code className="font-mono text-[#245E84]">
-                    templates/design/design-{selectedFamily.id}.md
-                  </code>
-                  . Structured Enterprise is currently active as the primary reference UI.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSelectedId('structured-enterprise')}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-[#245E84] bg-[#E7EFF5] hover:bg-[#DCE7EF] rounded-[6px] transition-colors"
-                >
-                  View Structured Enterprise Reference UI
-                </button>
-              </div>
-            )}
+            <div className="rounded-[8px] overflow-hidden">
+              {renderActiveShowcase()}
+            </div>
           </div>
         </div>
       )}
