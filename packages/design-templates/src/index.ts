@@ -18,3 +18,10 @@ export * from './families/structured-enterprise/archetypes/OperationalWorkspaceS
 export * from './families/structured-enterprise/archetypes/ManagementOverviewScreen'
 export * from './families/structured-enterprise/archetypes/TransactionalFlowScreen'
 export * from './families/structured-enterprise/archetypes/StructuredEnterpriseShowcase'
+
+// Other Template Families Showcases
+export * from './families/editorial-craft/EditorialCraftShowcase'
+export * from './families/precision-technical/PrecisionTechnicalShowcase'
+export * from './families/expressive-creative/ExpressiveCreativeShowcase'
+export * from './families/calm-and-human/CalmAndHumanShowcase'
+export * from './families/refined-luxury/RefinedLuxuryShowcase'
