@@ -47,6 +47,7 @@ import {
 } from 'lucide-react'
 import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
 import { DesignSystemGraph } from '@/app/components/DesignSystemGraph'
+import { TemplateFamilySelector } from '@/app/components/TemplateFamilySelector'
 import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
 import type { SystemGraphData } from '@repo/types'
 import { BrandLogo } from '@/app/components/BrandLogo'
@@ -2090,9 +2091,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     discoveryButton
   )
 
-  const isDesignSystemTab = activeTab === 'design-system'
   const hasDesignSystemGraph = Boolean(systemGraph?.nodes?.length)
-  const isDesignSystemCanvas = isDesignSystemTab && hasDesignSystemGraph
+  const isDesignSystemCanvas = false
 
   return (
     <div
@@ -2537,36 +2537,42 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 )}
               </div>
 
-              <div className={activeTab === 'design-system' ? (isDesignSystemCanvas ? 'h-full w-full' : 'space-y-8') : 'hidden'}>
-                {hasDesignSystemGraph && systemGraph ? (
-                  <DesignSystemGraph graph={systemGraph} />
-                ) : (
-                  <EmptyState
-                    icon={Network}
-                    title={t('noGraphData')}
-                    description={
-                      initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status))
-                        ? t('noGraphDataReadyArchitectureDesc')
-                        : t('noGraphDataDesc')
-                    }
-                    action={
-                      <div className="space-y-3">
-                        {systemGraphError && <p className="text-sm font-medium text-red-700">{systemGraphError}</p>}
-                        {initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status)) && (
-                          <button
-                            type="button"
-                            onClick={() => void handleRepairSystemGraph()}
-                            disabled={isRepairingSystemGraph || isGenerating}
-                            className={`inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                          >
-                            {isRepairingSystemGraph ? <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
-                            {isRepairingSystemGraph ? tCommon('loading') : t('buildSystemMap')}
-                          </button>
-                        )}
-                      </div>
-                    }
-                  />
-                )}
+              <div className={activeTab === 'design-system' ? 'space-y-6' : 'hidden'}>
+                <TemplateFamilySelector
+                  hasGraph={Boolean(hasDesignSystemGraph && systemGraph)}
+                >
+                  {hasDesignSystemGraph && systemGraph ? (
+                    <div className="h-[650px] w-full rounded-[8px] overflow-hidden border border-[#D5DFE7] shadow-xs">
+                      <DesignSystemGraph graph={systemGraph} />
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Network}
+                      title={t('noGraphData')}
+                      description={
+                        initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status))
+                          ? t('noGraphDataReadyArchitectureDesc')
+                          : t('noGraphDataDesc')
+                      }
+                      action={
+                        <div className="space-y-3">
+                          {systemGraphError && <p className="text-sm font-medium text-red-700">{systemGraphError}</p>}
+                          {initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status)) && (
+                            <button
+                              type="button"
+                              onClick={() => void handleRepairSystemGraph()}
+                              disabled={isRepairingSystemGraph || isGenerating}
+                              className={`inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
+                            >
+                              {isRepairingSystemGraph ? <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
+                              {isRepairingSystemGraph ? tCommon('loading') : t('buildSystemMap')}
+                            </button>
+                          )}
+                        </div>
+                      }
+                    />
+                  )}
+                </TemplateFamilySelector>
               </div>
 
               {!isGenerating && (
