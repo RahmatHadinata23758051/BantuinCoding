@@ -80,7 +80,38 @@ export function buildFallbackDesignMarkdown(
 - **State rule:** every context-supported view defines loading, empty, error, and success states without invented content.`
     : '- **Screen scope:** no screen blueprint is invented because the supplied context does not name a concrete UI journey. Add one when the context supplies a route and user task.'
 
-  return `# DESIGN.md — ${projectName}
+  return `---
+name: "${projectName} Design System"
+archetype: "${archetype}"
+colors:
+  canvas: "${canvas}"
+  surface: "${surface}"
+  border: "${border}"
+  ink-primary: "${ink}"
+  ink-muted: "${muted}"
+  accent: "${accent}"
+typography:
+  display: { fontFamily: "${headingFont}" }
+  headline: { fontFamily: "${headingFont}" }
+  body: { fontFamily: "${bodyFont}" }
+  mono: { fontFamily: "IBM Plex Mono" }
+rounded:
+  none: "0px"
+  sm: "2px"
+  md: "4px"
+spacing:
+  xs: "4px"
+  sm: "8px"
+  md: "16px"
+  lg: "24px"
+iconography:
+  library: "lucide-react"
+  defaultStrokeWidth: 1.5
+  sizes: { sm: "14px", md: "18px", lg: "24px" }
+components:
+  button: { radius: "4px", padding: "8px 16px" }
+---
+# DESIGN.md — ${projectName}
 
 ## 1. Design DNA
 - **Visual thesis:** ${workflow} is represented as ${materialMetaphor}.
@@ -134,8 +165,10 @@ ${screenBlueprint}
 - **Shared interaction states:** default, hover, focus-visible, active, disabled, loading, empty, and error states must use real project labels and never placeholder metrics.
 
 ## 6. Iconography & Interaction
-- Select one icon family already supported by the project; if none is specified, use text labels and native controls before adding a dependency.
-- Icons are semantic only, sized at 16 or 20px, and icon-only controls require an accessible name and tooltip.
+- **Icon library:** \`lucide-react\` locked with uniform stroke width 1.5 and rigid optical sizes: 14px (compact), 18px (default), 24px (prominent).
+- **Hardcore negative constraints:** zero emojis in UI controls; no pastel rounded container pills around icons; no arbitrary trailing arrows (\`→\`) on buttons.
+- Icons are semantic only, paired with text labels or given explicit \`aria-label\` attributes for icon-only buttons.
+- All interactive controls define 6 states: default, hover, focus-visible, active, disabled, loading.
 - Keyboard focus uses a 2px ${accent} outline with a 2px offset.
 - Motion is limited to state changes at 120ms or less and is disabled in prefers-reduced-motion.
 
@@ -175,5 +208,6 @@ ${screenBlueprint}
 - [ ] Focus, keyboard, loading, empty, error, and reduced-motion behavior are specified.
 - [ ] Mobile layout remains readable at 320px without page-level horizontal overflow.
 - [ ] Semantic state meaning is available through text or shape, not color alone.
+- [ ] Iconography adheres to the single locked library (lucide-react, 1.5 stroke) with zero emojis and zero pill containers.
 `
 }

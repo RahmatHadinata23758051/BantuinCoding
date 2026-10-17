@@ -42,7 +42,38 @@ vi.mock('@/lib/byok/session-store', () => ({ getProviderConfig: vi.fn() }))
 vi.mock('@/lib/ai/provider', () => ({ createProvider: vi.fn() }))
 vi.mock('@/lib/projects/project-service', () => ({ updateProject: vi.fn() }))
 
-const VALID_DESIGN_MARKDOWN = `# DESIGN.md — Test Project
+const VALID_DESIGN_MARKDOWN = `---
+name: "Test Project Design System"
+archetype: "Contemporary Institutional"
+colors:
+  canvas: "#F2EEE6"
+  surface: "#FBF9F4"
+  border: "#A8AEA2"
+  ink-primary: "#20251F"
+  ink-muted: "#5E665D"
+  accent: "#8B4A2F"
+typography:
+  display: { fontFamily: "Source Serif 4" }
+  headline: { fontFamily: "Source Serif 4" }
+  body: { fontFamily: "Source Sans 3" }
+  mono: { fontFamily: "IBM Plex Mono" }
+rounded:
+  none: "0px"
+  sm: "2px"
+  md: "4px"
+spacing:
+  xs: "4px"
+  sm: "8px"
+  md: "16px"
+  lg: "24px"
+iconography:
+  library: "lucide-react"
+  defaultStrokeWidth: 1.5
+  sizes: { sm: "14px", md: "18px", lg: "24px" }
+components:
+  button: { radius: "4px", padding: "8px 16px" }
+---
+# DESIGN.md — Test Project
 
 ## 1. Design DNA
 - **Visual thesis:** A field notebook for the primary workflow.
@@ -135,6 +166,24 @@ describe('Artifact Generation Prompts & Schemas', () => {
   it('rejects DESIGN markdown without required structure', () => {
     const result = DesignDocumentSchema.safeParse(makeDesignResponse('# DESIGN.md'))
     expect(result.success).toBe(false)
+  })
+
+  it('rejects DESIGN markdown without YAML front matter', () => {
+    const noFrontMatter = VALID_DESIGN_MARKDOWN.replace(/^---[\s\S]*?---\r?\n/m, '')
+    const result = DesignDocumentSchema.safeParse(makeDesignResponse(noFrontMatter))
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes('YAML front matter'))).toBe(true)
+    }
+  })
+
+  it('rejects YAML front matter missing required keys', () => {
+    const missingKey = VALID_DESIGN_MARKDOWN.replace(/iconography:[\s\S]*?(?=components:)/m, '')
+    const result = DesignDocumentSchema.safeParse(makeDesignResponse(missingKey))
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.message.includes('iconography'))).toBe(true)
+    }
   })
 
   it('builds an anti-slop design prompt with context integrity rules', () => {
