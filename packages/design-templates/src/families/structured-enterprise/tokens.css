@@ -1,0 +1,41 @@
+.theme-structured-enterprise {
+  --se-canvas: #F4F6F8;
+  --se-surface: #FFFFFF;
+  --se-surface-muted: #E9EEF2;
+  --se-surface-hover: #F8FAFC;
+  --se-text: #17222D;
+  --se-text-muted: #546575;
+  --se-text-subtle: #8898AA;
+  --se-accent: #245E84;
+  --se-accent-hover: #1B4764;
+  --se-accent-subtle: #E7EFF5;
+  --se-border: #D5DFE7;
+  --se-border-subtle: #E5ECF2;
+  --se-success: #20755D;
+  --se-success-bg: #E9F5F1;
+  --se-warning: #A05C08;
+  --se-warning-bg: #FDF4E7;
+  --se-danger: #B83C49;
+  --se-danger-bg: #FCECEE;
+  --se-info: #245E84;
+  --se-info-bg: #E7EFF5;
+
+  background-color: var(--se-canvas);
+  color: var(--se-text);
+  font-family: var(--font-source-sans-3, "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+.theme-structured-enterprise h1,
+.theme-structured-enterprise h2,
+.theme-structured-enterprise h3,
+.theme-structured-enterprise h4,
+.theme-structured-enterprise .font-heading {
+  font-family: var(--font-ibm-plex-sans, "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+.theme-structured-enterprise .font-mono,
+.theme-structured-enterprise code,
+.theme-structured-enterprise .tabular-nums {
+  font-family: var(--font-ibm-plex-mono, "IBM Plex Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-variant-numeric: tabular-nums;
+}
