@@ -98,3 +98,8 @@ CURRENT_CONTEXT.md
 DESIGN-REFERENCE.md
 UI-REDESIGN-CONTRACT.md
 docs/
+
+# Isolated worker scratchpad and downloads
+downloads/
+isolated_worker_workspace/
+isolated-preview*.png
