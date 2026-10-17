@@ -27,7 +27,7 @@ export function InspectorDrawer({
   return (
     <aside
       aria-label="Item Inspector"
-      className="w-full lg:w-88 shrink-0 bg-white border border-[#D5DFE7] rounded-[8px] flex flex-col shadow-xs"
+      className="w-full lg:w-[350px] shrink-0 bg-white border border-[#D5DFE7] rounded-[8px] flex flex-col shadow-xs"
     >
       {/* Header */}
       <div className="p-4 border-b border-[#D5DFE7] flex items-start justify-between gap-2 bg-[#F8FAFC] rounded-t-[8px]">

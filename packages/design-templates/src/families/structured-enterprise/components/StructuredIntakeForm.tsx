@@ -137,7 +137,7 @@ export function StructuredIntakeForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-6"
+      className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_20rem] gap-6"
     >
       {/* Form Fields */}
       <div className="bg-white border border-[#D5DFE7] rounded-[8px] p-5 space-y-4 shadow-xs">
@@ -155,7 +155,7 @@ export function StructuredIntakeForm({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <TextInput
             label="Shipment Code"
             value={formData.shipmentCode}
