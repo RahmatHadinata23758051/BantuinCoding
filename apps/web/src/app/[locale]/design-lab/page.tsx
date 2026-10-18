@@ -10,7 +10,10 @@ import {
   ZoomOut,
   Maximize2,
   Zap,
+  Layers,
+  LayoutGrid,
 } from 'lucide-react'
+import { TemplateFamilySelector } from '@/app/components/TemplateFamilySelector'
 
 import { THEMES, getTheme } from '@/lib/design-lab/themes'
 import { TEMPLATES, getTemplate } from '@/lib/design-lab/templates'
@@ -769,6 +772,7 @@ function TemplateCard({ tpl, theme, selected, onClick }: { tpl: Template; theme:
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function DesignLabPage() {
+  const [activeMode, setActiveMode] = useState<'foundry' | 'artboards'>('foundry')
   const [sidebarTab, setSidebarTab] = useState<'tema' | 'template'>('tema')
   const [selectedThemeId, setSelectedThemeId] = useState<string>(THEMES[0].id)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(TEMPLATES[0].id)
@@ -797,11 +801,11 @@ export default function DesignLabPage() {
   return (
     <div className="flex h-screen flex-col overflow-hidden" style={{ background: p.surface_subtle }}>
       {/* ── Top bar ── */}
-      <div className="flex h-11 shrink-0 items-center justify-between border-b px-4" style={{ background: p.canvas, borderColor: p.border }}>
+      <div className="flex min-h-11 shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-1 md:px-4" style={{ background: p.canvas, borderColor: p.border }}>
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-1 transition-colors"
+            className="inline-flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             style={{ fontSize: '11px', fontFamily: ty.bodyFamily, color: p.ink_muted }}
           >
             <ArrowLeft className="size-3.5" />
@@ -811,15 +815,53 @@ export default function DesignLabPage() {
           <span style={{ fontSize: '11px', fontFamily: ty.bodyFamily, fontWeight: 600, color: p.ink }}>Design Lab</span>
         </div>
 
-        <div className="hidden md:block" style={{ border: `1px solid ${p.border}`, padding: '4px 14px', fontSize: '11px', fontFamily: ty.monoFamily, color: p.ink_muted, whiteSpace: 'nowrap' }}>
-          {activeTemplate
-            ? `Preview · ${activeTemplate.name}`
-            : 'Preview tampilan · belum dipilih'}
-        </div>
+        <nav aria-label="Design Lab views" className="order-3 flex w-full justify-center md:order-none md:w-auto">
+          <div className="inline-flex rounded-md border p-0.5" style={{ borderColor: p.border, background: p.surface }}>
+            <button
+              type="button"
+              aria-pressed={activeMode === 'foundry'}
+              onClick={() => setActiveMode('foundry')}
+              className="inline-flex min-h-8 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 md:px-3"
+              style={{
+                background: activeMode === 'foundry' ? p.accent : 'transparent',
+                color: activeMode === 'foundry' ? p.accent_fg : p.ink_muted,
+              }}
+            >
+              <Layers className="size-3.5" aria-hidden="true" />
+              Template Foundry
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeMode === 'artboards'}
+              onClick={() => setActiveMode('artboards')}
+              className="inline-flex min-h-8 items-center gap-1.5 rounded px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 md:px-3"
+              style={{
+                background: activeMode === 'artboards' ? p.accent : 'transparent',
+                color: activeMode === 'artboards' ? p.accent_fg : p.ink_muted,
+              }}
+            >
+              <LayoutGrid className="size-3.5" aria-hidden="true" />
+              Artboard Studio
+            </button>
+          </div>
+        </nav>
 
-        <div className="hidden md:block" style={{ width: 128 }} />
+        <div className="hidden md:block" style={{ minWidth: 128, textAlign: 'right', border: `1px solid ${p.border}`, padding: '4px 10px', fontSize: '11px', fontFamily: ty.monoFamily, color: p.ink_muted, whiteSpace: 'nowrap' }}>
+          {activeMode === 'foundry'
+            ? 'Template Foundry'
+            : activeTemplate
+              ? `Preview · ${activeTemplate.name}`
+              : 'Preview tampilan · belum dipilih'}
+        </div>
       </div>
 
+      {activeMode === 'foundry' ? (
+        <main className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8">
+          <div className="mx-auto w-full max-w-7xl">
+            <TemplateFamilySelector />
+          </div>
+        </main>
+      ) : (
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
         {/* ── Left toolbar (desktop only: pan/zoom chrome is meaningless at 390px) ── */}
         <div className="hidden w-11 shrink-0 flex-col items-center gap-1 border-r py-3 md:flex" style={{ background: p.canvas, borderColor: p.border }}>
@@ -1039,6 +1081,7 @@ export default function DesignLabPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
