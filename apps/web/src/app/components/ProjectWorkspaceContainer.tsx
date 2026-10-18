@@ -1,58 +1,57 @@
 'use client'
 
-import { Link } from '@/i18n/routing'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type FormEvent,
-  type KeyboardEvent,
-  type ReactNode,
 } from 'react'
 import { useRouter } from '@/i18n/routing'
 import {
   AlertTriangle,
-  ArrowLeft,
   Braces,
   CalendarDays,
   Check,
   ChevronRight,
-  FileCheck,
   Circle,
   CircleDashed,
-  ClipboardCheck,
-  Copy,
-  Download,
   FileText,
-  Files,
   FolderKanban,
   Languages,
-  ListChecks,
   Loader2,
-  Lock,
   MessageSquareText,
-  Network,
-  Package,
   Play,
   RefreshCw,
   X,
   ScanText,
-  ShieldCheck,
-  SlidersHorizontal,
-  Terminal,
-  type LucideIcon,
 } from 'lucide-react'
-import { MarkdownWorkspace, type WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
-import { DesignSystemGraph } from '@/app/components/DesignSystemGraph'
-import { BacklogKanbanBoard } from '@/app/components/BacklogKanbanBoard'
+import type { WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
+import { DesignSystemTab } from '@/app/components/workspace/tabs/DesignSystemTab'
+import { BacklogTab } from '@/app/components/workspace/tabs/BacklogTab'
+import { ExportTab } from '@/app/components/workspace/tabs/ExportTab'
+import { SectionHeading } from '@/app/components/workspace/components/SectionHeading'
+import { ProjectSettingsModal } from '@/app/components/workspace/components/ProjectSettingsModal'
+import { DocumentsTab } from '@/app/components/workspace/tabs/DocumentsTab'
+import { ContextValue, SensitiveContextValue } from '@/app/components/workspace/components/ContextValue'
+import { WorkspaceSidebar } from '@/app/components/workspace/components/WorkspaceSidebar'
+import { ALL_SECTIONS, BUTTON_FOCUS_CLASS, CONTEXT_CATEGORY_DEFINITIONS, PANEL_CLASS, SENSITIVE_CONTEXT_KEY, WORKSPACE_STYLE } from '@/app/components/workspace/constants'
+import {
+  countContextItems,
+  formatDate,
+  formatLabel,
+  getContextProvenanceCounts,
+  getSectionPanelId,
+  getSectionTabId,
+  hasContextData,
+  isSensitiveContextValue,
+} from '@/app/components/workspace/helpers'
+import type { ContextProvenanceCounts, ProjectWorkspaceProps } from '@/app/components/workspace/types'
 import type { SystemGraphData } from '@repo/types'
-import { BrandLogo } from '@/app/components/BrandLogo'
 import { parseProjectBrief, type ParsedProjectBrief } from '@/lib/projects/brief-parser'
 
-import { Modal, Input, Select, Button } from '@/app/components/ui'
+import { Modal } from '@/app/components/ui'
 import {
   GENERATION_STAGES,
   createPersistedGenerationState,
@@ -72,582 +71,11 @@ import {
   type GenerationStageStatus,
 } from '@/lib/workflow/generation-stages'
 
-export interface ProjectWorkspaceProps {
-  initialData: {
-    id: string
-    name: string
-    description: string | null
-    classification: string
-    classificationStatus: string
-    classificationError: string | null
-    language: string
-    status: string
-    createdAt: string
-    updatedAt: string
-    context: Record<string, unknown> | null
-    contextVersion: number
-    requiredArtifactTypes: string[]
-    systemGraph: SystemGraphData | null
-    clarifications: {
-      id: string
-      round: number
-      question: string
-      impact: string | null
-      options?: string[]
-      answer: string | null
-      status: string
-    }[]
-    artifacts: WorkspaceArtifactItem[]
-    skills: {
-      id: string
-      name: string
-      source: string
-      purpose: string
-      trigger: string
-      metadata: {
-        applicable_phases?: string[]
-        applicable_task_types?: string[]
-        installation_hint?: string
-      } | null
-    }[]
-    phases: {
-      id: string
-      name: string
-      order: number
-      description: string | null
-      tasks: {
-        id: string
-        taskKey: string
-        title: string
-        description: string
-        status: string
-        acceptanceCriteria: string[]
-        definitionOfDone: string
-        relevantDocs: string[]
-        recommendedSkills: string[]
-        dependencies: string[]
-      }[]
-    }[]
-  }
-}
-
 import { parseWorkspaceTab, type WorkspaceSection } from '@/lib/navigation/workspace'
 
+export type { ProjectWorkspaceProps } from '@/app/components/workspace/types'
+
 type ReadinessTone = 'ready' | 'attention' | 'idle'
-
-const ALL_SECTIONS: {
-  id: WorkspaceSection
-  labelKey: string
-  descriptionKey: string
-  icon: LucideIcon
-}[] = [
-  { id: 'overview', labelKey: 'sectionOverview', descriptionKey: 'sectionOverviewDesc', icon: ClipboardCheck },
-  { id: 'context', labelKey: 'sectionContext', descriptionKey: 'sectionContextDesc', icon: Braces },
-  { id: 'documents', labelKey: 'sectionDocuments', descriptionKey: 'sectionDocumentsDesc', icon: Files },
-  { id: 'design-system', labelKey: 'sectionDesignSystem', descriptionKey: 'sectionDesignSystemDesc', icon: Network },
-  { id: 'backlog', labelKey: 'sectionBacklog', descriptionKey: 'sectionBacklogDesc', icon: ListChecks },
-  { id: 'export', labelKey: 'sectionExport', descriptionKey: 'sectionExportDesc', icon: Package },
-]
-
-function getSectionTabKey(id: WorkspaceSection) {
-  if (id === 'design-system') return 'tabDesignSystem'
-  return `tab${id.charAt(0).toUpperCase() + id.slice(1)}`
-}
-
-const WORKSPACE_STYLE = {
-  '--workspace-paper': 'var(--color-workspace-paper)',
-  '--workspace-ink': 'var(--color-workspace-ink)',
-  '--workspace-canvas': 'var(--color-workspace-canvas)',
-  '--workspace-panel': 'var(--color-workspace-paper)',
-  '--workspace-border': 'var(--color-workspace-border)',
-  '--workspace-border-subtle': 'var(--color-workspace-border-subtle)',
-  '--workspace-border-muted': 'var(--color-workspace-border-muted)',
-  '--workspace-card-shadow': 'var(--color-workspace-card-shadow)',
-  '--workspace-body': 'var(--color-workspace-body)',
-  '--workspace-muted': 'var(--color-workspace-muted)',
-  '--workspace-faint': 'var(--color-workspace-faint)',
-  '--workspace-primary': 'var(--color-workspace-primary)',
-  '--workspace-primary-hover': 'var(--color-workspace-primary-hover)',
-  '--workspace-deep': 'var(--color-workspace-deep)',
-  '--workspace-mint': 'var(--color-workspace-mint)',
-  '--workspace-rose': 'var(--color-workspace-rose)',
-  '--workspace-blue-soft': 'var(--color-workspace-blue-soft)',
-  '--workspace-yellow-soft': 'var(--color-workspace-yellow-soft)',
-  '--workspace-mint-soft': 'var(--color-workspace-mint-soft)',
-  '--workspace-rose-soft': 'var(--color-workspace-rose-soft)',
-  '--workspace-sun': 'var(--color-workspace-sun)',
-  '--workspace-peach': 'var(--color-workspace-peach)',
-} as CSSProperties
-
-const PANEL_CLASS =
-  'rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-panel)] shadow-[0_10px_28px_rgba(36,35,31,0.045)]'
-const PANEL_SOFT_CLASS =
-  'rounded-[16px] bg-[var(--workspace-paper)]'
-const BUTTON_FOCUS_CLASS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4a261] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--workspace-canvas)]'
-
-const SENSITIVE_CONTEXT_KEY =
-  /(api.?key|access.?token|authorization|credential|password|private.?key|secret|token)/i
-const SENSITIVE_CONTEXT_VALUE =
-  /^(?:bearer\s+|sk-[a-z0-9_-]{12,}|AIza[a-z0-9_-]{20,}|gh[pousr]_[a-z0-9_]{20,}|eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$)/i
-
-function isSensitiveContextValue(value: unknown): boolean {
-  if (typeof value === 'string') return SENSITIVE_CONTEXT_VALUE.test(value.trim())
-  if (Array.isArray(value)) return value.some(isSensitiveContextValue)
-  if (value && typeof value === 'object') {
-    return Object.entries(value as Record<string, unknown>).some(([key, nestedValue]) =>
-      SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(nestedValue),
-    )
-  }
-  return false
-}
-
-function SensitiveContextValue({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-[var(--workspace-muted)]">
-      <ShieldCheck aria-hidden="true" className="size-4" />
-      {label}
-    </span>
-  )
-}
-
-function getSectionPanelId(section: WorkspaceSection) {
-  return `workspace-panel-${section}`
-}
-
-function getSectionTabId(section: WorkspaceSection) {
-  return `workspace-tab-${section}`
-}
-
-function formatLabel(value: string) {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
-function formatStatus(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/_/g, ' ')
-    .replace(/^\w/, (letter) => letter.toUpperCase())
-}
-
-function formatDate(value: string, locale: string) {
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) return null
-
-  return new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeZone: 'UTC',
-  }).format(date)
-}
-
-function statusTone(status: string) {
-  switch (status) {
-    case 'READY':
-    case 'DONE':
-    case 'EXPORTABLE':
-      return 'bg-[var(--workspace-mint-soft)] text-[var(--workspace-ink)]'
-    case 'MODIFIED':
-    case 'IN_PROGRESS':
-    case 'GENERATING':
-      return 'bg-[var(--workspace-blue-soft)] text-[var(--workspace-ink)]'
-    case 'OUTDATED':
-    case 'BLOCKED':
-    case 'REVIEW':
-      return 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]'
-    case 'FAILED':
-    case 'GENERATION_FAILED':
-      return 'bg-[var(--workspace-rose-soft)] text-[var(--workspace-ink)]'
-    default:
-      return 'bg-black/[0.04] text-[var(--workspace-ink)]'
-  }
-}
-
-function hasContextData(context: Record<string, unknown> | null) {
-  return Boolean(context && Object.keys(context).length > 0)
-}
-
-type ContextProvenance = 'confirmed' | 'assumed' | 'unknown'
-type ContextProvenanceCounts = Record<ContextProvenance, number>
-
-const CONTEXT_CATEGORY_DEFINITIONS = [
-  {
-    id: 'intent',
-    labelKey: 'contextCategoryIntent',
-    descriptionKey: 'contextCategoryIntentDesc',
-    keys: ['goals', 'non_goals'],
-  },
-  {
-    id: 'audience',
-    labelKey: 'contextCategoryAudience',
-    descriptionKey: 'contextCategoryAudienceDesc',
-    keys: ['target_users'],
-  },
-  {
-    id: 'experience',
-    labelKey: 'contextCategoryExperience',
-    descriptionKey: 'contextCategoryExperienceDesc',
-    keys: ['design_direction', 'core_entities'],
-  },
-  {
-    id: 'scope',
-    labelKey: 'contextCategoryScope',
-    descriptionKey: 'contextCategoryScopeDesc',
-    keys: ['functional_requirements'],
-  },
-  {
-    id: 'constraints',
-    labelKey: 'contextCategoryConstraints',
-    descriptionKey: 'contextCategoryConstraintsDesc',
-    keys: [
-      'non_functional_requirements',
-      'technical_constraints',
-      'stack_preferences',
-      'security_requirements',
-      'integrations',
-      'deployment_target',
-      'agent_target',
-    ],
-  },
-  {
-    id: 'decisions',
-    labelKey: 'contextCategoryDecisions',
-    descriptionKey: 'contextCategoryDecisionsDesc',
-    keys: ['confirmed_decisions', 'assumptions', 'open_questions'],
-  },
-] as const
-
-function getContextProvenanceCounts(context: Record<string, unknown>, keys: readonly string[]): ContextProvenanceCounts {
-  const counts: ContextProvenanceCounts = { confirmed: 0, assumed: 0, unknown: 0 }
-
-  const visit = (value: unknown) => {
-    if (Array.isArray(value)) {
-      value.forEach(visit)
-      return
-    }
-
-    if (!value || typeof value !== 'object') return
-
-    const record = value as Record<string, unknown>
-    const provenance = record.provenance
-    if (provenance === 'confirmed' || provenance === 'assumed' || provenance === 'unknown') {
-      counts[provenance] += 1
-      return
-    }
-
-    Object.values(record).forEach(visit)
-  }
-
-  keys.forEach((key) => visit(context[key]))
-  return counts
-}
-
-function countContextItems(value: unknown): number {
-  if (value === null || value === undefined || value === '') return 0
-  if (Array.isArray(value)) return value.length
-  if (typeof value !== 'object') return 1
-
-  const record = value as Record<string, unknown>
-  if (record.provenance === 'confirmed' || record.provenance === 'assumed' || record.provenance === 'unknown') {
-    return 1
-  }
-
-  return Object.values(record).reduce<number>((total, nestedValue) => total + countContextItems(nestedValue), 0)
-}
-
-function SectionHeading({
-  title,
-  description,
-  action,
-  divided = true,
-}: {
-  title: string
-  description: string
-  action?: ReactNode
-  divided?: boolean
-}) {
-  return (
-    <div className={`flex flex-col gap-3 pb-5 sm:flex-row sm:items-end sm:justify-between ${divided ? 'border-b border-black/[0.08]' : ''}`}>
-      <div>
-        <h2 className="max-w-3xl text-2xl font-semibold tracking-tight text-[var(--workspace-ink)] sm:text-3xl">
-          {title}
-        </h2>
-        <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[var(--workspace-muted)]">
-          {description}
-        </p>
-      </div>
-      {action}
-    </div>
-  )
-}
-
-function getExportArtifactDescriptionKey(type: string):
-  | 'fileDescAgent'
-  | 'fileDescBacklog'
-  | 'fileDescPrd'
-  | 'fileDescDesign'
-  | 'fileDescArchitecture'
-  | 'fileDescGeneric' {
-  switch (type) {
-    case 'AGENT':
-      return 'fileDescAgent'
-    case 'BACKLOG':
-      return 'fileDescBacklog'
-    case 'PRD':
-      return 'fileDescPrd'
-    case 'DESIGN':
-      return 'fileDescDesign'
-    case 'ARCHITECTURE':
-      return 'fileDescArchitecture'
-    default:
-      return 'fileDescGeneric'
-  }
-}
-
-function renderPromptPreviewContent(promptText: string) {
-  const lines = promptText.split('\n')
-  return lines.map((line, index) => {
-    if (line.startsWith('# ')) {
-      return (
-        <div key={index} className="font-bold text-amber-300 text-sm py-0.5">
-          {line}
-        </div>
-      )
-    }
-    if (line.startsWith('## ')) {
-      return (
-        <div key={index} className="font-semibold text-amber-200 text-xs pt-3 pb-1">
-          {line}
-        </div>
-      )
-    }
-    const numberedMatch = line.match(/^(\d+\.\s)(.*)$/)
-    if (numberedMatch) {
-      return (
-        <div key={index} className="flex items-start text-xs text-neutral-200 pl-2 py-0.5">
-          <span className="font-semibold text-sky-300 shrink-0 w-6">{numberedMatch[1]}</span>
-          <span className="min-w-0">{numberedMatch[2]}</span>
-        </div>
-      )
-    }
-    if (line.startsWith('- ')) {
-      return (
-        <div key={index} className="flex items-start text-xs text-neutral-200 pl-2 py-0.5">
-          <span className="text-neutral-400 shrink-0 mr-2">•</span>
-          <span className="min-w-0">{line.slice(2)}</span>
-        </div>
-      )
-    }
-    if (!line.trim()) {
-      return <div key={index} className="h-2" />
-    }
-    return (
-      <div key={index} className="text-xs text-neutral-300 py-0.5">
-        {line}
-      </div>
-    )
-  })
-}
-
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon: LucideIcon
-  title: string
-  description: string
-  action?: ReactNode
-}) {
-  return (
-    <div className="flex min-h-72 items-center py-10">
-      <div className={`${PANEL_CLASS} max-w-xl p-6`}>
-        <div className="mb-4 flex size-10 items-center justify-center bg-[var(--workspace-blue-soft)]">
-          <Icon aria-hidden="true" className="size-5 text-[var(--workspace-primary)]" />
-        </div>
-        <h3 className="text-lg font-semibold tracking-tight text-[var(--workspace-ink)]">
-          {title}
-        </h3>
-        <p className="mt-2 text-sm leading-6 text-[var(--workspace-muted)]">
-          {description}
-        </p>
-        {action && <div className="mt-5">{action}</div>}
-      </div>
-    </div>
-  )
-}
-
-function ContextValue({
-  value,
-  depth = 0,
-  locale,
-  emptyLabel,
-  yesLabel,
-  noLabel,
-  entryLabel,
-  noFieldsLabel,
-  sensitiveLabel,
-}: {
-  value: unknown
-  depth?: number
-  locale: string
-  emptyLabel: string
-  yesLabel: string
-  noLabel: string
-  entryLabel: (index: number) => string
-  noFieldsLabel: string
-  sensitiveLabel: string
-}) {
-  if (value === null || value === undefined) {
-    return <span className="text-[var(--workspace-faint)]">{emptyLabel}</span>
-  }
-
-  if (typeof value === 'boolean') {
-    return (
-      <span className="inline-flex items-center gap-2">
-        {value ? (
-          <Check aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-        ) : (
-          <Circle aria-hidden="true" className="size-4 text-[var(--workspace-faint)]" />
-        )}
-        {value ? yesLabel : noLabel}
-      </span>
-    )
-  }
-
-  if (typeof value === 'string') {
-    const isProvenance = ['confirmed', 'assumed', 'unknown'].includes(value.toLowerCase())
-
-    if (isProvenance) {
-      return (
-        <span
-          className={`inline-flex rounded-full px-2 py-0.5 font-sans text-xs font-semibold ${
-            value.toLowerCase() === 'confirmed'
-              ? 'bg-[var(--workspace-mint-soft)] text-emerald-800'
-              : value.toLowerCase() === 'assumed'
-                ? 'bg-[var(--workspace-yellow-soft)] text-amber-800'
-                : 'bg-black/[0.04] text-[var(--workspace-ink)]'
-          }`}
-        >
-          {formatLabel(value)}
-        </span>
-      )
-    }
-
-    return <span className="whitespace-pre-wrap break-words">{value}</span>
-  }
-
-  if (typeof value === 'number') {
-    return <span>{value.toLocaleString(locale)}</span>
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return <span className="text-[var(--workspace-faint)]">{emptyLabel}</span>
-    }
-
-    const primitivesOnly = value.every((item) => item === null || typeof item !== 'object')
-
-    if (primitivesOnly) {
-      return (
-        <ul className="space-y-2">
-          {value.map((item, index) => (
-            <li key={`${String(item)}-${index}`} className="flex gap-2">
-              <span
-                aria-hidden="true"
-                className="mt-2.5 size-2 shrink-0 border border-[var(--workspace-ink)] bg-[var(--workspace-primary)]"
-              />
-              <ContextValue
-                value={item}
-                depth={depth + 1}
-                locale={locale}
-                emptyLabel={emptyLabel}
-                yesLabel={yesLabel}
-                noLabel={noLabel}
-                entryLabel={entryLabel}
-                noFieldsLabel={noFieldsLabel}
-                sensitiveLabel={sensitiveLabel}
-              />
-            </li>
-          ))}
-        </ul>
-      )
-    }
-
-    return (
-      <ol className="space-y-3">
-        {value.map((item, index) => (
-          <li key={index} className="border-l border-[var(--workspace-border-muted)] pl-3">
-            <span className="mb-2 block font-sans text-xs font-semibold text-[var(--workspace-muted)]">
-              {entryLabel(index + 1)}
-            </span>
-            <ContextValue
-              value={item}
-              depth={depth + 1}
-              locale={locale}
-              emptyLabel={emptyLabel}
-              yesLabel={yesLabel}
-              noLabel={noLabel}
-              entryLabel={entryLabel}
-              noFieldsLabel={noFieldsLabel}
-              sensitiveLabel={sensitiveLabel}
-            />
-          </li>
-        ))}
-      </ol>
-    )
-  }
-
-  if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-
-    if (entries.length === 0) {
-      return <span className="text-[var(--workspace-faint)]">{noFieldsLabel}</span>
-    }
-
-    return (
-      <dl className={depth > 1 ? 'space-y-3' : 'divide-y divide-[var(--workspace-border)]'}>
-        {entries.map(([key, nestedValue]) => (
-          <div
-            key={key}
-            className={
-              depth > 1
-                ? 'grid gap-1 sm:grid-cols-[minmax(8rem,0.35fr)_1fr] sm:gap-4'
-                : 'grid gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(10rem,0.35fr)_1fr] sm:gap-6'
-            }
-          >
-            <dt className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">
-              {formatLabel(key)}
-            </dt>
-            <dd className="min-w-0 text-sm font-medium leading-6 text-[var(--workspace-ink)]">
-              {SENSITIVE_CONTEXT_KEY.test(key) || isSensitiveContextValue(nestedValue) ? (
-                <SensitiveContextValue label={sensitiveLabel} />
-              ) : (
-                <ContextValue
-                  value={nestedValue}
-                  depth={depth + 1}
-                  locale={locale}
-                  emptyLabel={emptyLabel}
-                  yesLabel={yesLabel}
-                  noLabel={noLabel}
-                  entryLabel={entryLabel}
-                  noFieldsLabel={noFieldsLabel}
-                  sensitiveLabel={sensitiveLabel}
-                />
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    )
-  }
-
-  return <span>{String(value)}</span>
-}
 
 export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps) {
   const locale = useLocale()
@@ -731,7 +159,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [showErrorDetails, setShowErrorDetails] = useState(false)
   const autoFlowStartedRef = useRef(false)
   const failureDetailsRef = useRef<HTMLDetailsElement>(null)
-  const sectionTabRefs = useRef(new Map<WorkspaceSection, HTMLButtonElement>())
 
   const readyArtifacts = artifacts.filter(
     (artifact) => artifact.status === 'READY' || artifact.status === 'MODIFIED',
@@ -749,7 +176,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const retryableDocumentCount = retryableDocumentArtifacts.length
   const allTasks = phases.flatMap((phase) => phase.tasks)
   const readyTasks = allTasks.filter((task) => task.status === 'READY')
-  const doneTasks = allTasks.filter((task) => task.status === 'DONE')
   const blockedTasks = allTasks.filter((task) => task.status === 'BLOCKED')
   const pendingClarifications = clarifications.filter((question) => question.status === 'PENDING')
   const answeredClarifications = clarifications.filter((question) => question.status === 'ANSWERED')
@@ -1212,114 +638,6 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         setProjectStatus('READY')
       }
       setGenMessage(null)
-    }
-  }
-
-  const renderWorkspaceNavigation = (variant: 'desktop' | 'mobile') => (
-    <>
-      <div className="min-w-0 border-b border-[var(--workspace-border)] pb-5">
-        <BrandLogo imageSize={28} textClassName="text-xl font-semibold tracking-[-0.04em]" />
-        <p className="mt-1 truncate text-xs text-[var(--workspace-muted)]" title={initialData.name}>
-          {initialData.name}
-        </p>
-        {projectStatus !== 'EXPORTABLE' && (
-          <span
-            className={`mt-3 inline-flex max-w-full rounded-full border border-[var(--workspace-border)] px-3 py-1.5 text-center text-xs font-semibold leading-4 ${statusTone(projectStatus)}`}
-            title={tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
-          >
-            {tStatus(projectStatus as Parameters<typeof tStatus>[0]) ?? formatStatus(projectStatus)}
-          </span>
-        )}
-      </div>
-      <div className="mt-6">
-        <Link href="/dashboard" className={`inline-flex items-center gap-2 text-sm font-semibold text-[var(--workspace-muted)] transition-colors hover:text-[var(--workspace-primary)] ${BUTTON_FOCUS_CLASS}`}>
-          <ArrowLeft aria-hidden="true" className="size-4" />
-          {t('backProjects')}
-        </Link>
-      </div>
-      <div className="mt-8">
-        <p className="text-xs font-bold text-[var(--workspace-muted)]">{t('workspaceSections')}</p>
-        <nav role="tablist" aria-orientation="vertical" aria-label={t('workspaceSections')} className="mt-3 space-y-1">
-          {sectionItems.map((section) => {
-            const Icon = section.icon
-            const isActive = activeTab === section.id
-            return (
-              <button
-                key={section.id}
-                ref={(element) => {
-                  if (variant === 'desktop') {
-                    if (element) sectionTabRefs.current.set(section.id, element)
-                    else sectionTabRefs.current.delete(section.id)
-                  }
-                }}
-                id={variant === 'desktop' ? getSectionTabId(section.id) : `mobile-${getSectionTabId(section.id)}`}
-                data-section={section.id}
-                type="button"
-                role="tab"
-                tabIndex={isActive ? 0 : -1}
-                aria-selected={isActive}
-                aria-current={isActive ? 'page' : undefined}
-                aria-controls={getSectionPanelId(section.id)}
-                onClick={() => {
-                  selectTab(section.id)
-                  setIsMobileNavigationOpen(false)
-                }}
-                onKeyDown={(event) => handleSectionKeyDown(event, section.id)}
-                title={t(section.descriptionKey as Parameters<typeof t>[0])}
-                className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${BUTTON_FOCUS_CLASS} ${isActive ? 'bg-[var(--workspace-yellow-soft)] text-[var(--workspace-ink)]' : 'text-[var(--workspace-muted)] hover:bg-[var(--workspace-blue-soft)] hover:text-[var(--workspace-ink)]'}`}
-              >
-                <Icon aria-hidden="true" className="size-4" />
-                {t(getSectionTabKey(section.id) as Parameters<typeof t>[0])}
-              </button>
-            )
-          })}
-        </nav>
-      </div>
-      <div className="mt-auto border-t border-[var(--workspace-border)] pt-5">
-        <button
-          type="button"
-          onClick={() => {
-            setIsSettingsOpen(true)
-            setIsMobileNavigationOpen(false)
-          }}
-          className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-3 py-2.5 text-left text-sm font-semibold text-[var(--workspace-ink)] transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}
-        >
-          <SlidersHorizontal aria-hidden="true" className="size-4" />
-          <span>{t('projectSettings')}</span>
-        </button>
-      </div>
-    </>
-  )
-
-  const handleSectionKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    currentSection: WorkspaceSection,
-  ) => {
-    const currentIndex = sectionItems.findIndex((section) => section.id === currentSection)
-    const lastIndex = sectionItems.length - 1
-    let nextIndex: number | null = null
-
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      nextIndex = currentIndex === lastIndex ? 0 : currentIndex + 1
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      nextIndex = currentIndex === 0 ? lastIndex : currentIndex - 1
-    } else if (event.key === 'Home') {
-      nextIndex = 0
-    } else if (event.key === 'End') {
-      nextIndex = lastIndex
-    }
-
-    if (nextIndex === null) return
-
-    event.preventDefault()
-    const nextSection = sectionItems[nextIndex].id
-    selectTab(nextSection)
-    const container = event.currentTarget.closest('[role="tablist"]')
-    const targetElement = container?.querySelector<HTMLButtonElement>(`button[data-section="${nextSection}"]`)
-    if (targetElement) {
-      targetElement.focus()
-    } else {
-      sectionTabRefs.current.get(nextSection)?.focus()
     }
   }
 
@@ -2091,7 +1409,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   )
 
   const hasDesignSystemGraph = Boolean(systemGraph?.nodes?.length)
-  const isDesignSystemCanvas = false
+  const isDesignSystemCanvas = activeTab === 'design-system' && hasDesignSystemGraph
 
   return (
     <div
@@ -2101,13 +1419,37 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       <div className={`${isDesignSystemCanvas ? 'relative h-full overflow-hidden' : 'min-h-screen items-start gap-6 p-4 sm:p-6 lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]'}`}>
         <aside className={`${isDesignSystemCanvas ? 'absolute left-4 top-4 z-40 hidden w-[18rem] lg:flex lg:flex-col' : 'hidden self-start lg:flex lg:flex-col'}`}>
           <div className="w-full rounded-[24px] border border-white/80 bg-[var(--workspace-paper)]/88 px-5 py-6 shadow-[0_12px_30px_rgba(36,35,31,0.08)] backdrop-blur-xl">
-            <div className="flex flex-col">{renderWorkspaceNavigation('desktop')}</div>
+            <div className="flex flex-col">
+              <WorkspaceSidebar
+                variant="desktop"
+                projectName={initialData.name}
+                projectStatus={projectStatus}
+                sectionItems={sectionItems}
+                activeTab={activeTab}
+                onSelectTab={selectTab}
+                onOpenSettings={() => setIsSettingsOpen(true)}
+                t={t}
+                tStatus={tStatus}
+              />
+            </div>
           </div>
         </aside>
         <div className={`${isDesignSystemCanvas ? 'h-full min-w-0' : 'min-w-0'}`}>
           {!isDesignSystemCanvas && (
             <aside className="mb-6 rounded-[20px] border border-white/80 bg-[var(--workspace-paper)]/90 px-4 py-4 shadow-[0_8px_22px_rgba(36,35,31,0.06)] lg:hidden">
-              <div className="flex flex-col">{renderWorkspaceNavigation('mobile')}</div>
+              <div className="flex flex-col">
+                <WorkspaceSidebar
+                  variant="mobile"
+                  projectName={initialData.name}
+                  projectStatus={projectStatus}
+                  sectionItems={sectionItems}
+                  activeTab={activeTab}
+                  onSelectTab={selectTab}
+                  onOpenSettings={() => setIsSettingsOpen(true)}
+                  t={t}
+                  tStatus={tStatus}
+                />
+              </div>
             </aside>
           )}
 
@@ -2133,7 +1475,20 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                   />
                   <aside className="relative flex h-full w-full flex-col p-4">
                     <div className="flex min-h-0 flex-1 flex-col rounded-[24px] border border-white/80 bg-[var(--workspace-paper)] px-5 py-6 shadow-[var(--graph-card-shadow)]">
-                      <div className="flex min-h-0 flex-1 flex-col">{renderWorkspaceNavigation('mobile')}</div>
+                      <div className="flex min-h-0 flex-1 flex-col">
+                        <WorkspaceSidebar
+                          variant="mobile"
+                          projectName={initialData.name}
+                          projectStatus={projectStatus}
+                          sectionItems={sectionItems}
+                          activeTab={activeTab}
+                          onSelectTab={selectTab}
+                          onOpenSettings={() => setIsSettingsOpen(true)}
+                          onCloseMobileNavigation={() => setIsMobileNavigationOpen(false)}
+                          t={t}
+                          tStatus={tStatus}
+                        />
+                      </div>
                     </div>
                   </aside>
                 </div>
@@ -2536,440 +1891,80 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 )}
               </div>
 
-              <div className={activeTab === 'design-system' ? 'space-y-6' : 'hidden'}>
-                {hasDesignSystemGraph && systemGraph ? (
-                  <div className="h-[650px] w-full rounded-[8px] overflow-hidden border border-[#D5DFE7] shadow-xs">
-                    <DesignSystemGraph graph={systemGraph} />
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon={Network}
-                    title={t('noGraphData')}
-                    description={
-                      initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status))
-                        ? t('noGraphDataReadyArchitectureDesc')
-                        : t('noGraphDataDesc')
-                    }
-                    action={
-                      <div className="space-y-3">
-                        {systemGraphError && <p className="text-sm font-medium text-red-700">{systemGraphError}</p>}
-                        {initialData.artifacts.some((artifact) => artifact.type === 'ARCHITECTURE' && ['READY', 'MODIFIED'].includes(artifact.status)) && (
-                          <button
-                            type="button"
-                            onClick={() => void handleRepairSystemGraph()}
-                            disabled={isRepairingSystemGraph || isGenerating}
-                            className={`inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                          >
-                            {isRepairingSystemGraph ? <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
-                            {isRepairingSystemGraph ? tCommon('loading') : t('buildSystemMap')}
-                          </button>
-                        )}
-                      </div>
-                    }
-                  />
-                )}
-              </div>
+              <DesignSystemTab
+                active={activeTab === 'design-system'}
+                systemGraph={systemGraph}
+                artifacts={initialData.artifacts}
+                systemGraphError={systemGraphError}
+                isRepairingSystemGraph={isRepairingSystemGraph}
+                isGenerating={isGenerating}
+                onRepairSystemGraph={handleRepairSystemGraph}
+                t={t}
+                tCommon={tCommon}
+              />
 
-              {!isGenerating && (
-                <div className={activeTab === 'documents' ? 'space-y-8' : 'hidden'}>
-                  <SectionHeading
-                    title={t('generatedDocuments')}
-                    description={t('generatedDocumentsDesc')}
-                    divided={false}
-                  />
+              <DocumentsTab
+                active={activeTab === 'documents'}
+                isGenerating={isGenerating}
+                artifacts={artifacts}
+                readyArtifactsCount={readyArtifacts.length}
+                attentionArtifactsCount={attentionArtifacts.length}
+                retryableDocumentCount={retryableDocumentCount}
+                handleRegenerateIncompleteDocuments={handleRegenerateIncompleteDocuments}
+                handleGenerateAll={handleGenerateAll}
+                generateButton={generateButton}
+                projectId={initialData.id}
+                onArtifactUpdated={handleArtifactUpdated}
+                t={t}
+                tCommon={tCommon}
+              />
 
-                {artifacts.length > 0 && (
-                  <div
-                    className="flex flex-col gap-4 rounded-2xl border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] px-5 py-4 text-[var(--workspace-ink)] sm:flex-row sm:items-center sm:justify-between sm:px-6"
-                    role="region"
-                    aria-label={t('regenerateAllBannerLabel')}
-                  >
-                    <div className="flex min-w-0 items-center gap-4">
-                      <span className="flex shrink-0 items-center gap-1.5" aria-hidden="true">
-                        {Array.from({ length: Math.min(5, Math.max(1, artifacts.length)) }).map((_, index) => (
-                          <span
-                            key={index}
-                            className={`size-2.5 rounded-full ${index < readyArtifacts.length ? 'bg-[var(--pass-teal)]' : 'bg-[var(--workspace-muted)]/40'}`}
-                          />
-                        ))}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold leading-5 text-[var(--workspace-ink)] sm:text-base">
-                          {t('documentsReadySummary', { count: readyArtifacts.length })}
-                        </p>
-                        <p className="mt-0.5 text-xs leading-5 text-[var(--workspace-muted)]">
-                          {t('attentionCount', { count: attentionArtifacts.length })} · {t('regenerateAllHint')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      {retryableDocumentCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => void handleRegenerateIncompleteDocuments()}
-                          disabled={isGenerating}
-                          className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--workspace-border)] bg-[var(--workspace-sun)] px-4 py-2.5 font-sans text-sm font-semibold text-[var(--workspace-ink)] shadow-none transition-colors hover:bg-[var(--workspace-yellow-soft)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                          aria-busy={isGenerating}
-                        >
-                          {isGenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
-                          {isGenerating ? tCommon('loading') : t('retryIncompleteDocuments', { count: retryableDocumentCount })}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => void handleGenerateAll()}
-                        disabled={isGenerating}
-                        className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--workspace-primary)]/20 bg-[var(--workspace-primary)] px-4 py-2.5 font-sans text-sm font-semibold text-white shadow-none transition-colors hover:bg-[var(--workspace-primary-hover)] disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                        aria-busy={isGenerating}
-                      >
-                        {isGenerating ? <Loader2 className="motion-safe:animate-spin size-4" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />}
-                        {isGenerating ? tCommon('loading') : t('markdownRegenerateAll')}
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <BacklogTab
+                active={activeTab === 'backlog'}
+                projectId={initialData.id}
+                phases={phases}
+                backlogRevision={backlogRevision}
+                isGenerating={isGenerating}
+                handleRegenerateBacklog={handleRegenerateBacklog}
+                generateButton={generateButton}
+                t={t}
+              />
 
-                {artifacts.length === 0 ? (
-                  <EmptyState
-                    icon={FileText}
-                    title={t('noDocumentationGenerated')}
-                    description={t('noDocumentationGeneratedDesc')}
-                    action={generateButton}
-                  />
-                ) : (
-                  <MarkdownWorkspace
-                    projectId={initialData.id}
-                    artifacts={artifacts}
-                    isGeneratingAll={isGenerating}
-                    onArtifactUpdated={handleArtifactUpdated}
-                  />
-                )}
-                </div>
-              )}
-
-              <div className={activeTab === 'backlog' ? 'space-y-8' : 'hidden'}>
-                <SectionHeading
-                  title={t('implementationBacklog')}
-                  description={t('implementationBacklogDesc')}
-                  divided={false}
-                  action={
-                    allTasks.length > 0 ? (
-                      <div
-                        className={`${PANEL_SOFT_CLASS} flex flex-wrap items-center gap-4 px-3 py-2 font-sans text-xs font-semibold text-[var(--workspace-ink)]`}
-                      >
-                        <span>{t('readyCountShort', { count: readyTasks.length })}</span>
-                        <span>{t('doneCount', { count: doneTasks.length })}</span>
-                        <span>{t('blockedCount', { count: blockedTasks.length })}</span>
-                        <span>{t('totalCount', { count: allTasks.length })}</span>
-                      </div>
-                    ) : undefined
-                  }
-                />
-
-                {phases.length === 0 ? (
-                  <EmptyState
-                    icon={FolderKanban}
-                    title={t('noImplementationBacklog')}
-                    description={t('noImplementationBacklogDesc')}
-                    action={generateButton}
-                  />
-                ) : allTasks.length === 0 ? (
-                  <EmptyState
-                    icon={AlertTriangle}
-                    title={t('backlogTasksUnavailable')}
-                    description={t('backlogTasksUnavailableDesc')}
-                    action={
-                      <button
-                        type="button"
-                        onClick={() => void handleRegenerateBacklog()}
-                        disabled={isGenerating}
-                        className={`inline-flex min-h-11 items-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-primary)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                      >
-                        <RefreshCw aria-hidden="true" className="size-4" />
-                        {t('backlogRegenerateAction')}
-                      </button>
-                    }
-                  />
-                ) : (
-                  <BacklogKanbanBoard
-                    key={backlogRevision}
-                    projectId={initialData.id}
-                    phases={phases}
-                  />
-                )}
-              </div>
-
-              <div className={activeTab === 'export' && !isGenerating ? 'space-y-8' : 'hidden'}>
-                <SectionHeading
-                  title={t('exportAgentPrompt')}
-                  description={t('exportAgentPromptDesc')}
-                  divided={false}
-                  action={
-                    <span
-                      className={`inline-flex min-h-11 shrink-0 items-center gap-2 self-start rounded-full border px-4 py-2 text-sm font-semibold sm:self-auto ${
-                        canExport
-                          ? 'border-[#2d8d6b]/35 bg-[var(--workspace-mint-soft)] text-[#1b6a4e]'
-                          : 'border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-muted)]'
-                      }`}
-                    >
-                      {canExport && <Check aria-hidden="true" className="size-4" />}
-                      {canExport
-                        ? t('readyToDownloadFiles', { count: exportFileCount })
-                        : t('notReady')}
-                    </span>
-                  }
-                />
-                {genMessage?.type === 'error' && (
-                  <p role="alert" className="-mt-4 text-sm font-medium text-[var(--workspace-rose)]">
-                    {genMessage.text}
-                  </p>
-                )}
-
-                {!canExport ? (
-                  <EmptyState
-                    icon={Package}
-                    title={t('archiveNoEligibleDocuments')}
-                    description={t('archiveNoEligibleDocumentsDesc')}
-                    action={generateButton}
-                  />
-                ) : (
-                  <div className="space-y-6">
-                    <div className="grid items-stretch gap-6 lg:grid-cols-2">
-                      <section aria-labelledby="pack-export-title" className={`${PANEL_CLASS} flex h-full flex-col overflow-hidden`}>
-                        <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-yellow-soft)] p-5 sm:p-6">
-                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-start gap-3">
-                              <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
-                                <Package aria-hidden="true" className="size-5" />
-                              </span>
-                              <div>
-                                <h3 id="pack-export-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
-                                  {t('bootstrapPack')}
-                                </h3>
-                                <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
-                                  {t('preparedForUniversal')}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleDownloadZip}
-                              disabled={isExporting}
-                              aria-busy={isExporting}
-                              aria-label={isExporting ? t('validatingPack') : isDownloadComplete ? t('downloaded') : t('downloadZipPack')}
-                              className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-ink)] px-4 py-2.5 text-sm font-semibold text-white shadow-none transition-colors hover:bg-black disabled:pointer-events-none disabled:opacity-60 ${BUTTON_FOCUS_CLASS}`}
-                            >
-                              {isExporting ? (
-                                <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
-                              ) : isDownloadComplete ? (
-                                <Check aria-hidden="true" className="size-4 text-emerald-400" />
-                              ) : (
-                                <Download aria-hidden="true" className="size-4" />
-                              )}
-                              <span>
-                                {isExporting
-                                  ? t('validatingPack')
-                                  : isDownloadComplete
-                                    ? t('downloaded')
-                                    : t('downloadZipPack')}
-                              </span>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-1 flex-col bg-[var(--workspace-paper)]">
-                          <div className="flex-1 p-5 sm:p-6">
-                            <div className="mb-4 flex items-center justify-between gap-3">
-                              <h4 className="font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
-                                {t('archiveContents')}
-                              </h4>
-                              <span className="font-sans text-xs font-semibold text-[var(--workspace-muted)]">
-                                {t('filesCount', { count: exportFileCount })}
-                              </span>
-                            </div>
-                            <ul className="divide-y divide-[var(--workspace-border-subtle)] border-y border-[var(--workspace-border-subtle)]">
-                              {exportManifestArtifacts.map((artifact) => (
-                                <li key={artifact.id || artifact.type} className="flex items-start gap-3 py-3">
-                                  <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">
-                                      {artifact.path}
-                                    </p>
-                                    <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
-                                      {t(getExportArtifactDescriptionKey(artifact.type))}
-                                    </p>
-                                  </div>
-                                </li>
-                              ))}
-                              {!includesReadme && (
-                                <li className="flex items-start gap-3 py-3">
-                                  <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-[var(--workspace-ink)]" />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="truncate font-mono text-sm font-bold text-[var(--workspace-ink)]">
-                                        README.md
-                                      </span>
-                                      <span className="rounded border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--workspace-ink)]">
-                                        {t('addedDuringExport')}
-                                      </span>
-                                    </div>
-                                    <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
-                                      {t('fileDescReadme')}
-                                    </p>
-                                  </div>
-                                </li>
-                              )}
-                            </ul>
-                          </div>
-
-                          <div className="mt-auto border-t border-[var(--workspace-border-subtle)] bg-[var(--workspace-paper)] p-5 sm:p-6">
-                            <div className="space-y-2.5 font-sans text-xs text-[var(--workspace-muted)]">
-                              <div className="flex items-start gap-2.5">
-                                <Lock aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                                <span>{t('assuranceSecrets')}</span>
-                              </div>
-                              <div className="flex items-start gap-2.5">
-                                <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                                <span>{t('assuranceScanned')}</span>
-                              </div>
-                              <div className="flex items-start gap-2.5">
-                                <FileCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                                <span>{t('assuranceFilenames')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </section>
-
-                      <section aria-labelledby="kickoff-prompt-title" className={`${PANEL_CLASS} flex h-full flex-col overflow-hidden bg-[var(--workspace-paper)]`}>
-                        <div className="border-b border-[var(--workspace-border-subtle)] bg-[var(--workspace-blue-soft)] p-5 sm:p-6">
-                          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-start gap-3">
-                              <span className="flex size-10 shrink-0 items-center justify-center border border-[var(--workspace-border)] bg-[var(--workspace-paper)] text-[var(--workspace-deep)]">
-                                <Terminal aria-hidden="true" className="size-5" />
-                              </span>
-                              <div>
-                                <h3 id="kickoff-prompt-title" className="text-xl font-semibold tracking-tight text-[var(--workspace-ink)]">
-                                  {t('oneShotAgentPrompt')}
-                                </h3>
-                                <p className="mt-0.5 font-sans text-xs text-[var(--workspace-muted)]">
-                                  {t('oneShotAgentPromptDesc')}
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleCopyOneShotPrompt}
-                              aria-label={copiedPrompt ? t('copied') : t('copyPrompt')}
-                              className={`inline-flex min-h-[44px] shrink-0 items-center justify-center gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-paper)] px-4 py-2.5 text-sm font-semibold text-[var(--workspace-ink)] shadow-none transition-colors hover:bg-[var(--workspace-blue-soft)] ${BUTTON_FOCUS_CLASS}`}
-                            >
-                              {copiedPrompt ? (
-                                <>
-                                  <Check aria-hidden="true" className="size-4 text-emerald-600" />
-                                  <span>{t('copied')}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy aria-hidden="true" className="size-4 text-[var(--workspace-ink)]" />
-                                  <span>{t('copyPrompt')}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-1 flex-col p-5 sm:p-6">
-                          <p className="mb-2 font-sans text-xs text-[var(--workspace-muted)]">
-                            {t('promptPreviewCaption')}
-                          </p>
-                          <div
-                            role="region"
-                            aria-label={t('promptPreviewRegionLabel')}
-                            tabIndex={0}
-                            className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border border-black/20 bg-[#18181b] p-4 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-[var(--workspace-primary)]"
-                            style={{ maxHeight: '440px', minHeight: '340px' }}
-                          >
-                            {renderPromptPreviewContent(generateOneShotKickoffPrompt())}
-                          </div>
-                        </div>
-                      </section>
-                    </div>
-
-                    <div className="rounded-[20px] border border-[var(--workspace-border)] bg-[var(--workspace-paper)] p-5 sm:p-6 shadow-[0_8px_22px_rgba(36,35,31,0.06)]">
-                      <h4 className="mb-4 font-sans text-xs font-bold uppercase tracking-[0.08em] text-[var(--workspace-muted)]">
-                        {t('howToUse')}
-                      </h4>
-                      <ol className="grid gap-4 sm:grid-cols-3">
-                        <li className="flex items-start gap-3">
-                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] font-sans text-xs font-bold text-[var(--workspace-ink)]">
-                            1
-                          </span>
-                          <p className="font-sans text-sm font-semibold text-[var(--workspace-ink)]">
-                            {t('exportStepDownload')}
-                          </p>
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] font-sans text-xs font-bold text-[var(--workspace-ink)]">
-                            2
-                          </span>
-                          <p className="font-sans text-sm font-semibold text-[var(--workspace-ink)]">
-                            {t('exportStepExtract')}
-                          </p>
-                        </li>
-                        <li className="flex items-start gap-3">
-                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-[var(--workspace-border)] bg-[var(--workspace-yellow-soft)] font-sans text-xs font-bold text-[var(--workspace-ink)]">
-                            3
-                          </span>
-                          <p className="font-sans text-sm font-semibold text-[var(--workspace-ink)]">
-                            {t('exportStepPaste')}
-                          </p>
-                        </li>
-                      </ol>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <ExportTab
+                active={activeTab === 'export'}
+                isGenerating={isGenerating}
+                canExport={canExport}
+                exportManifestArtifacts={exportManifestArtifacts}
+                exportFileCount={exportFileCount}
+                includesReadme={includesReadme}
+                genMessage={genMessage}
+                generateButton={generateButton}
+                handleDownloadZip={handleDownloadZip}
+                isExporting={isExporting}
+                isDownloadComplete={isDownloadComplete}
+                copiedPrompt={copiedPrompt}
+                handleCopyOneShotPrompt={handleCopyOneShotPrompt}
+                oneShotKickoffPrompt={generateOneShotKickoffPrompt()}
+                t={t}
+              />
             </div>
           </section>
           </main>
         </div>
       </div>
 
-      <Modal
+      <ProjectSettingsModal
         open={isSettingsOpen}
-        onClose={() => !isSavingSettings && setIsSettingsOpen(false)}
-        title={t('settings')}
-        closeLabel={t('closeDialog')}
-      >
-        <form onSubmit={handleSaveSettings} className="space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="projectName" className="text-sm font-semibold text-[var(--workspace-ink)]">
-              {t('projectName')}
-            </label>
-            <Input
-              id="projectName"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              required
-              minLength={2}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="projectLang" className="text-sm font-semibold text-[var(--workspace-ink)]">
-              {t('language')}
-            </label>
-            <Select id="projectLang" value={projectLang} onChange={(e) => setProjectLang(e.target.value)}>
-              <option value="id">{t('settingsLanguageId')}</option>
-              <option value="en">{t('settingsLanguageEn')}</option>
-            </Select>
-          </div>
-          <div className="flex justify-end pt-4">
-            <Button type="submit" variant="primary" disabled={isSavingSettings}>
-              {isSavingSettings ? tCommon('loading') : t('saveChanges')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+        isSavingSettings={isSavingSettings}
+        projectName={projectName}
+        onProjectNameChange={setProjectName}
+        projectLang={projectLang}
+        onProjectLangChange={setProjectLang}
+        onClose={() => setIsSettingsOpen(false)}
+        onSubmit={handleSaveSettings}
+        t={t}
+        tCommon={tCommon}
+      />
     </div>
   )
 }
