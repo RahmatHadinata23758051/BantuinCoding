@@ -76,7 +76,7 @@ export const ledgerKertasTheme: Theme = {
   surface_grammar: {
     separator: 'rule',
     nesting_depth: 0,
-    max_visible_containers: 2,
+    max_visible_containers: 4,
   },
   signature_moves: [
     {
@@ -88,8 +88,8 @@ export const ledgerKertasTheme: Theme = {
       spec: 'font-variant-numeric: tabular-nums pada setiap angka moneter, perataan kanan tegas',
     },
     {
-      move: 'Cap stempel status perhatian',
-      spec: 'background: transparent; border: 2px solid currentColor; outline: 1px solid currentColor; outline-offset: 1px; transform: rotate(-2deg); letter-spacing: 0.06em; text-transform: uppercase; hanya untuk TERVERIFIKASI / PERLU_TINJAUAN; maksimal satu per baris',
+      move: 'Badge status terstruktur',
+      spec: 'Badge status monospasi dengan border kontras tinggi, background subtle, dan tipografi tegas untuk visibilitas cepat',
     },
   ],
   fit: [
@@ -103,14 +103,14 @@ export const ledgerKertasTheme: Theme = {
     'Landing page bergaya konsumer dengan gradien warna-warni',
   ],
   do: [
-    'Gunakan border-bottom hairline 1px sebagai pemisah baris data',
+    'Gunakan hierarki tipografi serif yang jelas dengan ritme vertikal teratur',
     'Ratakan semua angka moneter ke kanan dengan angka tabular',
-    'Tampilkan status perhatian sebagai stempel tinta ganda dengan rotasi -2 derajat',
+    'Tampilkan status penting dengan badge kontras tinggi yang mudah dipindai',
   ],
   dont: [
-    'Jangan gunakan kotak di dalam kotak (nesting_depth > 0)',
-    'Jangan gunakan lebih dari 2 container berkotak per artboard',
-    'Jangan gunakan input berkotak empat sisi — hanya border-bawah',
+    'Jangan gunakan warna aksen berlebihan di luar titik fokus tindakan',
+    'Jangan sembunyikan status penting tanpa pembeda teks dan kontras memadai',
+    'Jangan abaikan keterbacaan angka dan alignment pada tabel data',
   ],
 }
 
@@ -191,8 +191,8 @@ export const instrumenTheme: Theme = {
   },
   surface_grammar: {
     separator: 'band',
-    nesting_depth: 0,
-    max_visible_containers: 2,
+    nesting_depth: 1,
+    max_visible_containers: 4,
   },
   signature_moves: [
     {
@@ -204,8 +204,8 @@ export const instrumenTheme: Theme = {
       spec: 'background: var(--theme-surface) pada header/toolbar; dipisahkan dari area data oleh background kontras minimal',
     },
     {
-      move: 'Sinyal warna saturasi tinggi',
-      spec: 'status perhatian menggunakan warna sinyal amber/merah tegas (var(--theme-signal)) sebagai teks; tanpa stempel; tanpa rotasi',
+      move: 'Badge status warna sinyal',
+      spec: 'status menggunakan warna sinyal amber/merah tegas sebagai background badge; teks kontras tinggi; bentuk bulat pill konsisten',
     },
   ],
   fit: [
@@ -220,13 +220,13 @@ export const instrumenTheme: Theme = {
   ],
   do: [
     'Gunakan pita band untuk membedakan baris genap-ganjil secara visual',
-    'Biarkan warna sinyal berbicara sendiri tanpa elemen dekoratif tambahan',
     'Pertahankan tipografi monospasi konsisten di semua level hierarki',
+    'Sajikan status dan metrik sebagai badge pill dengan background warna jelas',
   ],
   dont: [
     'Jangan campur serif dan sans-serif — sistem ini murni monospasi',
-    'Jangan gunakan border keliling pada baris data — band sudah cukup',
-    'Jangan tambahkan stempel atau rotasi — sinyal disampaikan lewat warna',
+    'Jangan gunakan border keliling berlebihan pada baris data — band sudah cukup',
+    'Jangan gunakan dekorasi visual yang tidak membawa informasi nyata',
   ],
 }
 
