@@ -242,6 +242,7 @@ export function buildDesignGeneratorUserPrompt(
   projectName: string,
   contextJson: string,
   contextVersion: number,
+  visualReference?: { name: string; dnaPrompt: string },
 ): string {
   return `Generate the final DESIGN.md for the following project, as a JSON object matching the output schema.
 
@@ -263,5 +264,9 @@ EXECUTION BRIEF & INSTRUCTIONS:
 6. Provide usable color contrast guidance, responsive behavior, relevant component states, accessibility guidance, and a complete copyable \`\`\`css ... \`\`\` token block that matches the documented choices.
 7. Keep aesthetic choices open: do not require or forbid specific archetypes, colors, typography, cards, containers, corner shapes, borders, shadows, icons, or motion patterns as universal rules.
 8. Include an Anti-Defaults & Acceptance Checklist that checks project grounding, accessibility, responsiveness, and token consistency without enforcing one visual aesthetic.
-9. Output valid JSON matching the schema with the exact 8 mandatory Markdown headings in order.`
+9. Output valid JSON matching the schema with the exact 8 mandatory Markdown headings in order.${visualReference ? `
+
+OPTIONAL VISUAL REFERENCE — DESIGN.md ONLY
+The user selected “${visualReference.name}” as a styling reference. Use this only as visual vocabulary for color, typography, materials, and visual character. Do not copy its product, screens, features, data, or interactions, and do not let it override confirmed project requirements or accessibility/technical constraints.
+Reference DNA: ${visualReference.dnaPrompt}` : ''}`
 }
