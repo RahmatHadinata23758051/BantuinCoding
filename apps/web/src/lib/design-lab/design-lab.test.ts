@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { THEMES } from './themes'
 import { TEMPLATES } from './templates'
-import { ThemeSchema, TemplateSchema } from './schemas'
+import { ThemeSchema } from './schemas'
 import { contrastRatio, hexToHsl, hueDistance } from './contrast'
 import { recommend } from './recommend'
 
@@ -124,56 +124,19 @@ describe('Themes — accent hue separation', () => {
   })
 })
 
-describe('Templates — schema validity', () => {
-  it('every template passes Zod schema', () => {
-    for (const tpl of TEMPLATES) {
-      expect(() => TemplateSchema.parse(tpl)).not.toThrow()
-    }
-  })
-
-  it('template IDs are unique', () => {
-    const ids = TEMPLATES.map((t) => t.id)
-    expect(new Set(ids).size).toBe(ids.length)
-  })
-
-  it('every template has grammar_variants for all 4 separators', () => {
-    const separators = ['rule', 'space', 'band', 'box'] as const
-    for (const tpl of TEMPLATES) {
-      for (const sep of separators) {
-        expect(tpl.grammar_variants[sep], `${tpl.id} missing ${sep} variant`).toBeDefined()
-      }
-    }
-  })
-
-  it('grammar_variants have distinct rowClass values per template', () => {
-    for (const tpl of TEMPLATES) {
-      const classes = Object.values(tpl.grammar_variants).map((v) => v.rowClass)
-      const unique = new Set(classes)
-      expect(unique.size, `${tpl.id} grammar variants should be visually distinct`).toBe(classes.length)
-    }
-  })
-
-  it('no banned brand strings in any template', () => {
-    const serialized = JSON.stringify(TEMPLATES)
-    for (const brand of BANNED_BRANDS) {
-      expect(serialized).not.toContain(brand)
-    }
+describe('Templates — reset state', () => {
+  it('template registry is empty and ready for new definitions', () => {
+    expect(TEMPLATES).toEqual([])
   })
 })
 
 describe('Recommendation', () => {
-  it('returns a result with valid themeId and templateId', () => {
+  it('returns a result with valid themeId and empty/null templateId', () => {
     const result = recommend({})
     const themeIds = THEMES.map((t) => t.id)
-    const templateIds = TEMPLATES.map((t) => t.id)
     expect(themeIds).toContain(result.themeId)
-    expect(templateIds).toContain(result.templateId)
+    expect(result.templateId).toBeNull()
     expect(result.reasons.length).toBeGreaterThan(0)
-  })
-
-  it('data-dense context picks list-table template', () => {
-    const result = recommend({ dataDense: true, ideaSnippet: 'catatan buku kas harian' })
-    expect(result.templateId).toBe('daftar-catatan')
   })
 })
 
