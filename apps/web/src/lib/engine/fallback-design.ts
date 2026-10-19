@@ -3,211 +3,94 @@ export function buildFallbackDesignMarkdown(
   context: Record<string, unknown>,
 ): string {
   const rawSummary = String(context.summary || '').trim()
-  const summary = rawSummary.toLowerCase()
-  const classification = String(context.classification || '').toLowerCase()
   const designDirection = String((context.design_direction as { value?: string })?.value || '').trim()
   const styling = String(
-    (context.stack_preferences as Record<string, { value?: string }>)?.styling?.value || 'framework-neutral CSS',
+    (context.stack_preferences as Record<string, { value?: string }>)?.styling?.value || '',
   )
   const contextText = JSON.stringify(context).toLowerCase()
   const hasAuth = /auth|login|register|sign.?in|password/.test(contextText)
   const hasDataView = /table|list|record|report|dashboard|admin|inventory|transaction/.test(contextText)
-
-  const isExplicitNeoBrutalist = /neo-brutal|comic/.test(designDirection.toLowerCase())
-  const isDeveloper = summary.includes('cli') || summary.includes('api') || summary.includes('developer') || classification.includes('api_service')
-  const isEditorial = summary.includes('blog') || summary.includes('cms') || summary.includes('publishing') || summary.includes('newsletter')
-  const isHealth = summary.includes('health') || summary.includes('clinic') || summary.includes('medical') || summary.includes('wellness')
-
-  let archetype = 'Contemporary Institutional'
-  let materialMetaphor = 'a working brief: facts are grouped by decision, not by decorative containers'
-  let canvas = '#F2EEE6'
-  let surface = '#FBF9F4'
-  let ink = '#20251F'
-  let muted = '#5E665D'
-  let border = '#A8AEA2'
-  let accent = '#8B4A2F'
-  let headingFont = 'Source Serif 4'
-  let bodyFont = 'Source Sans 3'
-
-  if (isExplicitNeoBrutalist) {
-    archetype = 'Neo-Brutalist Utility'
-    materialMetaphor = 'a printed field manual with blunt section markers and decisive controls'
-    canvas = '#EFE4C8'
-    surface = '#FFF8E8'
-    ink = '#171717'
-    muted = '#5D5545'
-    border = '#171717'
-    accent = '#C34A2C'
-    headingFont = 'Bricolage Grotesque'
-  } else if (isDeveloper) {
-    archetype = 'Industrial Monospace'
-    materialMetaphor = 'a terminal runbook where commands, states, and outputs share one measured column'
-    canvas = '#E7ECE8'
-    surface = '#F8FAF7'
-    ink = '#18231F'
-    muted = '#53615B'
-    border = '#8D9A93'
-    accent = '#2C6E5A'
-    headingFont = 'IBM Plex Mono'
-    bodyFont = 'IBM Plex Sans'
-  } else if (isEditorial) {
-    archetype = 'Archival / Library Interface'
-    materialMetaphor = 'an indexed reading room where titles, references, and annotations establish the path'
-    canvas = '#EEE9DF'
-    surface = '#FAF7F0'
-    ink = '#29251F'
-    muted = '#6B6257'
-    border = '#B8AEA0'
-    accent = '#7A4E32'
-    headingFont = 'Literata'
-  } else if (isHealth) {
-    archetype = 'Clinical Chart'
-    materialMetaphor = 'a chart-paper handoff where every status and unit can be read without color alone'
-    canvas = '#E9F0EC'
-    surface = '#F8FBF8'
-    ink = '#173029'
-    muted = '#557168'
-    border = '#9CB4A9'
-    accent = '#28745F'
-    headingFont = 'Atkinson Hyperlegible'
-    bodyFont = 'Source Sans 3'
-  }
-
-  const workflow = rawSummary || `the primary ${classification || 'project'} workflow`
+  const yaml = (value: string) => JSON.stringify(value)
+  const visualDirection = designDirection || 'Not confirmed; choose from the project context before implementation.'
   const screenBlueprint = hasAuth || hasDataView
-    ? `- **Context-supported views:** ${hasAuth ? 'Authentication states are specified only if present in the context.' : ''}${hasDataView ? ' Data views use the actual project objects and density stated in the context.' : ''}
-- **Responsive rule:** preserve reading order; move secondary controls below the primary task at widths below 768px.
-- **State rule:** every context-supported view defines loading, empty, error, and success states without invented content.`
-    : '- **Screen scope:** no screen blueprint is invented because the supplied context does not name a concrete UI journey. Add one when the context supplies a route and user task.'
+    ? `- **Context-supported views:** ${hasAuth ? 'Authentication states are described only if present in the context.' : ''}${hasDataView ? ' Data views use only project objects and density stated in the context.' : ''}
+- **Responsive behavior:** preserve reading order and keep primary tasks usable at narrow widths.
+- **Relevant states:** define loading, empty, error, success, and recovery states only for supported views.`
+    : '- **Screen scope:** no screen blueprint is invented because the supplied context does not name a concrete UI journey.'
 
   return `---
-name: "${projectName} Design System"
-archetype: "${archetype}"
+name: ${yaml(`${projectName} Design System`)}
+archetype: ${yaml(visualDirection)}
 colors:
-  canvas: "${canvas}"
-  surface: "${surface}"
-  border: "${border}"
-  ink-primary: "${ink}"
-  ink-muted: "${muted}"
-  accent: "${accent}"
+  canvas: "#FFFFFF"
+  surface: "#F5F5F5"
+  border: "#D1D5DB"
+  ink-primary: "#111827"
+  ink-muted: "#4B5563"
+  accent: "#334155"
 typography:
-  display: { fontFamily: "${headingFont}" }
-  headline: { fontFamily: "${headingFont}" }
-  body: { fontFamily: "${bodyFont}" }
-  mono: { fontFamily: "IBM Plex Mono" }
+  display: { fontFamily: "system-ui, sans-serif" }
+  headline: { fontFamily: "system-ui, sans-serif" }
+  body: { fontFamily: "system-ui, sans-serif" }
+  mono: { fontFamily: "ui-monospace, monospace" }
 rounded:
-  none: "0px"
-  sm: "2px"
-  md: "4px"
+  sm: "project-specific"
+  md: "project-specific"
+  lg: "project-specific"
 spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
+  xs: "project-specific"
+  sm: "project-specific"
+  md: "project-specific"
+  lg: "project-specific"
 iconography:
-  library: "lucide-react"
-  defaultStrokeWidth: 1.5
-  sizes: { sm: "14px", md: "18px", lg: "24px" }
-components:
-  button: { radius: "4px", padding: "8px 16px" }
+  library: "existing project library or choose during design"
+  defaultStrokeWidth: "project-specific"
+  sizes: { sm: "project-specific", md: "project-specific", lg: "project-specific" }
 ---
 # DESIGN.md — ${projectName}
 
 ## 1. Design DNA
-- **Visual thesis:** ${workflow} is represented as ${materialMetaphor}.
-- **Dominant archetype:** ${archetype}
-- **Evidence:** derived from the project summary, classification, and explicit design direction; no external visual reference was inspected.
-- **Design direction:** ${designDirection || 'No explicit direction supplied; the fallback uses the domain evidence above.'}
-- **Rejected direction 1:** A generic category template — rejected because it would make the project interchangeable with unrelated products.
-- **Rejected direction 2:** A decorative, high-motion composition — rejected because it would compete with the primary task and reduce scanability.
-- **Exactly three signature moves:**
-  1. **Composition:** keep the primary workflow in one readable region with secondary actions attached to the object they affect.
-  2. **Typography:** use ${headingFont} for hierarchy and ${bodyFont} for readable task copy; reserve monospace for identifiers or code.
-  3. **Material / interaction:** use ${border} rules and ${accent} as a single action signal; motion reports state change only.
-- **Visual invariants:** no invented screens or data; focus remains visible; color never carries meaning alone; all controls remain usable at 320px.
+- **Visual direction:** ${designDirection || 'Not confirmed. Choose a direction that fits the project’s users, workflows, domain, and existing constraints.'}
+- **Context:** ${rawSummary || 'The supplied context does not describe the project workflow in detail.'}
+- **Decision status:** colors above are neutral fallback values, not confirmed brand choices. Choose typography, surfaces, layout, and component forms to support the confirmed project needs.
+- Preserve explicit design direction and distinguish confirmed decisions from recommendations; do not invent product features or screens.
 
 ## 2. Color & Contrast System
-| Token | Value | Role |
-|---|---|---|
-| canvas | ${canvas} | page background |
-| surface | ${surface} | task surface |
-| ink | ${ink} | primary text |
-| muted | ${muted} | secondary text |
-| border | ${border} | structural boundary |
-| accent | ${accent} | primary action only |
-| success | #28745F | positive state with text label |
-| warning | #9A681F | warning state with text label |
-| danger | #A33B35 | error state with text label |
-
-- Do not force a color-ratio formula; use the palette by role and verify every foreground/background pair with an automated contrast test.
-- Normal text targets at least 4.5:1; large text and required UI indicators target at least 3:1.
-- Use shape, text, and status labels in addition to color.
+Use the fallback colors as provisional values only. Select colors that support the project’s direction and semantic states; verify normal text contrast at 4.5:1 and large text and essential UI indicators at 3:1 or better. Never communicate state through color alone.
 
 ## 3. Typography & Rhythm
-- **Display:** ${headingFont}, with a licensed fallback stack for the project environment.
-- **Body:** ${bodyFont}, with a readable sans-serif fallback.
-- **Technical values:** use a monospace fallback only for code, IDs, and aligned numeric values.
-- **Scale:** display 2.75rem/1.05; H1 2rem/1.15; H2 1.375rem/1.25; body 1rem/1.5; label 0.8125rem/1.3.
-- **Measure:** keep prose between 45 and 78 characters per line; use tabular numerals only when values are compared.
-- **Styling integration:** ${styling}; do not add a framework configuration that is not already used by the project.
+Use the listed system font stacks only as a fallback. Choose hierarchy, typefaces, sizing, and line lengths to suit the content and existing stack.${styling ? ` Styling integration: ${styling}.` : ''}
 
-## 4. Layout & Surface Grammar
-- Use a 4px spacing base with 8, 12, 16, 24, and 32px intervals.
-- Use 1px structural borders; reserve any offset elevation for controls that need a pressed-state cue.
-- Use square or 4px corners for work surfaces; use a single 999px shape only for status markers where it carries semantic meaning.
-- Desktop: primary task region plus an optional secondary rail when the context names one.
-- Tablet: collapse the secondary rail beneath the primary task.
-- Mobile: one column, 16px page gutters, 44px minimum touch targets, and no horizontal page scrolling.
-- Surface hierarchy comes from grouping, spacing, and rules rather than identical cards.
+## 4. Layout & Spatial System
+Determine composition, spacing, responsive regions, corner shapes, borders, shadows, and elevation from the project’s confirmed direction and actual workflows. Cards, containers, and other surface treatments are optional design choices, not universal requirements. Keep supported tasks usable on desktop, tablet, and mobile without horizontal page overflow.
 
 ## 5. Signature Screen Blueprints
 ${screenBlueprint}
-- **Shared interaction states:** default, hover, focus-visible, active, disabled, loading, empty, and error states must use real project labels and never placeholder metrics.
 
 ## 6. Iconography & Interaction
-- **Icon library:** \`lucide-react\` locked with uniform stroke width 1.5 and rigid optical sizes: 14px (compact), 18px (default), 24px (prominent).
-- **Hardcore negative constraints:** zero emojis in UI controls; no pastel rounded container pills around icons; no arbitrary trailing arrows (\`→\`) on buttons.
-- Icons are semantic only, paired with text labels or given explicit \`aria-label\` attributes for icon-only buttons.
-- All interactive controls define 6 states: default, hover, focus-visible, active, disabled, loading.
-- Keyboard focus uses a 2px ${accent} outline with a 2px offset.
-- Motion is limited to state changes at 120ms or less and is disabled in prefers-reduced-motion.
+Use an existing icon library when present; otherwise choose an appropriate one during design. Give icon-only controls accessible names, provide visible keyboard focus and relevant interaction states, use adequate touch targets, and respect prefers-reduced-motion. Choose icon containers, arrows, and motion only when they serve the interface.
 
 ## 7. Implementation Tokens
+The fallback values are placeholders to replace with project-specific decisions before implementation.
+
 \`\`\`css
 :root {
-  --color-canvas: ${canvas};
-  --color-surface: ${surface};
-  --color-ink: ${ink};
-  --color-muted: ${muted};
-  --color-border: ${border};
-  --color-accent: ${accent};
-  --color-success: #28745F;
-  --color-warning: #9A681F;
-  --color-danger: #A33B35;
-  --space-unit: 4px;
-  --focus-ring: 2px solid var(--color-accent);
-  --radius-surface: 4px;
-  --motion-state: 120ms;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+  --color-canvas: #FFFFFF;
+  --color-surface: #F5F5F5;
+  --color-ink: #111827;
+  --color-muted: #4B5563;
+  --color-border: #D1D5DB;
+  --color-accent: #334155;
 }
 \`\`\`
 
 ## 8. Anti-Defaults & Acceptance Checklist
-- [ ] The primary screen and components map to named user tasks in canonical context.
-- [ ] No screen, metric, testimonial, illustration, or route is invented.
-- [ ] The palette contains one action accent and every contrast pair is verified automatically.
-- [ ] Typography includes explicit fallbacks and does not rely on a browser default by accident.
-- [ ] Surfaces do not all share the same container treatment.
-- [ ] Focus, keyboard, loading, empty, error, and reduced-motion behavior are specified.
-- [ ] Mobile layout remains readable at 320px without page-level horizontal overflow.
-- [ ] Semantic state meaning is available through text or shape, not color alone.
-- [ ] Iconography adheres to the single locked library (lucide-react, 1.5 stroke) with zero emojis and zero pill containers.
+- [ ] Visual decisions follow confirmed project direction and context.
+- [ ] Recommendations and unresolved choices are clearly identified.
+- [ ] No unsupported product screens, features, or data are invented.
+- [ ] Responsive behavior supports the actual project workflows.
+- [ ] Keyboard focus, accessible names, and non-color status cues are specified.
+- [ ] Color contrast targets are met for the chosen palette.
+- [ ] Implementation tokens match the documented design choices.
 `
 }
