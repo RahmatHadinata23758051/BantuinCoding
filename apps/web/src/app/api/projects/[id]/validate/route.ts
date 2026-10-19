@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import { auditProjectConsistency } from '@/lib/engine/consistency-validator'
+import { isBlockerIssue } from '@/lib/prompts/consistency-validator'
 import { requireProjectAction, updateProject } from '@/lib/projects/project-service'
 import { getProjectReadiness } from '@/lib/projects/readiness-service'
 
@@ -36,10 +37,12 @@ export async function POST(
       userId: session.user.id,
       projectId: id,
     })
-    if (report.isConsistent) {
-      await updateProject(session.user.id, id, { status: 'EXPORTABLE' })
-    } else {
+    const blocksExport =
+      report.blocksExport ?? report.issues.some((issue) => isBlockerIssue(issue))
+    if (blocksExport) {
       await updateProject(session.user.id, id, { status: 'READY' })
+    } else {
+      await updateProject(session.user.id, id, { status: 'EXPORTABLE' })
     }
 
     return NextResponse.json({ report, readiness })
