@@ -50,6 +50,7 @@ import {
 import type { ContextProvenanceCounts, ProjectWorkspaceProps } from '@/app/components/workspace/types'
 import type { SystemGraphData } from '@repo/types'
 import { parseProjectBrief, type ParsedProjectBrief } from '@/lib/projects/brief-parser'
+import { VisualReferenceStep } from '@/app/components/visual-references/VisualReferenceStep'
 
 import { Modal } from '@/app/components/ui'
 import {
@@ -157,7 +158,9 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [autoRedirectSeconds, setAutoRedirectSeconds] = useState<number | null>(null)
   const [hasDismissedRedirect, setHasDismissedRedirect] = useState(false)
   const [showErrorDetails, setShowErrorDetails] = useState(false)
+  const [showVisualReferenceStep, setShowVisualReferenceStep] = useState(false)
   const autoFlowStartedRef = useRef(false)
+  const initialGenerationStartedRef = useRef(false)
   const failureDetailsRef = useRef<HTMLDetailsElement>(null)
 
   const readyArtifacts = artifacts.filter(
@@ -708,7 +711,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     return data
   }
 
-  const runGenerationRef = useRef<(operation: 'initial' | 'retry', contextIsReady?: boolean) => Promise<void>>(async () => {})
+  const runGenerationRef = useRef<(operation: 'initial' | 'retry', contextIsReady?: boolean, referenceId?: string | null) => Promise<void>>(async () => {})
 
   const buildCanonicalContext = async () => {
     setIsAnalyzing(true)
@@ -728,7 +731,10 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       setDiscoveryMessage({ type: 'status', text: t('contextReadyMessage') })
       setIsAnalyzing(false)
       selectTab('documents')
-      await runGenerationRef.current('initial', true)
+      setShowVisualReferenceStep(true)
+      initialGenerationStartedRef.current = false
+      setGenMessage(null)
+      return
     } catch (error) {
       setDiscoveryMessage({
         type: 'error',
@@ -919,7 +925,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     }
   }
 
-  const generationStageRequest = async (stage: GenerationStageId, retryIncomplete = false) => {
+  const generationStageRequest = async (stage: GenerationStageId, retryIncomplete = false, referenceId?: string | null) => {
     switch (stage) {
       case 'planner':
         await requestProjectStage<{ plan?: { artifacts?: Array<{ type: string; isRequired?: boolean }> } }>(
@@ -940,7 +946,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 body: JSON.stringify({ regenerateFailed: true }),
                 headers: { 'Content-Type': 'application/json' },
               }
-            : { method: 'POST' },
+            : referenceId
+              ? {
+                  method: 'POST',
+                  body: JSON.stringify({ visualReferenceId: referenceId }),
+                  headers: { 'Content-Type': 'application/json' },
+                }
+              : { method: 'POST' },
           t('documentGenerationFailed'),
         )
         const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED' || artifact.status === 'OUTDATED')
@@ -1045,8 +1057,13 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
     }
   }
 
-  const runGeneration = async (operation: 'initial' | 'retry', contextIsReady = contextReady) => {
+  const runGeneration = async (
+    operation: 'initial' | 'retry',
+    contextIsReady = contextReady,
+    referenceId?: string | null,
+  ) => {
     if (!contextIsReady || isGenerating) return
+    if (operation === 'initial' && showVisualReferenceStep && !initialGenerationStartedRef.current) return
 
     setIsGenerating(true)
     setGenerationOperation(operation)
@@ -1074,7 +1091,11 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
         try {
           if (stage === 'documents' || stage === 'agentRules' || stage === 'backlog') {
-            const result = await generationStageRequest(stage, operation === 'retry') as {
+            const result = await generationStageRequest(
+              stage,
+              operation === 'retry',
+              operation === 'initial' && stage === 'documents' ? referenceId : undefined,
+            ) as {
               artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; version?: number }>
               artifact?: { id: string; type: string; path: string; status: string; content?: string; updatedAt?: string }
               systemGraph?: SystemGraphData | null
@@ -1117,6 +1138,7 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
         updateGenerationState(state)
       }
 
+      initialGenerationStartedRef.current = false
       setGenMessage({ type: 'status', text: t('generationComplete') })
       setProjectStatus('EXPORTABLE')
       setGenerationState((current) => ({ ...current, activeStage: null, isRunning: false }))
@@ -1132,6 +1154,21 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
   useEffect(() => {
     runGenerationRef.current = runGeneration
   })
+
+  const continueInitialGeneration = async (referenceId: string | null) => {
+    if (initialGenerationStartedRef.current || isGenerating) return
+    initialGenerationStartedRef.current = true
+    setShowVisualReferenceStep(false)
+    try {
+      await runGenerationRef.current('initial', true, referenceId)
+    } catch (error) {
+      setProjectStatus('GENERATION_FAILED')
+      setGenMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : t('generationFailed'),
+      })
+    }
+  }
 
   const handleGenerateAll = async () => {
     if (!contextReady) {
@@ -1410,6 +1447,16 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
 
   const hasDesignSystemGraph = Boolean(systemGraph?.nodes?.length)
   const isDesignSystemCanvas = activeTab === 'design-system' && hasDesignSystemGraph
+
+  if (showVisualReferenceStep) {
+    return (
+      <VisualReferenceStep
+        projectName={projectName}
+        onSelect={(referenceId) => void continueInitialGeneration(referenceId)}
+        onSkip={() => void continueInitialGeneration(null)}
+      />
+    )
+  }
 
   return (
     <div
