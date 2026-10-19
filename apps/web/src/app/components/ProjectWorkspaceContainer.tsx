@@ -158,6 +158,8 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [autoRedirectSeconds, setAutoRedirectSeconds] = useState<number | null>(null)
   const [hasDismissedRedirect, setHasDismissedRedirect] = useState(false)
   const [showErrorDetails, setShowErrorDetails] = useState(false)
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([])
+  const [validationAuditMode, setValidationAuditMode] = useState<'ai-assisted' | 'deterministic-only' | null>(null)
   const [showVisualReferenceStep, setShowVisualReferenceStep] = useState(false)
   const autoFlowStartedRef = useRef(false)
   const initialGenerationStartedRef = useRef(false)
@@ -524,18 +526,32 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const handleDownloadZip = async () => {
     if (isExporting) return
     setIsExporting(true)
+    setGenMessage(null)
+    setValidationWarnings([])
+    setValidationAuditMode(null)
     try {
       const validation = await fetch(`/api/projects/${initialData.id}/validate`, { method: 'POST' })
-      const validationData = (await validation.json().catch(() => null)) as { error?: string; report?: { isConsistent?: boolean } } | null
+      const validationData = (await validation.json().catch(() => null)) as {
+        error?: string
+        report?: {
+          blocksExport?: boolean
+          auditMode?: 'ai-assisted' | 'deterministic-only'
+          issues?: Array<{ classification?: 'BLOCKER' | 'WARNING'; description: string; recommendation?: string }>
+        }
+      } | null
       if (!validation.ok) {
         setProjectStatus('READY')
         throw new Error(validationData?.error ?? t('exportValidationFailed'))
       }
-      if (validationData?.report && !validationData.report.isConsistent) {
-        // Validation demotes EXPORTABLE projects back to READY on the server.
-        // Keep the export desk in sync so it does not claim the stale pack is complete.
+      const report = validationData?.report
+      setValidationAuditMode(report?.auditMode ?? null)
+      const warnings = report?.issues?.filter((issue) => issue.classification !== 'BLOCKER') ?? []
+      setValidationWarnings(warnings.map((issue) => `${issue.description}${issue.recommendation ? ` ${issue.recommendation}` : ''}`))
+      if (report?.blocksExport) {
         setProjectStatus('READY')
-        throw new Error(t('consistencyIssues'))
+        const blockers = report.issues?.filter((issue) => issue.classification === 'BLOCKER') ?? []
+        throw new Error(blockers.map((issue) => `${issue.description}${issue.recommendation ? ` ${issue.recommendation}` : ''}`).join(' ')
+          || t('exportBlockedByCriticalIssue'))
       }
       const download = await fetch(`/api/projects/${initialData.id}/export`)
       if (!download.ok) {
@@ -994,9 +1010,9 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
       }
       case 'validation': {
         const result = await requestProjectStage<{
-          report?: { isConsistent?: boolean }
+          report?: { blocksExport?: boolean }
         }>('validate', { method: 'POST' }, t('readinessValidationFailed'))
-        if (!result.report?.isConsistent) {
+        if (result.report?.blocksExport) {
           throw new Error(t('generationValidationFailed'))
         }
         return
@@ -1985,6 +2001,8 @@ The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`,
                 exportFileCount={exportFileCount}
                 includesReadme={includesReadme}
                 genMessage={genMessage}
+                validationWarnings={validationWarnings}
+                validationAuditMode={validationAuditMode}
                 generateButton={generateButton}
                 handleDownloadZip={handleDownloadZip}
                 isExporting={isExporting}
