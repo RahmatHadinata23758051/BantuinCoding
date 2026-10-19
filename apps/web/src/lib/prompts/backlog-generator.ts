@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { buildAuthoritativeContextBlock } from './canonical-context'
 
 // ============================================================
 // Backlog Generator Prompt & Schema Module (BK-014)
@@ -54,7 +55,8 @@ TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
    - Definition of done must name verification commands (e.g., "Passes pnpm typecheck and unit tests").
    - Frontend, interaction, responsive, accessibility, and design-system tasks MUST consume DESIGN.md and include DESIGN.md in relevant_docs.
 6. Only return the phases and structured task graph. The Markdown file will be generated automatically by the server based on your structured tasks.
-7. Any UI or design tasks must reference DESIGN.md for every visual decision and must not define a palette, border system, radius system, shadow system, typography system, or visual archetype of its own.`
+7. Any UI or design tasks must reference DESIGN.md for every visual decision and must not define a palette, border system, radius system, shadow system, typography system, or visual archetype of its own.
+8. Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Backlog tasks must be grounded in confirmed project decisions, entities, and requirements. Do not invent ungrounded components, microservices, or external tools.`
 
 export function buildBacklogGeneratorUserPrompt(
   projectName: string,
@@ -64,12 +66,16 @@ export function buildBacklogGeneratorUserPrompt(
   architectureJson: string,
   designJson = '',
 ): string {
+  const authoritativeBlock = buildAuthoritativeContextBlock(contextJson)
+
   return `Project Name: ${projectName}
 
 Canonical Project Context:
 """
 ${contextJson}
 """
+
+${authoritativeBlock}
 
 PRD Reference:
 """
