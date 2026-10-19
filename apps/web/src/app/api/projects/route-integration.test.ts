@@ -549,7 +549,7 @@ describe('BK-031 Route Integration, Security, and Recovery', () => {
         isConsistent: false,
         score: 55,
         issues: [
-          { category: 'DATABASE_MISMATCH', message: 'PRD specifies PostgreSQL while Architecture specifies MongoDB', severity: 'error' },
+          { category: 'DATABASE_MISMATCH', description: 'PRD specifies PostgreSQL while Architecture specifies MongoDB', severity: 'HIGH', affected_documents: ['PRD.md', 'ARCHITECTURE.md'], recommendation: 'Align database choices across both documents.' },
         ],
       })
       mocks.updateProject.mockResolvedValueOnce({ id: projectId, status: 'READY' })
@@ -613,6 +613,58 @@ describe('BK-031 Route Integration, Security, and Recovery', () => {
       )
       expect(reExportRes.status).toBe(200)
       expect(reExportRes.headers.get('Content-Type')).toBe('application/zip')
+    })
+
+    it('promotes project to EXPORTABLE and permits export when validation yields only non-blocking advisory warnings', async () => {
+      mocks.requireProjectAction.mockResolvedValueOnce({ id: projectId, status: 'READY' })
+      mocks.getProjectReadiness.mockResolvedValueOnce({
+        isReady: true,
+        requiredTypes: ['PRD', 'ARCHITECTURE', 'DESIGN'],
+        missingTypes: [],
+        blockingTypes: [],
+      })
+      mocks.auditProjectConsistency.mockResolvedValueOnce({
+        isConsistent: true,
+        blocksExport: false,
+        auditMode: 'deterministic-only',
+        score: 92,
+        issues: [
+          {
+            category: 'CONTRAST_WARNING',
+            description: 'Foreground #767676 on #FFFFFF has 4.48:1 contrast, slightly below 4.5:1 target',
+            severity: 'LOW',
+            classification: 'WARNING',
+            affected_documents: ['DESIGN.md'],
+            recommendation: 'Consider a slightly darker text token for enhanced readability.',
+          },
+        ],
+        summary: 'Only advisory contrast warning identified; documents remain exportable.',
+      })
+      mocks.updateProject.mockResolvedValueOnce({ id: projectId, status: 'EXPORTABLE' })
+
+      const validateRes = await validateRoute(
+        jsonRequest(`http://localhost/api/projects/${projectId}/validate`, 'POST'),
+        params,
+      )
+      expect(validateRes.status).toBe(200)
+      const validateJson = await parseBody<{ report: { isConsistent: boolean; blocksExport: boolean } }>(validateRes)
+      expect(validateJson.report.isConsistent).toBe(true)
+      expect(validateJson.report.blocksExport).toBe(false)
+      expect(mocks.updateProject).toHaveBeenCalledWith('user-integration', projectId, { status: 'EXPORTABLE' })
+
+      // Export is permitted because state is EXPORTABLE
+      mocks.requireProjectAction.mockResolvedValueOnce({ id: projectId, status: 'EXPORTABLE' })
+      mocks.exportProjectZip.mockResolvedValueOnce({
+        filename: 'Advisory-Bootstrap-Pack.zip',
+        buffer: Buffer.from('PK\x03\x04clean-zip'),
+      })
+
+      const exportRes = await exportRoute(
+        new NextRequest(`http://localhost/api/projects/${projectId}/export`),
+        params,
+      )
+      expect(exportRes.status).toBe(200)
+      expect(exportRes.headers.get('Content-Type')).toBe('application/zip')
     })
   })
 })
