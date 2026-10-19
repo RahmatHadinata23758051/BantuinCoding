@@ -198,6 +198,8 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(PRD_GENERATOR_SYSTEM_PROMPT).toContain('Principal Product Manager')
     expect(SRS_GENERATOR_SYSTEM_PROMPT).toContain('Lead Systems Architect')
     expect(ARCHITECTURE_GENERATOR_SYSTEM_PROMPT).toContain('Principal Software Architect')
+    expect(ARCHITECTURE_GENERATOR_SYSTEM_PROMPT).toContain('fenced Mermaid flowchart')
+    expect(ARCHITECTURE_GENERATOR_SYSTEM_PROMPT).toContain('same component ids and direction')
     expect(promptDesign).toContain('Name: Acme')
     expect(promptDesign).toContain('Canonical Context Version: 3')
     expect(promptDesign).toContain('<canonical_context>')
@@ -211,6 +213,16 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('## 4. Layout & Spatial System')
     expect(promptDesign).not.toContain('rigid 14px/18px/24px sizes')
     expect(promptDesign).not.toContain('universal rounded-2xl')
+    const referencedPrompt = buildDesignGeneratorUserPrompt(
+      'Acme',
+      '{"name":"Acme"}',
+      3,
+      { name: 'Plate · The Pass', dnaPrompt: 'Thermal tickets and restrained alert red.' },
+    )
+    expect(referencedPrompt).toContain('OPTIONAL VISUAL REFERENCE — DESIGN.md ONLY')
+    expect(referencedPrompt).toContain('Thermal tickets and restrained alert red.')
+    expect(referencedPrompt).toContain('Do not copy its product, screens, features, data, or interactions')
+    expect(promptDesign).not.toContain('OPTIONAL VISUAL REFERENCE')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('styles.refero.design')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('saasframe.io')
   })
@@ -223,6 +235,26 @@ describe('Design generator validation', () => {
 
     await expect(generateDesignArtifactContent(provider, 'Acme', '{}', 1)).resolves.toBe(VALID_DESIGN_MARKDOWN)
     expect(generateStructured).toHaveBeenCalledTimes(1)
+  })
+
+  it('sends the selected visual reference only in the design prompt', async () => {
+    const generateStructured = vi.fn().mockResolvedValue(makeDesignResponse())
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+
+    await expect(generateDesignArtifactContent(provider, 'Acme', '{"name":"Acme"}', 2, 'plite'))
+      .resolves.toBe(VALID_DESIGN_MARKDOWN)
+    expect(generateStructured.mock.calls[0]?.[0]).toContain('OPTIONAL VISUAL REFERENCE — DESIGN.md ONLY')
+    expect(generateStructured.mock.calls[0]?.[0]).toContain('Plate · The Pass')
+    expect(generateStructured.mock.calls[0]?.[0]).toContain('Professional kitchen ticket rail aesthetic')
+    expect(generateStructured.mock.calls[0]?.[0]).toContain('{"name":"Acme"}')
+  })
+
+  it('does not add visual-reference guidance when the model chooses', async () => {
+    const generateStructured = vi.fn().mockResolvedValue(makeDesignResponse())
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+
+    await generateDesignArtifactContent(provider, 'Acme', '{"name":"Acme"}', 2)
+    expect(generateStructured.mock.calls[0]?.[0]).not.toContain('OPTIONAL VISUAL REFERENCE')
   })
 
   it('repairs a valid-schema response missing the top-level heading once', async () => {
@@ -471,6 +503,47 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['ARCHITECTURE'] })
     const graphUpdate = vi.mocked(db.artifact.update).mock.calls.find(([call]) => call.where?.projectId_type?.type === 'SYSTEM_GRAPH')
     expect(graphUpdate?.[0]?.data).toEqual(expect.objectContaining({ status: 'READY', content: JSON.stringify({ nodes: [{ id: 'web-client', label: 'Web Client', category: 'client', description: 'Browser UI' }, { id: 'project-api', label: 'Project API', category: 'api', description: 'Request handling' }], edges: [{ source: 'web-client', target: 'project-api', label: 'Browser requests API' }] }) }))
+  })
+
+  it('falls back to Markdown components and data flows when structured graph data is absent', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const markdown = [
+      '# Architecture',
+      '## 3. System Component Breakdown',
+      '### 3.1 Web Client',
+      'Browser user interface.',
+      '### 3.2 Backend Server',
+      'Application server for API and domain logic.',
+      '### 3.3 PostgreSQL Database',
+      'Relational database persistence.',
+      '## 4. Data Flow',
+      '### 4.1 Authenticated Request',
+      '1. The Web Client sends a request to the Backend Server.',
+      '2. The Backend Server queries the PostgreSQL Database.',
+    ].join('\n')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({ id: 'p-1', userId: 'u-1', name: 'Markdown Graph Project', contexts: [{ id: 'ctx-1', version: 1, contentJson: '{}', artifactPlans: [{ type: 'ARCHITECTURE', isRequired: true }] }] } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockResolvedValueOnce({ markdown_content: markdown }) })
+
+    await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['ARCHITECTURE'] })
+
+    const graphUpdate = vi.mocked(db.artifact.update).mock.calls.find(([call]) => call.where?.projectId_type?.type === 'SYSTEM_GRAPH')
+    expect(graphUpdate?.[0]?.data).toEqual(expect.objectContaining({
+      status: 'READY',
+      content: JSON.stringify({
+        nodes: [
+          { id: 'web-client', label: 'Web Client', category: 'client', description: 'Browser user interface.' },
+          { id: 'backend-server', label: 'Backend Server', category: 'service', description: 'Application server for API and domain logic.' },
+          { id: 'postgresql-database', label: 'PostgreSQL Database', category: 'database', description: 'Relational database persistence.' },
+        ],
+        edges: [
+          { source: 'web-client', target: 'backend-server', label: 'Authenticated Request' },
+          { source: 'backend-server', target: 'postgresql-database', label: 'Authenticated Request' },
+        ],
+      }),
+    }))
   })
 
   it('deletes system graph when no usable graph or components are present', async () => {
