@@ -34,41 +34,5 @@ export function themeToCssVars(theme: Theme): Record<string, string> {
 
     '--theme-elevation-base': e.base,
     '--theme-elevation-raised': e.raised,
-
-    '--theme-separator-width': theme.surface_grammar.separator === 'rule' ? '1px' : '0px',
-  }
-}
-
-/** Ordered slot styling for a template under a given surface grammar. */
-export function grammarStyle(separator: Theme['surface_grammar']['separator']): {
-  rowSeparator: string
-  groupBorder: string
-  groupBackground: string
-} {
-  switch (separator) {
-    case 'rule':
-      return {
-        rowSeparator: '1px solid var(--theme-border)',
-        groupBorder: '2px solid var(--theme-border)',
-        groupBackground: 'transparent',
-      }
-    case 'space':
-      return {
-        rowSeparator: 'none',
-        groupBorder: 'none',
-        groupBackground: 'transparent',
-      }
-    case 'band':
-      return {
-        rowSeparator: 'none',
-        groupBorder: 'none',
-        groupBackground: 'var(--theme-surface-subtle)',
-      }
-    case 'box':
-      return {
-        rowSeparator: '2px solid var(--theme-ink)',
-        groupBorder: '2px solid var(--theme-ink)',
-        groupBackground: 'transparent',
-      }
   }
 }
