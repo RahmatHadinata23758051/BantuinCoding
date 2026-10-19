@@ -56,7 +56,8 @@ TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
    - Frontend, interaction, responsive, accessibility, and design-system tasks MUST consume DESIGN.md and include DESIGN.md in relevant_docs.
 6. Only return the phases and structured task graph. The Markdown file will be generated automatically by the server based on your structured tasks.
 7. Any UI or design tasks must reference DESIGN.md for every visual decision and must not define a palette, border system, radius system, shadow system, typography system, or visual archetype of its own.
-8. Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Backlog tasks must be grounded in confirmed project decisions, entities, and requirements. Do not invent ungrounded components, microservices, or external tools.`
+8. Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Backlog tasks must be grounded in confirmed project decisions, entities, and requirements. Do not invent ungrounded components, microservices, or external tools.
+9. GROUNDED SKILL RECOMMENDATIONS: Each task's recommended_skills array must ONLY contain exact skill names listed in the Available Project Skills catalog. If no matching skill is appropriate or no skills are available, use an empty array []. Never invent or hallucinate skill names.`
 
 export function buildBacklogGeneratorUserPrompt(
   projectName: string,
@@ -65,8 +66,12 @@ export function buildBacklogGeneratorUserPrompt(
   srsJson: string,
   architectureJson: string,
   designJson = '',
+  availableSkills: string[] = [],
 ): string {
   const authoritativeBlock = buildAuthoritativeContextBlock(contextJson)
+  const skillsBlock = availableSkills.length > 0
+    ? `Available Project Skills Catalog (tasks must ONLY recommend skills from this list):\n${availableSkills.map((s) => `- ${s}`).join('\n')}`
+    : `Available Project Skills Catalog:\n(No resolved skills provided; recommended_skills array on every task must be empty: [])`
 
   return `Project Name: ${projectName}
 
@@ -76,6 +81,8 @@ ${contextJson}
 """
 
 ${authoritativeBlock}
+
+${skillsBlock}
 
 PRD Reference:
 """
