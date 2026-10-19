@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { buildAuthoritativeContextBlock } from './canonical-context'
 
 // ============================================================
 // PRD Generator Prompt & Schema Module (BK-011)
@@ -33,18 +34,23 @@ PRD STRUCTURE REQUIREMENTS:
 
 CRITICAL CONSTRAINTS:
 - PRD must NOT contain code-level implementation instructions that belong in AGENT.md or ARCHITECTURE.md.
-- Focus on WHAT needs to be built and WHY, not low-level code implementation.`
+- Focus on WHAT needs to be built and WHY, not low-level code implementation.
+- Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Confirmed decisions ([CONFIRMED]) must NEVER be contradicted or replaced. Treat [ASSUMED] items as provisional recommendations and [UNKNOWN] items as open questions; do not fabricate ungrounded facts.`
 
 export function buildPrdGeneratorUserPrompt(
   projectName: string,
   contextJson: string,
 ): string {
+  const authoritativeBlock = buildAuthoritativeContextBlock(contextJson)
+
   return `Project Name: ${projectName}
 
 Canonical Project Context:
 """
 ${contextJson}
 """
+
+${authoritativeBlock}
 
 Generate the complete PRD document output according to the schema.`
 }
