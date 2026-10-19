@@ -1,6 +1,6 @@
 import { db } from '@repo/db'
 import type { SystemGraphData } from '@repo/types'
-import { parseMermaidSystemGraph } from '@/lib/prompts/architecture-generator'
+import { resolveArchitectureSystemGraph } from '@/lib/prompts/architecture-generator'
 
 function normalizeGraphText(value: string) {
   return value.replace(/<br\s*\/?\s*>/gi, '\n').replace(/\r\n?/g, '\n').trim()
@@ -31,7 +31,7 @@ export function parseWorkspaceSystemGraph(content: string): SystemGraphData | nu
       })
     }
   } catch {}
-  const parsed = parseMermaidSystemGraph(content)
+  const parsed = resolveArchitectureSystemGraph(content)
   return parsed ? normalizeGraph(parsed) : null
 }
 
@@ -61,8 +61,8 @@ export async function repairMissingSystemGraph({ userId, projectId }: { userId: 
   )
   if (!architecture) throw new Error('Architecture document must be ready before building the system map.')
 
-  const graph = parseMermaidSystemGraph(architecture.content)
-  if (!graph) throw new Error('Architecture document does not contain a supported system map.')
+  const graph = resolveArchitectureSystemGraph(architecture.content)
+  if (!graph) throw new Error('Architecture document does not contain supported system components.')
 
   await db.artifact.upsert({
     where: { projectId_type: { projectId, type: 'SYSTEM_GRAPH' } },
@@ -132,7 +132,7 @@ export async function getProjectWorkspaceData(userId: string, projectId: string)
         artifact.contextId === currentContextRecord.id,
     )
     if (architectureArtifact?.content) {
-      const derived = parseMermaidSystemGraph(architectureArtifact.content)
+      const derived = resolveArchitectureSystemGraph(architectureArtifact.content)
       if (derived) {
         systemGraph = derived
         try {
