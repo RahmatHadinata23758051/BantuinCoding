@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { buildAuthoritativeContextBlock } from './canonical-context'
 
 // ============================================================
 // SRS Generator Prompt & Schema Module (BK-011)
@@ -27,18 +28,23 @@ SRS STRUCTURE REQUIREMENTS:
 
 CRITICAL CONSTRAINTS:
 - Every functional requirement must have an explicit ID (e.g. FR-001) and testable acceptance criteria.
-- Keep specifications unambiguous, formal, structured, and complete. Ensure the JSON object closes cleanly within token limits.`
+- Keep specifications unambiguous, formal, structured, and complete. Ensure the JSON object closes cleanly within token limits.
+- Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Confirmed decisions ([CONFIRMED]) must NEVER be contradicted or replaced. Treat [ASSUMED] items as provisional recommendations and [UNKNOWN] items as open questions.`
 
 export function buildSrsGeneratorUserPrompt(
   projectName: string,
   contextJson: string,
 ): string {
+  const authoritativeBlock = buildAuthoritativeContextBlock(contextJson)
+
   return `Project Name: ${projectName}
 
 Canonical Project Context:
 """
 ${contextJson}
 """
+
+${authoritativeBlock}
 
 Generate the complete SRS document output according to the schema.`
 }
