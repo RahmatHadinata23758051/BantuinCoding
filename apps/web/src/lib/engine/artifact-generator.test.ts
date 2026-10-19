@@ -21,6 +21,7 @@ import {
   buildDesignGeneratorUserPrompt,
 } from '@/lib/prompts/design-generator'
 import { generateDesignArtifactContent, validateDesignMarkdown } from '@/lib/engine/design-generator'
+import { buildFallbackDesignMarkdown } from '@/lib/engine/fallback-design'
 import { scanContentForSecrets } from '@/lib/export/export-service'
 import {
   generateCoreArtifacts,
@@ -207,6 +208,14 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(promptDesign).toContain('Create screen blueprints only for screens supported by canonical_context')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Cards, gradients, borders, shadows, containers, and varied corner shapes are available choices')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Choose radius, borders, shadows, and elevation to fit the stated direction')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Include compact ASCII wireframes where helpful')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('NOT a rigid ceiling')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('purposeful micro-interactions')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Visible keyboard focus and non-color-only semantic cues')
+    expect(promptDesign).toContain('layout composition, visual hierarchy, real canonical entities, complete interaction states')
+    expect(promptDesign).toContain('optional compact ASCII wireframes')
+    expect(promptDesign).toContain('Tokens are an approved baseline, not a ceiling')
+    expect(promptDesign).toContain('preserving contrast, responsiveness, reduced-motion, keyboard focus, and non-color-only semantic cues')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('Exactly THREE signature design moves')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('ZERO icon container slop')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('## 4. Layout & Surface Grammar')
@@ -351,6 +360,43 @@ describe('Artifact Generator Fallbacks', () => {
     const md = generateFallbackDesign('Ledger', { summary: 'Users sign in to review transaction records in a table' })
     expect(md).toContain('Authentication states are described only if present in the context.')
     expect(md).toContain('Data views use only project objects and density stated in the context.')
+  })
+
+  it('grounds fallback screen blueprints and canonical entities from context', () => {
+    const md = buildFallbackDesignMarkdown('Ledger', {
+      screens: [{
+        name: 'Transaction Review',
+        layout: 'A compact table with date and amount columns.',
+        entities: ['Transaction'],
+      }],
+      core_entities: [{ name: 'Transaction' }],
+    })
+    expect(DesignDocumentSchema.safeParse({ title: 'DESIGN.md', markdown_content: md }).success).toBe(true)
+    expect(md).toContain('**Transaction Review:** A compact table with date and amount columns. Canonical entities: Transaction.')
+    expect(md).toContain('**Canonical entities:** Transaction.')
+    expect(md).toContain('**Interaction states:** define loading, empty, error, success, and recovery states for supported screens.')
+    expect(md).toContain('**Wireframe:** add a compact ASCII layout sketch')
+  })
+
+  it('detects context-supported views from canonical functional requirements without explicit screens', () => {
+    const md = buildFallbackDesignMarkdown('Portal', {
+      functional_requirements: [
+        { id: 'FR-001', title: 'User authentication and login', description: 'Session management' },
+        { id: 'FR-002', title: 'Analytics dashboard', description: 'Table of transactions' },
+      ],
+      core_entities: [{ name: 'Session' }],
+    })
+    expect(md).toContain('Authentication states are described only if present in the context.')
+    expect(md).toContain('Data views use only project objects and density stated in the context.')
+    expect(md).toContain('**Canonical entities:** Session.')
+  })
+
+  it('does not invent screen blueprints when screens and view evidence are absent', () => {
+    const md = buildFallbackDesignMarkdown('Landing Page', {
+      core_entities: [{ name: 'Visitor' }],
+    })
+    expect(md).toContain('no screen blueprint is invented because the supplied context does not name a concrete UI journey.')
+    expect(md).toContain('**Canonical entities:** Visitor.')
   })
 })
 
