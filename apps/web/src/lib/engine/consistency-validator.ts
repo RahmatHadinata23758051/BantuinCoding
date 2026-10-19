@@ -2,6 +2,7 @@ import { db } from '@repo/db'
 import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
 import { scanContentForSecrets } from '@/lib/export/export-service'
+import { validateDesignTokensAndContrast } from '@/lib/engine/design-token-validator'
 import {
   CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
   ConsistencyReportSchema,
@@ -199,6 +200,10 @@ export function validateRuleBasedConsistency(
         affected_documents: ['DESIGN.md'],
         recommendation: 'Ensure DESIGN.md starts with a YAML front matter block specifying colors, typography, rounded, spacing, and iconography tokens.',
       })
+    } else {
+      // Deterministic WCAG contrast and token parity validation (BK-036)
+      const tokenIssues = validateDesignTokensAndContrast(design)
+      issues.push(...tokenIssues)
     }
   }
 
