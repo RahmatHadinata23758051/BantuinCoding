@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { buildAuthoritativeContextBlock } from './canonical-context'
 
 // ============================================================
 // AGENT & RULES Prompt & Schema Module (BK-012)
@@ -58,6 +59,7 @@ CRITICAL CONSTRAINTS:
 - If no resolved recommendations are supplied, state clearly that skill recommendations have not been resolved yet; do not invent or imply specific skills.
 - Do NOT produce a separate RULES.md document; the rules_content field must be left empty.
 - Visual decisions must ALWAYS come from DESIGN.md alone.
+- Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Never contradict [CONFIRMED] decisions or technology stack constraints.
 - Agent.md is the sole operational contract for the coding agent.`
 
 export function buildAgentRulesGeneratorUserPrompt(
@@ -67,6 +69,7 @@ export function buildAgentRulesGeneratorUserPrompt(
   recommendations: AgentSkillRecommendation[] = [],
 ): string {
   const contextJson = legacyContextJson ?? contextOrLegacyAgent
+  const authoritativeBlock = buildAuthoritativeContextBlock(contextJson)
   const recommendationText = recommendations.length === 0
     ? 'Skill recommendations have not been resolved yet. State this explicitly in the Recommended Agent Skills section and do not invent skills.'
     : recommendations.map((skill, index) => [
@@ -86,6 +89,8 @@ Canonical Project Context:
 """
 ${contextJson}
 """
+
+${authoritativeBlock}
 
 Resolved Skill Recommendations:
 """
