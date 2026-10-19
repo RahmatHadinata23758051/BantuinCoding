@@ -6,6 +6,7 @@ import {
   validateDesignStructure,
 } from '@/lib/prompts/design-generator'
 import { buildFallbackDesignMarkdown } from '@/lib/engine/fallback-design'
+import { getVisualReference, isValidVisualReferenceId } from '@/lib/visual-references/catalog'
 
 const DESIGN_GENERATION_OPTIONS = {
   system: DESIGN_GENERATOR_SYSTEM_PROMPT,
@@ -58,18 +59,35 @@ export async function generateDesignArtifactResult(
   projectName: string,
   contextJson: string,
   contextVersion: number,
+  visualReferenceId?: string,
 ): Promise<DesignGenerationResult> {
-  const userPrompt = buildDesignGeneratorUserPrompt(projectName, contextJson, contextVersion)
+  const selectedReference = visualReferenceId && isValidVisualReferenceId(visualReferenceId)
+    ? getVisualReference(visualReferenceId)
+    : undefined
+  const userPrompt = buildDesignGeneratorUserPrompt(
+    projectName,
+    contextJson,
+    contextVersion,
+    selectedReference ? { name: selectedReference.name, dnaPrompt: selectedReference.dnaPrompt } : undefined,
+  )
+  const fallbackDirection = selectedReference ? `${selectedReference.name}: ${selectedReference.dnaPrompt}` : undefined
+  let fallbackContext: Record<string, unknown> = {}
+  try {
+    fallbackContext = JSON.parse(contextJson) as Record<string, unknown>
+  } catch {}
+  if (selectedReference) {
+    fallbackContext.design_direction = {
+      value: fallbackDirection,
+      provenance: 'confirmed',
+    }
+  }
+
   let result: { markdown_content: string }
   try {
     result = await provider.generateStructured(userPrompt, DesignDocumentPayloadSchema, DESIGN_GENERATION_OPTIONS)
   } catch (error) {
     console.warn('[design-generator] initial provider call failed, attempting fallback', error)
-    let parsedContext: Record<string, unknown> = {}
-    try {
-      parsedContext = JSON.parse(contextJson) as Record<string, unknown>
-    } catch {}
-    const fallback = buildFallbackDesignMarkdown(projectName, parsedContext)
+    const fallback = buildFallbackDesignMarkdown(projectName, fallbackContext, fallbackDirection)
     return {
       content: fallback,
       status: 'accepted_with_violations',
@@ -120,12 +138,8 @@ Return the complete JSON object again. Preserve the draft's project-specific dec
   } catch (error) {
     if (!isSubstantiveDesign(initial.content)) {
       console.warn('[design-generator] repair failed and draft is unsubstantial, using fallback', error)
-      let parsedContext: Record<string, unknown> = {}
-      try {
-        parsedContext = JSON.parse(contextJson) as Record<string, unknown>
-      } catch {}
       return {
-        content: buildFallbackDesignMarkdown(projectName, parsedContext),
+        content: buildFallbackDesignMarkdown(projectName, fallbackContext, fallbackDirection),
         status: 'accepted_with_violations',
         violations: initial.violations,
       }
@@ -140,8 +154,15 @@ export async function generateDesignArtifactContent(
   projectName: string,
   contextJson: string,
   contextVersion: number,
+  visualReferenceId?: string,
 ): Promise<string> {
-  const result = await generateDesignArtifactResult(provider, projectName, contextJson, contextVersion)
+  const result = await generateDesignArtifactResult(
+    provider,
+    projectName,
+    contextJson,
+    contextVersion,
+    visualReferenceId,
+  )
   return result.content
 }
 
