@@ -216,9 +216,10 @@ DESIGN DNA (Section 1)
 - Avoid interchangeable category templates. Cards, gradients, borders, shadows, containers, and varied corner shapes are available choices; use them when they suit the project rather than requiring or banning them universally.
 - Treat visual references as optional vocabulary, not proof of inspection. Do not claim to have inspected references that were not supplied.
 
-CONTEXT-SUPPORTED DELIVERABLES (Section 5)
+CONTEXT-SUPPORTED SCREEN BLUEPRINTS (Section 5)
 - Create blueprints only for screens and user journeys present in Canonical Project Context. If the context does not describe a screen, say so instead of inventing one.
-- For supported screens, describe the layout, hierarchy, content, and relevant loading, empty, error, success, and recovery states.
+- For supported screens, specify layout composition, visual hierarchy, real canonical entities, and complete interaction states (loading, empty, error, success, and recovery).
+- Include compact ASCII wireframes where helpful for spatial composition, region boundaries, and content density.
 
 DESIGN SPECIFICATIONS
 A. Color & Contrast: define usable colors for the actual interface and semantic states. Specify values and contrast targets (normal text >= 4.5:1, large text and essential UI indicators >= 3:1); do not impose an arbitrary palette size or accent count.
@@ -227,6 +228,13 @@ C. Layout & Spatial System: explain screen-specific composition, responsive beha
 D. Components & Interactive States: describe components present in the project and the states relevant to each. Include visible keyboard focus, accessible names, usable touch targets, and clear status that does not rely on color alone.
 E. Iconography & Interaction: follow the existing stack where practical or recommend a suitable option with rationale. Specify sizes and stroke treatment only when useful; use accessible names for icon-only controls. Define purposeful interaction and motion, respecting prefers-reduced-motion. Do not impose arbitrary bans on icon containers, arrows, or other visual forms.
 F. Implementation Tokens: include a copyable \`\`\`css ... \`\`\` block with :root custom properties that correspond to the documented choices; include dark mode tokens only if the project needs them.
+G. Creative Freedom & Token Baseline:
+- The documented tokens and component specifications are an approved baseline and starting point, NOT a rigid ceiling.
+- The implementing coding agent has full creative license to design distinctive screens, richer components, purposeful micro-interactions, and polished motion, provided they preserve:
+  1. Contrast targets (normal text >= 4.5:1, essential UI indicators >= 3:1),
+  2. Mobile and tablet responsiveness without horizontal page overflow,
+  3. Reduced-motion preferences (prefers-reduced-motion respected),
+  4. Visible keyboard focus and non-color-only semantic cues.
 
 MANDATORY DOCUMENT OUTLINE (exact Markdown headings in order)
 # DESIGN.md
@@ -265,9 +273,9 @@ EXECUTION BRIEF & INSTRUCTIONS:
 2. Ground design guidance in canonical_context: user workflows, content density, primary objects, target audience, explicit screens, technical stack, and design_direction.
 3. Explain a visual direction that fits the project; use a thesis, metaphor, alternatives, or signature choices when useful, without a required count or format.
 4. Separate confirmed decisions from recommendations and unresolved choices. Never silently override explicit design_direction or contradict [CONFIRMED] items in the authoritative decisions block.
-5. Create screen blueprints only for screens supported by canonical_context. Do not invent product features, screens, metrics, or data.
+5. Create screen blueprints only for screens supported by canonical_context (specifying layout composition, visual hierarchy, real canonical entities, complete interaction states, and optional compact ASCII wireframes). Do not invent product features, screens, metrics, or data.
 6. Provide usable color contrast guidance, responsive behavior, relevant component states, accessibility guidance, and a complete copyable \`\`\`css ... \`\`\` token block that matches the documented choices.
-7. Keep aesthetic choices open: do not require or forbid specific archetypes, colors, typography, cards, containers, corner shapes, borders, shadows, icons, or motion patterns as universal rules.
+7. Keep aesthetic choices open: do not require or forbid specific archetypes, colors, typography, cards, containers, corner shapes, borders, shadows, icons, or motion patterns as universal rules. Tokens are an approved baseline, not a ceiling; implementing agents may create distinctive screens, richer components, purposeful micro-interactions, and polished motion while preserving contrast, responsiveness, reduced-motion, keyboard focus, and non-color-only semantic cues.
 8. Include an Anti-Defaults & Acceptance Checklist that checks project grounding, accessibility, responsiveness, and token consistency without enforcing one visual aesthetic.
 9. Output valid JSON matching the schema with the exact 8 mandatory Markdown headings in order.${visualReference ? `
 
