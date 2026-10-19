@@ -1,32 +1,27 @@
 import { RecommendContextSchema, RecommendResultSchema } from './schemas'
 import { THEMES } from './themes'
-import { TEMPLATES } from './templates'
 
 /**
  * Deterministic first-pass heuristic; never calls an LLM.
- * Uses explicit context flags only, with a Ledger Kertas + list-table default.
+ * Uses explicit context flags only and leaves the template unselected.
  */
 export function recommend(context: unknown) {
   const ctx = RecommendContextSchema.parse(context)
   const projectType = (ctx.projectType ?? '').toUpperCase()
   const text = (ctx.ideaSnippet ?? '').toLowerCase()
-
-  let templateId = 'daftar-catatan'
   const reasons: string[] = []
 
   if (ctx.cli || projectType.includes('API_SERVICE') || /command.line|terminal|cli/.test(text)) {
-    templateId = 'daftar-catatan'
-    reasons.push('Tampilan terminal/layanan teknis terdeteksi; tahap ini menampilkan daftar tugas sebagai dasar struktur CLI.')
+    reasons.push('Tampilan terminal atau layanan teknis terdeteksi; pilih pola layar yang sesuai setelah menentukan kebutuhan UI.')
   } else if (ctx.dataDense || /ledger|transaksi|inventaris|catatan|audit|rekonsiliasi/.test(text)) {
-    reasons.push('Konteks menunjukkan data berulang dan rapat; daftar catatan mengutamakan pemindaian baris.')
+    reasons.push('Konteks menunjukkan data berulang dan rapat; pilih pola layar yang mengutamakan pemindaian data.')
   } else {
-    reasons.push('Belum ada sinyal konteks khusus; dipilih struktur netral yang mudah dipindai dan diadaptasi.')
+    reasons.push('Belum ada sinyal konteks khusus; tentukan pola layar berdasarkan kebutuhan proyek.')
   }
 
-  const result = {
+  return RecommendResultSchema.parse({
     themeId: THEMES[0].id,
-    templateId: TEMPLATES.find((t) => t.id === templateId)?.id ?? TEMPLATES[0].id,
+    templateId: null,
     reasons,
-  }
-  return RecommendResultSchema.parse(result)
+  })
 }
