@@ -12,11 +12,12 @@ import {
   ArchitectureDocumentSchema,
   buildArchitectureGeneratorUserPrompt,
   buildArchitectureSystemGraph,
-  parseMermaidSystemGraph,
+  resolveArchitectureSystemGraph,
 } from '@/lib/prompts/architecture-generator'
 import { generateDesignArtifactContent } from '@/lib/engine/design-generator'
 import { buildFallbackDesignMarkdown } from '@/lib/engine/fallback-design'
 import { scanContentForSecrets } from '@/lib/export/export-service'
+import { isValidVisualReferenceId } from '@/lib/visual-references/catalog'
 
 const SAMPLE_VALUE_MARKERS = /(?:^|[-_ .])(?:dummy|example|placeholder|replace[-_ ]?me|change[-_ ]?me|changeme|sample|your|insert|set[-_ ]?me|todo)(?:$|[-_ .])/i
 const SAMPLE_CREDENTIAL_MARKERS = /(?:^|[-_. ])(?:password|pass|secret|token|api[-_ ]?key|key|admin|user|root|postgres|mysql|mongo|mongodb|example|dummy|placeholder|changeme|test|demo)(?:$|[-_. ])/i
@@ -100,6 +101,7 @@ export interface GenerateArtifactsOptions {
   userId: string
   projectId: string
   types?: ('PRD' | 'SRS' | 'ARCHITECTURE' | 'DESIGN')[]
+  visualReferenceId?: string
 }
 
 export interface GeneratedArtifactResult {
@@ -210,6 +212,7 @@ export async function generateCoreArtifacts({
   userId,
   projectId,
   types,
+  visualReferenceId,
 }: GenerateArtifactsOptions): Promise<GeneratedArtifactResult[]> {
   const project = await db.project.findFirst({
     where: { id: projectId, userId },
@@ -225,6 +228,9 @@ export async function generateCoreArtifacts({
   })
 
   if (!project) throw new Error('Project not found')
+  if (visualReferenceId && !isValidVisualReferenceId(visualReferenceId)) {
+    throw new Error('Invalid visual reference')
+  }
 
   const currentContextRecord = project.contexts[0]
   if (!currentContextRecord) {
@@ -311,10 +317,11 @@ export async function generateCoreArtifacts({
         })
         markdownContent = res.markdown_content
 
+        const markdownGraph = resolveArchitectureSystemGraph(res.markdown_content, res)
         const effectiveGraph =
           res.system_graph && Array.isArray(res.system_graph.nodes) && res.system_graph.nodes.length > 0
             ? res.system_graph
-            : (parseMermaidSystemGraph(res.markdown_content) ?? buildArchitectureSystemGraph(res))
+            : markdownGraph ?? buildArchitectureSystemGraph(res)
 
         if (effectiveGraph && Array.isArray(effectiveGraph.nodes) && effectiveGraph.nodes.length > 0) {
           const nodeIds = new Set(effectiveGraph.nodes.map((n) => n.id))
@@ -347,6 +354,7 @@ export async function generateCoreArtifacts({
           project.name,
           currentContextRecord.contentJson,
           currentContextRecord.version,
+          visualReferenceId,
         )
       }
 
