@@ -91,7 +91,7 @@ Palette and contrast rules.
 ## 3. Typography & Rhythm
 Type scale and rhythm.
 
-## 4. Layout & Surface Grammar
+## 4. Layout & Spatial System
 Responsive layout rules.
 
 ## 5. Signature Screen Blueprints
@@ -201,11 +201,16 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(promptDesign).toContain('Name: Acme')
     expect(promptDesign).toContain('Canonical Context Version: 3')
     expect(promptDesign).toContain('<canonical_context>')
-    expect(promptDesign).toContain('Material Metaphor')
-    expect(promptDesign).toContain('strictly conditional')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Two credible alternative archetypes rejected')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Exactly THREE signature design moves')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Do NOT automatically map all B2B projects')
+    expect(promptDesign).toContain('canonical_context')
+    expect(promptDesign).toContain('Create screen blueprints only for screens supported by canonical_context')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Cards, gradients, borders, shadows, containers, and varied corner shapes are available choices')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Choose radius, borders, shadows, and elevation to fit the stated direction')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('Exactly THREE signature design moves')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('ZERO icon container slop')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('## 4. Layout & Surface Grammar')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('## 4. Layout & Spatial System')
+    expect(promptDesign).not.toContain('rigid 14px/18px/24px sizes')
+    expect(promptDesign).not.toContain('universal rounded-2xl')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('styles.refero.design')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('saasframe.io')
   })
@@ -250,7 +255,7 @@ describe('Design generator validation', () => {
     const violations = validateDesignMarkdown('# DESIGN.md\n\n## 1. Design DNA')
     expect(violations).toContain('Missing required heading: ## 2. Color & Contrast System')
     expect(violations).toContain('Missing meaningful CSS token block with :root custom properties')
-    expect(violations).toContain('Missing visual thesis')
+    expect(violations).toContain('Missing conditional screen blueprint rule')
   })
 
   it('rejects headings inside CSS fences and empty CSS token blocks', () => {
@@ -285,7 +290,6 @@ describe('Artifact Generator Fallbacks', () => {
     expect(DesignDocumentSchema.safeParse({ title: 'DESIGN.md', markdown_content: md }).success).toBe(true)
     expect(md).toContain('Clean Minimalist Scandinavian')
     expect(md).toContain('Tailwind CSS v4')
-    expect(md).toContain('Exactly three signature moves')
     expect(md).not.toContain('Luxury Split-Screen Auth')
     expect(md).not.toContain('Bento-Grid Dashboard')
     expect(md).not.toContain('Awwwards-grade')
@@ -293,17 +297,15 @@ describe('Artifact Generator Fallbacks', () => {
 
   it('adapts fallback Design archetype only from project evidence', () => {
     const devMd = generateFallbackDesign('Acme CLI', { summary: 'Developer CLI tool and API platform for cloud telemetry', classification: 'API_SERVICE' })
-    expect(devMd).toContain('Industrial Monospace')
-    expect(devMd).toContain('IBM Plex Mono')
-    expect(devMd).toContain('#2C6E5A')
+    expect(devMd).toContain('Not confirmed; choose from the project context before implementation.')
+    expect(devMd).toContain('Developer CLI tool and API platform for cloud telemetry')
 
     const editorialMd = generateFallbackDesign('Acme Journal', { summary: 'Publishing newsletter and editorial archive' })
-    expect(editorialMd).toContain('Archival / Library Interface')
-    expect(editorialMd).toContain('Literata')
+    expect(editorialMd).toContain('Not confirmed; choose from the project context before implementation.')
+    expect(editorialMd).toContain('Publishing newsletter and editorial archive')
 
     const neoMd = generateFallbackDesign('Retro Site', { design_direction: { value: 'Vibrant Neo-Brutalism with bold borders' } })
-    expect(neoMd).toContain('Neo-Brutalist Utility')
-    expect(neoMd).toContain('#EFE4C8')
+    expect(neoMd).toContain('Vibrant Neo-Brutalism with bold borders')
   })
 
   it('does not invent authentication or data views when context is silent', () => {
@@ -315,8 +317,8 @@ describe('Artifact Generator Fallbacks', () => {
 
   it('includes only context-supported screen guidance', () => {
     const md = generateFallbackDesign('Ledger', { summary: 'Users sign in to review transaction records in a table' })
-    expect(md).toContain('Authentication states are specified')
-    expect(md).toContain('Data views use the actual project objects')
+    expect(md).toContain('Authentication states are described only if present in the context.')
+    expect(md).toContain('Data views use only project objects and density stated in the context.')
   })
 })
 
