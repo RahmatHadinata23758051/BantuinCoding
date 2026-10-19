@@ -214,7 +214,7 @@ export type RecommendContext = z.infer<typeof RecommendContextSchema>
 
 export const RecommendResultSchema = z.object({
   themeId: z.string(),
-  templateId: z.string(),
+  templateId: z.string().nullable().optional(),
   reasons: z.array(z.string()),
 })
 
