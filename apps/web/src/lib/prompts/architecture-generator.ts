@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { buildAuthoritativeContextBlock } from './canonical-context'
 import type {
   SystemGraphCategory,
   SystemGraphData,
@@ -296,6 +297,7 @@ SYSTEM_GRAPH REQUIREMENTS:
 CRITICAL CONSTRAINTS:
 - Keep the architecture practical (modular monolith first; avoid unnecessary microservices or over-engineering).
 - Explicitly detail data flow and security boundaries.
+- Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Confirmed decisions ([CONFIRMED]) must NEVER be contradicted or replaced. Treat [ASSUMED] items as provisional recommendations and [UNKNOWN] items as open questions.
 - Never emit real or realistic fake API keys, passwords, tokens, secret values, private keys, or database connection URLs. Do not include populated assignments such as API_KEY=..., NEXTAUTH_SECRET=..., JWT_SECRET=..., AWS_ACCESS_KEY_ID=..., AWS_SECRET_ACCESS_KEY=..., or GOOGLE_APPLICATION_CREDENTIALS=....
 - For environment examples, use only empty assignments, unresolved variables, or comments: DATABASE_URL="", DATABASE_URL=\${DATABASE_URL}, API_KEY=\${API_KEY}, NEXTAUTH_SECRET="", and JWT_SECRET="". Do not emit localhost, credential-free, or credential-bearing database URLs; the scanner rejects every database URL. Never use values such as "placeholder", "your-secret", "password", or invented hexadecimal strings as secret examples.
 - Ensure the specification is dense, rigorous, and completes cleanly within token limits.`
@@ -387,12 +389,16 @@ export function buildArchitectureGeneratorUserPrompt(
   projectName: string,
   contextJson: string,
 ): string {
+  const authoritativeBlock = buildAuthoritativeContextBlock(contextJson)
+
   return `Project Name: ${projectName}
 
 Canonical Project Context:
 """
 ${contextJson}
 """
+
+${authoritativeBlock}
 
 Generate the complete ARCHITECTURE.md document output according to the schema.`
 }
