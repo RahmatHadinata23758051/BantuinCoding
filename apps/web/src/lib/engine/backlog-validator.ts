@@ -68,19 +68,29 @@ export function validateBacklogDependencies(
     }
   }
 
-  // 4. Compute status for each task (READY vs PENDING vs BLOCKED)
+  // 4. Compute readiness after all IDs are known, regardless of declaration order.
   const taskStatusMap: Record<string, 'READY' | 'PENDING' | 'BLOCKED'> = {}
+  const readinessVisited = new Set<string>()
 
-  for (const task of allTasks.values()) {
-    if (task.dependencies.length === 0) {
-      taskStatusMap[task.id] = 'READY'
-    } else {
-      const allDepsMet = task.dependencies.every(
-        (depId) => completedTaskIds.has(depId) || taskStatusMap[depId] === 'READY',
-      )
-      taskStatusMap[task.id] = allDepsMet ? 'READY' : 'PENDING'
+  function resolveReadiness(taskId: string): 'READY' | 'PENDING' {
+    if (completedTaskIds.has(taskId)) return 'READY'
+    if (readinessVisited.has(taskId)) {
+      return taskStatusMap[taskId] === 'READY' ? 'READY' : 'PENDING'
     }
+
+    readinessVisited.add(taskId)
+    const task = allTasks.get(taskId)
+    if (!task) {
+      taskStatusMap[taskId] = 'PENDING'
+      return 'PENDING'
+    }
+
+    const ready = task.dependencies.every((depId) => resolveReadiness(depId) === 'READY')
+    taskStatusMap[taskId] = ready ? 'READY' : 'PENDING'
+    return taskStatusMap[taskId]
   }
+
+  for (const taskId of allTasks.keys()) resolveReadiness(taskId)
 
   return {
     isValid: errors.length === 0,
