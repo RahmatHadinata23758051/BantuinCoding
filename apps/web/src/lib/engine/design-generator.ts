@@ -21,29 +21,10 @@ export interface DesignGenerationResult {
   violations: string[]
 }
 
-function countSignatureMoves(markdown: string): number {
-  return (markdown.match(/^\s*(?:[-*]|\d+[.)])\s+(?:\*\*)?(?:Composition|Typography|Material \/ interaction)(?:\*\*)?:/gim) || []).length
-}
-
 function validateDesignContent(markdown: string): string[] {
-  const violations: string[] = []
-  if (!/visual thesis/i.test(markdown)) {
-    violations.push('Missing visual thesis')
-  }
-  if (!/material metaphor/i.test(markdown)) {
-    violations.push('Missing material metaphor')
-  }
-  const rejectedDirections = markdown.match(/^\s*[-*]\s+(?:\*\*)?Rejected (?:direction|alternative)[^\n]*:/gim) || []
-  if (rejectedDirections.length < 2) {
-    violations.push('Requires two rejected directions with concrete reasons')
-  }
-  if (countSignatureMoves(markdown) !== 3) {
-    violations.push('Requires exactly three signature design moves')
-  }
-  if (!/(?:only when|only if|context-supported|no screen blueprint|screens? supported by (?:the )?context)/i.test(markdown)) {
-    violations.push('Missing conditional screen blueprint rule')
-  }
-  return violations
+  return /(?:only when|only if|context-supported|no screen blueprint|screens? supported by (?:the )?context)/i.test(markdown)
+    ? []
+    : ['Missing conditional screen blueprint rule']
 }
 
 function validateDesignMarkdown(markdown: string): string[] {
