@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { buildAuthoritativeContextBlock } from './canonical-context'
 
 // ============================================================
 // Consistency Validator Prompt & Schema Module (BK-016)
@@ -75,6 +76,7 @@ CHECKS TO PERFORM:
 4. Missing spec: Identify a feature mentioned in PRD that is missing from an available requirements document.
 5. Backlog reference: Ensure document paths referenced in BACKLOG.md exist in the supplied pack.
 6. Terminology mismatch: Check for conflicting names of core domain entities.
+7. Authoritative decisions: Verify that generated documents strictly follow [CONFIRMED] canonical decisions and constraints, and do not contradict them.
 
 RESPONSE CONTRACT:
 Return only one JSON object. It must contain exactly these fields:
@@ -97,13 +99,18 @@ Example:
 export function buildConsistencyValidatorUserPrompt(
   projectName: string,
   artifactsJson: string,
+  contextJson = '',
 ): string {
+  const authoritativeBlock = buildAuthoritativeContextBlock(contextJson)
+
   return `Project Name: ${projectName}
+
+${authoritativeBlock}
 
 Current Documentation Pack Artifacts (JSON):
 """
 ${artifactsJson}
 """
 
-Return the required JSON report only. Perform a focused consistency audit using the supplied documents.`
+Return the required JSON report only. Perform a focused consistency audit using the supplied documents and treat the canonical decisions block as the source of truth.`
 }
