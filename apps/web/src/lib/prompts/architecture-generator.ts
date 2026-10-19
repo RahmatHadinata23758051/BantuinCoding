@@ -69,13 +69,13 @@ export const ArchitectureDocumentSchema = z.object({
 export type ArchitectureDocumentOutput = z.infer<typeof ArchitectureDocumentSchema>
 
 const GRAPH_CATEGORY_HINTS: Array<{ category: SystemGraphCategory; pattern: RegExp }> = [
-  { category: 'client', pattern: /client|browser|mobile|web|app|frontend|user interface/i },
-  { category: 'ui', pattern: /ui|interface|screen|page|component|design/i },
-  { category: 'api', pattern: /api|endpoint|route|http|graphql|rest/i },
-  { category: 'database', pattern: /database|postgres|mysql|mongo|storage|repository|data/i },
-  { category: 'auth', pattern: /auth|login|session|identity|permission|access/i },
-  { category: 'external', pattern: /external|third[- ]party|provider|integration|stripe|email|storage/i },
-  { category: 'service', pattern: /service|worker|engine|module|server|backend/i },
+  { category: 'auth', pattern: /\b(?:auth|login|session|identity|permission|access)\b/i },
+  { category: 'database', pattern: /\b(?:database|postgres|postgresql|mysql|mongo|sqlite|storage|repository)\b/i },
+  { category: 'external', pattern: /\b(?:external|third[- ]party|provider|integration|stripe|email)\b/i },
+  { category: 'api', pattern: /\b(?:api|endpoint|route|graphql|rest)\b/i },
+  { category: 'service', pattern: /\b(?:service|worker|engine|module|server|backend)\b/i },
+  { category: 'client', pattern: /\b(?:client|browser|mobile|frontend)\b/i },
+  { category: 'ui', pattern: /\b(?:ui|interface|screen|page|design)\b/i },
 ]
 
 function graphId(value: string, fallback: string) {
@@ -83,21 +83,37 @@ function graphId(value: string, fallback: string) {
   return id || fallback
 }
 
-function inferGraphCategory(value: string): SystemGraphCategory {
-  return GRAPH_CATEGORY_HINTS.find(({ pattern }) => pattern.test(value))?.category ?? 'service'
+function inferGraphCategory(value: string, secondary = ''): SystemGraphCategory {
+  return (
+    GRAPH_CATEGORY_HINTS.find(({ pattern }) => pattern.test(value))?.category ??
+    GRAPH_CATEGORY_HINTS.find(({ pattern }) => pattern.test(secondary))?.category ??
+    'service'
+  )
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 /**
  * Builds a small project-specific graph only from validated architecture fields.
+ * Falls back to Markdown Section 3 (Components) and Section 4 (Data Flows) when components are omitted.
  * ponytail: this deterministic fallback intentionally uses named components and flows only;
  * add richer context-aware inference when the canonical context models explicit boundaries.
  */
 export function buildArchitectureSystemGraph(
-  architecture: Pick<ArchitectureDocumentOutput, 'components' | 'data_flow'>,
+  architecture: Pick<ArchitectureDocumentOutput, 'components' | 'data_flow'> & {
+    markdown_content?: string
+  },
 ): SystemGraphData | null {
   const components = architecture.components ?? []
   const flows = architecture.data_flow ?? []
-  if (components.length === 0) return null
+  if (components.length === 0) {
+    if (architecture.markdown_content) {
+      return extractSystemGraphFromMarkdown(architecture.markdown_content)
+    }
+    return null
+  }
 
   const nodes: SystemGraphNode[] = []
   const nodeIds = new Set<string>()
@@ -105,23 +121,151 @@ export function buildArchitectureSystemGraph(
     const id = graphId(name, `component-${nodes.length + 1}`)
     if (nodeIds.has(id)) return id
     nodeIds.add(id)
-    nodes.push({ id, label: name, category: category ?? inferGraphCategory(`${name} ${description}`), description })
+    nodes.push({ id, label: name, category: category ?? inferGraphCategory(name, description), description })
     return id
   }
 
   components.forEach((component) => addNode(component.name, component.responsibility))
   const edges: SystemGraphEdge[] = []
+  const edgeKeys = new Set<string>()
   flows.forEach((flow) => {
-    const text = `${flow.flow_name} ${flow.description}`
-    const referenced = nodes.filter((node) => text.toLowerCase().includes(node.label.toLowerCase()))
-    if (referenced.length >= 2) {
-      for (let i = 1; i < referenced.length; i += 1) {
-        edges.push({ source: referenced[i - 1].id, target: referenced[i].id, label: flow.flow_name })
+    const text = `${flow.flow_name}\n${flow.description}`
+    const referenced = nodes
+      .map((node) => ({ node, index: text.toLowerCase().indexOf(node.label.toLowerCase()) }))
+      .filter((item) => item.index >= 0)
+      .sort((a, b) => a.index - b.index)
+
+    for (let i = 1; i < referenced.length; i += 1) {
+      const source = referenced[i - 1].node.id
+      const target = referenced[i].node.id
+      const key = `${source}->${target}`
+      if (source !== target && !edgeKeys.has(key)) {
+        edgeKeys.add(key)
+        edges.push({ source, target, label: flow.flow_name })
       }
     }
   })
 
+  if (edges.length === 0 && architecture.markdown_content) {
+    const extracted = extractSystemGraphFromMarkdown(architecture.markdown_content)
+    if (extracted?.edges.length) return extracted
+  }
+
   return { nodes, edges }
+}
+
+/**
+ * Extracts named components and numbered data-flow steps from architecture Markdown.
+ * Edges only come from components mentioned in an explicitly ordered flow sequence.
+ */
+export function extractSystemGraphFromMarkdown(markdown: string): SystemGraphData | null {
+  const section3 = markdown.match(/##\s+3[.\s][^\n]*\n([\s\S]*?)(?=\n##\s+[4-8][.\s]|\s*$)/i)?.[1]
+  if (!section3) return null
+
+  const headings: Array<{ name: string; start: number; bodyStart: number }> = []
+  const headingPattern = /^###\s+(?:\d+(?:\.\d+)*\s+)?([^\n]+)/gm
+  let match: RegExpExecArray | null
+  while ((match = headingPattern.exec(section3)) !== null) {
+    headings.push({
+      name: match[1].trim(),
+      start: match.index,
+      bodyStart: match.index + match[0].length,
+    })
+  }
+
+  const nodes: SystemGraphNode[] = []
+  const nodeIds = new Set<string>()
+  for (let i = 0; i < headings.length; i += 1) {
+    const heading = headings[i]
+    const end = headings[i + 1]?.start ?? section3.length
+    const firstParagraph = section3.slice(heading.bodyStart, end).trim().split(/\n\s*\n/)[0] || heading.name
+    const description = firstParagraph.replace(/[*_#`[\]]/g, '').replace(/\n+/g, ' ').slice(0, 200).trim()
+    const id = graphId(heading.name, `component-${nodes.length + 1}`)
+    if (nodeIds.has(id)) continue
+    nodeIds.add(id)
+    nodes.push({
+      id,
+      label: heading.name,
+      category: inferGraphCategory(heading.name, description),
+      description,
+    })
+  }
+
+  if (nodes.length === 0) return null
+
+  const section4 = markdown.match(/##\s+4[.\s][^\n]*\n([\s\S]*?)(?=\n##\s+[5-8][.\s]|\s*$)/i)?.[1]
+  if (!section4) return { nodes, edges: [] }
+
+  const flows: Array<{ name: string; body: string }> = []
+  const flowPattern = /^###\s+(?:\d+(?:\.\d+)*\s+)?([^\n]+)/gm
+  const flowHeadings: Array<{ name: string; start: number; bodyStart: number }> = []
+  while ((match = flowPattern.exec(section4)) !== null) {
+    flowHeadings.push({
+      name: match[1].trim(),
+      start: match.index,
+      bodyStart: match.index + match[0].length,
+    })
+  }
+  for (let i = 0; i < flowHeadings.length; i += 1) {
+    flows.push({
+      name: flowHeadings[i].name,
+      body: section4.slice(flowHeadings[i].bodyStart, flowHeadings[i + 1]?.start ?? section4.length),
+    })
+  }
+
+  const stopWords = new Set(['and', 'the', 'for', 'with', 'from', 'into', 'onto', 'module', 'system', 'component', 'breakdown', 'boundaries'])
+  const matchers = nodes.map((node) => {
+    const terms = new Set<string>([node.label])
+    node.label.split(/[^a-zA-Z0-9]+/).forEach((word) => {
+      if (word.length >= 4 && !stopWords.has(word.toLowerCase())) terms.add(word)
+      else if (word.length === 3 && word === word.toUpperCase()) terms.add(word)
+    })
+    return {
+      node,
+      patterns: [...terms].map((term) => new RegExp(`\\b${escapeRegex(term)}\\b`, 'i')),
+    }
+  })
+  const edges: SystemGraphEdge[] = []
+  const edgeKeys = new Set<string>()
+
+  for (const flow of flows) {
+    const stepPattern = /^\s*\d+[.)]\s+([\s\S]*?)(?=^\s*\d+[.)]\s+|\s*$)/gm
+    const steps: string[] = []
+    while ((match = stepPattern.exec(flow.body)) !== null) steps.push(match[1])
+    const orderedMentions: Array<{ node: SystemGraphNode; index: number }> = []
+
+    for (const step of steps) {
+      const inStep = matchers.flatMap(({ node, patterns }) => {
+        const matches = patterns
+          .map((pattern) => pattern.exec(step))
+          .filter((result): result is RegExpExecArray => result !== null)
+          .sort((a, b) => a.index - b.index)
+        return matches[0] ? [{ node, index: matches[0].index }] : []
+      }).sort((a, b) => a.index - b.index)
+      orderedMentions.push(...inStep)
+    }
+
+    for (let i = 1; i < orderedMentions.length; i += 1) {
+      const source = orderedMentions[i - 1].node.id
+      const target = orderedMentions[i].node.id
+      const key = `${source}->${target}`
+      if (source !== target && !edgeKeys.has(key)) {
+        edgeKeys.add(key)
+        edges.push({ source, target, label: flow.name })
+      }
+    }
+  }
+
+  return { nodes, edges }
+}
+
+/** Resolves graph data from an explicit Mermaid diagram, then architecture prose. */
+export function resolveArchitectureSystemGraph(
+  markdown: string,
+  architecture: Pick<ArchitectureDocumentOutput, 'components' | 'data_flow'> = {},
+): SystemGraphData | null {
+  return parseMermaidSystemGraph(markdown) ??
+    buildArchitectureSystemGraph({ ...architecture, markdown_content: markdown })
 }
 
 export const ARCHITECTURE_GENERATOR_SYSTEM_PROMPT = `You are a Principal Software Architect drafting an ARCHITECTURE.md specification for a coding agent.
@@ -137,11 +281,12 @@ ARCHITECTURE STRUCTURE REQUIREMENTS:
 5. Security & BYOK Key Handling Architecture
 6. Storage & Database Design
 7. Deployment Expectations & Environment Setup
-8. Hidden System Architecture Graph
+8. Hidden System Architecture Graph (include a fenced Mermaid flowchart with the real runtime components and supported directional data flows)
 
 SYSTEM_GRAPH REQUIREMENTS:
 - Return system_graph as a project-specific directed graph of real components and relationships described by the canonical context.
 - Always provide system_graph whenever the architecture describes identifiable components, modules, or services.
+- In Section 8 of markdown_content, always embed a fenced Mermaid flowchart using the same component ids and direction as system_graph; leave the graph without edges when no supported relationships are described.
 - Use the allowed categories only: client, ui, api, service, database, external, auth.
 - Each node needs a stable id, a concise label, and a plain-language responsibility description.
 - Each edge must reference existing node ids and describe a real data or control-flow relationship.
