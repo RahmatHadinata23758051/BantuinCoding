@@ -105,6 +105,7 @@ export async function generateProjectBacklog({
         where: { isCurrent: true },
         take: 1,
       },
+      skillRecommendations: { select: { name: true } },
       artifacts: true,
     },
   })
@@ -149,6 +150,7 @@ export async function generateProjectBacklog({
     summarizeReference(srsArtifact),
     summarizeReference(archArtifact),
     summarizeReference(designArtifact),
+    (project.skillRecommendations ?? []).map((skill) => skill.name),
   )
   let backlogOutput: BacklogGeneratorOutput
   try {
@@ -167,6 +169,12 @@ export async function generateProjectBacklog({
       }),
     ])
     backlogOutput = BacklogGeneratorOutputSchema.parse(normalizeBacklogOutput(rawOutput))
+    const allowedSkills = new Set((project.skillRecommendations ?? []).map((s) => s.name))
+    for (const phase of backlogOutput.phases) {
+      for (const task of phase.tasks) {
+        task.recommended_skills = task.recommended_skills.filter((skill) => allowedSkills.has(skill))
+      }
+    }
   } catch (error) {
     await db.artifact.update({
       where: { projectId_type: { projectId, type: 'BACKLOG' } },
