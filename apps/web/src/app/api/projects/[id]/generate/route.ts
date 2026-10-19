@@ -8,6 +8,7 @@ import { generateAgentAndRulesArtifacts, regenerateIncompleteAgentArtifacts } fr
 import { generateCoreArtifacts, regenerateFailedArtifacts } from '@/lib/engine/artifact-generator'
 import { requireProjectAction } from '@/lib/projects/project-service'
 import { recomputeProjectReadiness } from '@/lib/projects/readiness-service'
+import { isValidVisualReferenceId } from '@/lib/visual-references/catalog'
 
 // ============================================================
 // POST /api/projects/[id]/generate — Generate planned core artifacts or Agent.md.
@@ -31,12 +32,19 @@ export async function POST(
     let requestedType: string | undefined
     let types: ('PRD' | 'ARCHITECTURE' | 'DESIGN')[] | undefined = undefined
     let regenerateFailed: boolean = false
+    let visualReferenceId: string | undefined = undefined
 
     // Parse body optionally for single-artifact regeneration e.g. { type: "PRD" }
     try {
       const body = await req.json()
       requestedType = typeof body?.type === 'string' ? body.type.toUpperCase() : undefined
       regenerateFailed = body?.regenerateFailed === true
+      if (typeof body?.visualReferenceId === 'string') {
+        if (!isValidVisualReferenceId(body.visualReferenceId)) {
+          return NextResponse.json({ error: 'Invalid visual reference ID' }, { status: 400 })
+        }
+        visualReferenceId = body.visualReferenceId
+      }
       if (requestedType && ['PRD', 'ARCHITECTURE', 'DESIGN'].includes(requestedType)) {
         types = [requestedType as 'PRD' | 'ARCHITECTURE' | 'DESIGN']
       }
@@ -79,6 +87,7 @@ export async function POST(
         userId: session.user.id,
         projectId: id,
         types,
+        visualReferenceId,
       })
     }
     const readiness = await recomputeProjectReadiness(session.user.id, id)
