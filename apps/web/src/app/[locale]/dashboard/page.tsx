@@ -7,7 +7,7 @@ import { Link } from '@/i18n/routing'
 import { LandingHeader } from '@/app/components/LandingHeader'
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher'
 import { BrandLogo } from '@/app/components/BrandLogo'
-import { PromptComposer } from '@/app/components/PromptComposer'
+import { DashboardPromptHero } from '@/app/components/DashboardPromptHero'
 import { StatusBadge } from '@/app/components/ui'
 import { auth } from '@/lib/auth'
 import { logoutAction } from '@/lib/auth/actions'
@@ -117,17 +117,15 @@ export default async function DashboardPage() {
         </nav>
       </LandingHeader>
 
-      <div className="mx-auto max-w-[1180px] px-4 pb-20 pt-12 sm:px-6 sm:pt-16 lg:px-8 lg:pt-20">
-        <section aria-labelledby="dashboard-heading" className="mx-auto max-w-4xl text-center">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#a66142]">{t('promptEyebrow')}</p>
-          <h1 id="dashboard-heading" className="mt-4 text-[clamp(2.4rem,6vw,5.3rem)] font-semibold leading-[.96] tracking-[-.07em]">{t('promptTitle')}</h1>
-          <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-[#706b64] sm:text-base">{t('promptSubtitle')}</p>
-          <div className="mx-auto mt-8 max-w-3xl text-left">
-            <PromptComposer action={createProjectFromPrompt} />
-          </div>
-          <p className="mt-4 text-xs text-[#8a8178]">{t('promptNote')}</p>
-        </section>
+      <DashboardPromptHero
+        eyebrow={t('promptEyebrow')}
+        title={t('promptTitle')}
+        subtitle={t('promptSubtitle')}
+        note={t('promptNote')}
+        action={createProjectFromPrompt}
+      />
 
+      <div className="mx-auto max-w-[1180px] px-4 pb-20 sm:px-6 lg:px-8">
         <section aria-labelledby="projects-heading" className="mt-20 border-t border-[#dedbd5] pt-10 sm:mt-24 sm:pt-12">
           <div className="flex items-end justify-between gap-4">
             <div>
