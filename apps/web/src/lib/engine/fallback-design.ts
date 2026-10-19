@@ -1,9 +1,10 @@
 export function buildFallbackDesignMarkdown(
   projectName: string,
   context: Record<string, unknown>,
+  visualDirection?: string,
 ): string {
   const rawSummary = String(context.summary || '').trim()
-  const designDirection = String((context.design_direction as { value?: string })?.value || '').trim()
+  const designDirection = visualDirection?.trim() || String((context.design_direction as { value?: string })?.value || '').trim()
   const styling = String(
     (context.stack_preferences as Record<string, { value?: string }>)?.styling?.value || '',
   )
@@ -11,7 +12,7 @@ export function buildFallbackDesignMarkdown(
   const hasAuth = /auth|login|register|sign.?in|password/.test(contextText)
   const hasDataView = /table|list|record|report|dashboard|admin|inventory|transaction/.test(contextText)
   const yaml = (value: string) => JSON.stringify(value)
-  const visualDirection = designDirection || 'Not confirmed; choose from the project context before implementation.'
+  const resolvedVisualDirection = designDirection || 'Not confirmed; choose from the project context before implementation.'
   const screenBlueprint = hasAuth || hasDataView
     ? `- **Context-supported views:** ${hasAuth ? 'Authentication states are described only if present in the context.' : ''}${hasDataView ? ' Data views use only project objects and density stated in the context.' : ''}
 - **Responsive behavior:** preserve reading order and keep primary tasks usable at narrow widths.
@@ -20,7 +21,7 @@ export function buildFallbackDesignMarkdown(
 
   return `---
 name: ${yaml(`${projectName} Design System`)}
-archetype: ${yaml(visualDirection)}
+archetype: ${yaml(resolvedVisualDirection)}
 colors:
   canvas: "#FFFFFF"
   surface: "#F5F5F5"
