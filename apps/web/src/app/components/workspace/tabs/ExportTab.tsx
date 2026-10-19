@@ -24,6 +24,8 @@ export interface ExportTabProps {
   exportFileCount: number
   includesReadme: boolean
   genMessage: { type: 'status' | 'error'; text: string } | null
+  validationWarnings: string[]
+  validationAuditMode: 'ai-assisted' | 'deterministic-only' | null
   generateButton: ReactNode
   handleDownloadZip: () => void | Promise<void>
   isExporting: boolean
@@ -110,6 +112,8 @@ export function ExportTab({
   exportFileCount,
   includesReadme,
   genMessage,
+  validationWarnings = [],
+  validationAuditMode = null,
   generateButton,
   handleDownloadZip,
   isExporting,
@@ -144,6 +148,16 @@ export function ExportTab({
         <p role="alert" className="-mt-4 text-sm font-medium text-[var(--workspace-rose)]">
           {genMessage.text}
         </p>
+      )}
+      {validationWarnings.length > 0 && (
+        <section aria-label={t('exportWarningsHeading')} className="-mt-4 space-y-2 border border-amber-500/40 bg-amber-50 p-4 text-sm text-amber-950">
+          <h3 className="font-semibold">{t('exportWarningsHeading')}</h3>
+          <p>{t('exportWarningsDesc')}</p>
+          {validationAuditMode === 'deterministic-only' && <p>{t('exportAuditFallbackNote')}</p>}
+          <ul className="list-disc space-y-1 pl-5">
+            {validationWarnings.map((warning, index) => <li key={`${index}-${warning}`}>{warning}</li>)}
+          </ul>
+        </section>
       )}
 
       {!canExport ? (
