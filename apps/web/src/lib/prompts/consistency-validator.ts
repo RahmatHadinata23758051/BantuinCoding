@@ -18,6 +18,8 @@ export const ConsistencyIssueSchema = z.object({
     'SECRET_LEAKAGE',
     'INVALID_DESIGN_SYSTEM',
     'AGENT_DESIGN_HIERARCHY_MISSING',
+    'CONTRAST_WARNING',
+    'DESIGN_TOKEN_MISMATCH',
   ]),
   description: z.string(),
   affected_documents: z.array(z.string()),
@@ -77,6 +79,8 @@ CHECKS TO PERFORM:
 5. Backlog reference: Ensure document paths referenced in BACKLOG.md exist in the supplied pack.
 6. Terminology mismatch: Check for conflicting names of core domain entities.
 7. Authoritative decisions: Verify that generated documents strictly follow [CONFIRMED] canonical decisions and constraints, and do not contradict them.
+8. DESIGN.md color contrast: report advisory findings only when a confidently parsed foreground/background token pair falls below WCAG 2.1 AA targets. Do not infer token roles when names or formats are ambiguous.
+9. DESIGN.md token parity: report when a clearly paired color token differs between YAML front matter and the :root CSS block; if either representation is ambiguous or cannot be parsed safely, do not report a mismatch.
 
 RESPONSE CONTRACT:
 Return only one JSON object. It must contain exactly these fields:
