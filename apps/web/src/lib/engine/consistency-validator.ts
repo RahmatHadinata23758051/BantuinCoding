@@ -252,7 +252,9 @@ export async function auditProjectConsistency({
       contexts: {
         where: { isCurrent: true },
         take: 1,
-        include: {
+        select: {
+          id: true,
+          contentJson: true,
           artifactPlans: {
             where: { isRequired: true },
             select: { type: true, path: true, isRequired: true },
@@ -289,6 +291,7 @@ export async function auditProjectConsistency({
   const userPrompt = buildConsistencyValidatorUserPrompt(
     project.name,
     JSON.stringify(artifactsSummary),
+    project.contexts[0]?.contentJson,
   )
 
   try {
