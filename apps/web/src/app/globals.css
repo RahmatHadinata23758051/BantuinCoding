@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@source "../../../../packages/design-templates/src";
 
 :root {
   --color-notion-blue: #0075de;
@@ -305,31 +304,4 @@ body { min-height: 100vh; background: var(--bg-page); color: var(--ink); font-fa
 .prose-doc hr { border: none; border-top: 1px solid var(--color-workspace-border-subtle); margin: 2em 0; }
 .prose-doc table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-bottom: 1.25em; border: 1px solid var(--color-workspace-border-subtle); border-radius: 8px; overflow: hidden; }
 .prose-doc th,.prose-doc td { border: 1px solid var(--color-workspace-border-subtle); padding: .5em .7em; text-align: left; } .prose-doc th { background: var(--color-workspace-canvas); font-weight: 700; }
-
-/* Scoped Template Family: Structured Enterprise */
-.theme-structured-enterprise {
-  --se-canvas: #F4F6F8;
-  --se-surface: #FFFFFF;
-  --se-surface-muted: #E9EEF2;
-  --se-surface-hover: #F8FAFC;
-  --se-text: #17222D;
-  --se-text-muted: #546575;
-  --se-text-subtle: #8898AA;
-  --se-accent: #245E84;
-  --se-accent-hover: #1B4764;
-  --se-accent-subtle: #E7EFF5;
-  --se-border: #D5DFE7;
-  --se-border-subtle: #E5ECF2;
-  --se-success: #20755D;
-  --se-success-bg: #E9F5F1;
-  --se-warning: #A05C08;
-  --se-warning-bg: #FDF4E7;
-  --se-danger: #B83C49;
-  --se-danger-bg: #FCECEE;
-  --se-info: #245E84;
-  --se-info-bg: #E7EFF5;
-
-  background-color: var(--se-canvas);
-  color: var(--se-text);
-}
 
