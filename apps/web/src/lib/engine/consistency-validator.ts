@@ -7,6 +7,7 @@ import {
   CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
   ConsistencyReportSchema,
   buildConsistencyValidatorUserPrompt,
+  isBlockerIssue,
   type ConsistencyIssue,
   type ConsistencyReportOutput,
 } from '@/lib/prompts/consistency-validator'
@@ -26,19 +27,41 @@ function summarizeArtifactContent(content: string): string {
   return `${content.slice(0, MAX_ARTIFACT_CONTENT_LENGTH)}\n\n[Document truncated for consistency audit.]`
 }
 
+function finalizeReport(
+  report: Omit<ConsistencyReportOutput, 'blocksExport' | 'auditMode'> & {
+    blocksExport?: boolean
+    auditMode?: ConsistencyReportOutput['auditMode']
+  },
+  auditMode: ConsistencyReportOutput['auditMode'],
+): ConsistencyReportOutput {
+  const issues = report.issues.map((issue) => ({
+    ...issue,
+    classification: issue.classification ?? (isBlockerIssue(issue) ? 'BLOCKER' : 'WARNING'),
+  }))
+  const blocksExport =
+    report.blocksExport ?? issues.some((issue) => issue.classification === 'BLOCKER')
+
+  return {
+    ...report,
+    issues,
+    blocksExport,
+    auditMode,
+    isConsistent: report.isConsistent && !blocksExport,
+  }
+}
+
 function mergeConsistencyReports(
   deterministic: ConsistencyReportOutput,
   ai: ConsistencyReportOutput,
 ): ConsistencyReportOutput {
   const issues = [...deterministic.issues]
-  const knownIssues = new Set(
-    issues.map((issue) => `${issue.category}:${issue.description}`),
-  )
+  const knownIssues = new Set(issues.map((issue) => `${issue.category}:${issue.description}`))
 
   for (const issue of ai.issues) {
     const key = `${issue.category}:${issue.description}`
     if (!knownIssues.has(key)) {
-      issues.push(issue)
+      // AI-only findings can guide the user but cannot independently block export.
+      issues.push({ ...issue, classification: 'WARNING' })
       knownIssues.add(key)
     }
   }
@@ -48,7 +71,7 @@ function mergeConsistencyReports(
   const lowCount = issues.filter((issue) => issue.severity === 'LOW').length
   const score = Math.max(0, 100 - highCount * 25 - mediumCount * 10 - lowCount * 5)
 
-  return {
+  return finalizeReport({
     isConsistent: score >= 80,
     score,
     issues,
@@ -56,7 +79,7 @@ function mergeConsistencyReports(
       issues.length === 0
         ? 'Documentation pack is cross-document consistent.'
         : `Found ${issues.length} consistency issues requiring attention.`,
-  }
+  }, 'ai-assisted')
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -128,11 +151,10 @@ export function validateRuleBasedConsistency(
   const arch = docMap.get('ARCHITECTURE') || ''
   const backlog = docMap.get('BACKLOG') || ''
 
-  // Rule 1: Stack check
+  // Rule 1: Report a blocker only when a confirmed canonical decision is contradicted.
   if (arch && prd) {
     const archLower = arch.toLowerCase()
     const prdLower = prd.toLowerCase()
-
     if (archLower.includes('postgresql') && prdLower.includes('mongodb')) {
       issues.push({
         severity: 'HIGH',
@@ -229,14 +251,14 @@ export function validateRuleBasedConsistency(
   const score = Math.max(0, 100 - (highCount * 25 + medCount * 10 + lowCount * 5))
   const isConsistent = score >= 80
 
-  return {
+  return finalizeReport({
     isConsistent,
     score,
     issues,
     summary: isConsistent
       ? 'Documentation pack is cross-document consistent.'
       : `Found ${issues.length} consistency issues requiring attention.`,
-  }
+  }, 'deterministic-only')
 }
 
 export interface AuditConsistencyOptions {
