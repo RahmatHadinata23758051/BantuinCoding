@@ -35,6 +35,57 @@ describe('Consistency Validator Schema & Prompt', () => {
     }
     const result = ConsistencyReportSchema.safeParse(reportData)
     expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.blocksExport).toBe(false)
+      expect(result.data.auditMode).toBe('ai-assisted')
+    }
+  })
+
+  it('classifies confirmed secret leakage and high-severity stack contradictions as blockers', () => {
+    const result = ConsistencyReportSchema.parse({
+      isConsistent: false,
+      score: 50,
+      issues: [
+        {
+          severity: 'HIGH',
+          category: 'SECRET_LEAKAGE',
+          description: 'A credential appears in ARCHITECTURE.md',
+          affected_documents: ['ARCHITECTURE.md'],
+          recommendation: 'Remove the credential and rotate it.',
+        },
+        {
+          severity: 'HIGH',
+          category: 'DATABASE_MISMATCH',
+          description: 'The documents specify incompatible database engines.',
+          affected_documents: ['PRD.md', 'ARCHITECTURE.md'],
+          recommendation: 'Choose one database engine.',
+        },
+      ],
+      summary: 'Critical findings require correction.',
+    })
+
+    expect(result.blocksExport).toBe(true)
+    expect(result.issues.map((issue) => issue.classification)).toEqual(['BLOCKER', 'BLOCKER'])
+  })
+
+  it('keeps low-severity design findings advisory and exportable', () => {
+    const result = ConsistencyReportSchema.parse({
+      isConsistent: true,
+      score: 92,
+      issues: [
+        {
+          severity: 'LOW',
+          category: 'CONTRAST_WARNING',
+          description: 'Text contrast is slightly below target.',
+          affected_documents: ['DESIGN.md'],
+          recommendation: 'Adjust the text token.',
+        },
+      ],
+      summary: 'Only advisory findings.',
+    })
+
+    expect(result.blocksExport).toBe(false)
+    expect(result.issues[0]?.classification).toBe('WARNING')
   })
 
   it('builds user prompt with project name and artifacts', () => {
@@ -382,7 +433,73 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
       auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' }),
     ).resolves.toMatchObject({
       isConsistent: false,
+      blocksExport: true,
+      auditMode: 'deterministic-only',
       issues: [expect.objectContaining({ category: 'DATABASE_MISMATCH' })],
     })
+  })
+
+  it('treats AI-only findings as advisory warnings and does not block export when deterministic checks pass', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Consistent Project',
+      contexts: [
+        {
+          id: 'context-current',
+          artifactPlans: [
+            { type: 'PRD', path: 'PRD.md', isRequired: true },
+            { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', isRequired: true },
+          ],
+        },
+      ],
+      artifacts: [
+        {
+          contextId: 'context-current',
+          type: 'PRD',
+          path: 'PRD.md',
+          content: '# PRD\nConsistent specification',
+          status: 'READY',
+        },
+        {
+          contextId: 'context-current',
+          type: 'ARCHITECTURE',
+          path: 'ARCHITECTURE.md',
+          content: '# Architecture\nConsistent stack',
+          status: 'READY',
+        },
+      ],
+    } as never)
+
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'test-model',
+      apiKey: 'test-key',
+    } as never)
+    vi.mocked(createProvider).mockReturnValueOnce({
+      generateStructured: vi.fn().mockResolvedValue({
+        isConsistent: false,
+        score: 82,
+        issues: [
+          {
+            severity: 'HIGH',
+            category: 'TERMINOLOGY_MISMATCH',
+            description: 'AI detected subtle terminology differences in user entity descriptions',
+            affected_documents: ['PRD.md', 'ARCHITECTURE.md'],
+            recommendation: 'Align terminology for consistency.',
+          },
+        ],
+        summary: 'AI suggested terminology adjustments',
+      }),
+    } as never)
+
+    const result = await auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' })
+    expect(result.auditMode).toBe('ai-assisted')
+    expect(result.blocksExport).toBe(false)
+    expect(result.issues[0]?.classification).toBe('WARNING')
   })
 })
