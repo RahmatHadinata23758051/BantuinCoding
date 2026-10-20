@@ -617,15 +617,45 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     expect(db.artifact.upsert).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId_type: { projectId: 'p-1', type: 'DESIGN' } } }))
   })
 
-  it('uses AI provider when BYOK session is active', async () => {
+  it('marks unclosed code fences failed instead of ready', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')
     const { createProvider } = await import('@/lib/ai/provider')
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({ id: 'p-1', userId: 'u-1', name: 'Test Project', contexts: [{ id: 'ctx-1', version: 1, isCurrent: true, contentJson: '{"summary":"Test"}', artifactPlans: [] }] } as never)
-    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'sk-test' })
-    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockResolvedValue({ markdown_content: '# AI Generated PRD Document' }) })
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockResolvedValue({ markdown_content: '# PRD\n```typescript\nconst x = 1' }) })
+    const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['PRD'] })
+    expect(results[0]?.status).toBe('FAILED')
+    expect(results[0]?.error).toContain('Unclosed fenced code block')
+    expect(vi.mocked(db.artifact.update).mock.calls.some(([call]) => call.data?.status === 'READY')).toBe(false)
+  })
+
+  it('marks truncated architecture output failed and leaves its graph unready', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({ id: 'p-1', userId: 'u-1', name: 'Test Project', contexts: [{ id: 'ctx-1', version: 1, isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'ARCHITECTURE', isRequired: true }] }] } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockResolvedValue({ markdown_content: '# Architecture\\n## 1. Overview\\n## 2. Stack\\n## 3. Components\\n## 4. Data Flow\\n### 4.1 Sync\\n### 4.2 Webhook\\nTruncated' }) })
+
+    const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['ARCHITECTURE'] })
+
+    expect(results[0]?.status).toBe('FAILED')
+    expect(results[0]?.error).toContain('Missing required section 5')
+    expect(vi.mocked(db.artifact.update).mock.calls.some(([call]) => call.where?.projectId_type?.type === 'ARCHITECTURE' && call.data?.status === 'READY')).toBe(false)
+    expect(vi.mocked(db.artifact.update).mock.calls.some(([call]) => call.where?.projectId_type?.type === 'SYSTEM_GRAPH' && call.data?.status === 'FAILED')).toBe(true)
+  })
+
+  it('accepts complete AI-generated PRDs', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const markdown = Array.from({ length: 11 }, (_, index) => `## ${index + 1}. Section ${index + 1}`).join('\n')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({ id: 'p-1', userId: 'u-1', name: 'Test Project', contexts: [{ id: 'ctx-1', version: 1, isCurrent: true, contentJson: '{"summary":"Test"}', artifactPlans: [] }] } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'test-key' })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockResolvedValue({ markdown_content: markdown }) })
     const results = await generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['PRD'] })
     expect(results[0]?.status).toBe('READY')
-    expect(results[0]?.content).toBe('# AI Generated PRD Document')
+    expect(results[0]?.content).toBe(markdown)
   })
 })

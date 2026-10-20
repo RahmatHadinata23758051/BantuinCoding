@@ -18,6 +18,7 @@ import { generateDesignArtifactContent } from '@/lib/engine/design-generator'
 import { buildFallbackDesignMarkdown } from '@/lib/engine/fallback-design'
 import { scanContentForSecrets } from '@/lib/export/export-service'
 import { isValidVisualReferenceId } from '@/lib/visual-references/catalog'
+import { validateArtifactIntegrity } from '@/lib/engine/artifact-integrity'
 
 const SAMPLE_VALUE_MARKERS = /(?:^|[-_ .])(?:dummy|example|placeholder|replace[-_ ]?me|change[-_ ]?me|changeme|sample|your|insert|set[-_ ]?me|todo)(?:$|[-_ .])/i
 const SAMPLE_CREDENTIAL_MARKERS = /(?:^|[-_. ])(?:password|pass|secret|token|api[-_ ]?key|key|admin|user|root|postgres|mysql|mongo|mongodb|example|dummy|placeholder|changeme|test|demo)(?:$|[-_. ])/i
@@ -180,17 +181,39 @@ export function generateFallbackArchitecture(
 
   return `# ARCHITECTURE.md — ${projectName}
 
-## 1. System Architecture Overview
+## 1. System Overview
 Modular monolith architecture for ${projectName}.
 
-## 2. Technology Stack
+## 2. Selected Technology Stack
 - **Frontend:** ${frontend}
 - **Backend:** ${backend}
 - **Database:** ${database}
 
-## 3. Key Constraints
-- Session-scoped BYOK key storage
-- Single-artifact regeneration without touching others
+## 3. System Component Breakdown
+- **Web Application:** Handles user interface and route workflows.
+- **Data Access:** Interfaces with the persistent database.
+
+## 4. Data Flow & Sequences
+- User interacts with the web application.
+- Server validates inputs and performs transactional operations against the storage layer.
+
+## 5. Security Architecture
+- Session-scoped BYOK key storage with memory isolation.
+- Input validation and sanitized output boundaries.
+
+## 6. Storage & Database Design
+- Database engine: ${database}.
+- Relational schema managed via migrations.
+
+## 7. Deployment Expectations
+- Standard containerized or serverless deployment.
+
+## 8. System Architecture Graph
+\`\`\`mermaid
+flowchart TD
+  User --> WebApp[Web Application]
+  WebApp --> DB[(Database)]
+\`\`\`
 `
 }
 
@@ -360,6 +383,10 @@ export async function generateCoreArtifacts({
 
       markdownContent = scrubSampleSecrets(markdownContent)
       scanContentForSecrets(markdownContent, path)
+      const integrityIssues = validateArtifactIntegrity(artifactType, markdownContent)
+      if (integrityIssues.length > 0) {
+        throw new Error(`Generated ${path} is incomplete: ${integrityIssues.join(' ')}`)
+      }
 
       const updatedArtifact = await db.artifact.update({
         where: { projectId_type: { projectId, type: artifactType } },
