@@ -31,11 +31,13 @@ function normalizeCatalog(catalog: ResolvedSkill[]): ResolvedSkill[] {
 function resolveCatalogOutput(
   output: SkillResolverOutput,
   catalog: ResolvedSkill[],
+  context: string,
 ): SkillResolverOutput {
   const catalogByName = new Map(catalog.map((skill) => [skill.name, skill]))
+  const compatibleNames = new Set(filterCompatibleSkills(catalog, context).map((skill) => skill.name))
   const skills = output.skills.flatMap((skill) => {
     const catalogSkill = catalogByName.get(skill.name)
-    return catalogSkill ? [catalogSkill] : []
+    return catalogSkill && compatibleNames.has(skill.name) ? [catalogSkill] : []
   })
 
   return {
@@ -43,6 +45,56 @@ function resolveCatalogOutput(
     skills,
     skills_md_content: '',
   }
+}
+
+function confirmedContextValue(value: unknown): string {
+  if (typeof value === 'string') return ''
+  if (!value || typeof value !== 'object') return ''
+  const entry = value as { value?: unknown; provenance?: unknown }
+  return entry.provenance === 'confirmed' && typeof entry.value === 'string'
+    ? entry.value.toLowerCase()
+    : ''
+}
+
+export function filterCompatibleSkills(catalog: ResolvedSkill[], contextJson: string): ResolvedSkill[] {
+  let context: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(contextJson)
+    context = typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {}
+  } catch {
+    context = {}
+  }
+
+  const stack = typeof context.stack_preferences === 'object' && context.stack_preferences !== null
+    ? context.stack_preferences as Record<string, unknown>
+    : {}
+  const confirmedStack = Object.fromEntries(
+    Object.entries(stack).map(([key, value]) => [key, confirmedContextValue(value)]),
+  )
+  const confirmedConstraints = Array.isArray(context.technical_constraints)
+    ? context.technical_constraints
+        .map((constraint) => confirmedContextValue(constraint))
+        .filter(Boolean)
+        .join(' ')
+    : ''
+  const plainJavaScript = /\b(?:plain\s+javascript|javascript\s+only|no\s+typescript|without\s+typescript|not\s+typescript)\b/.test(
+    `${confirmedStack.backend} ${confirmedStack.frontend} ${confirmedConstraints}`,
+  )
+  const prismaExcluded = /\b(?:no\s+prisma|without\s+prisma|not\s+prisma|exclude\s+prisma)\b/.test(
+    `${confirmedStack.database} ${confirmedConstraints}`,
+  )
+
+  return catalog.filter((skill) => {
+    const name = skill.name.toLowerCase()
+    const text = `${name} ${skill.purpose} ${skill.trigger}`.toLowerCase()
+    if (plainJavaScript && /typescript|type.?script/.test(text)) return false
+    if (prismaExcluded && /prisma/.test(text)) return false
+    return true
+  })
+}
+
+function emptySkillsOutput(reason: string): SkillResolverOutput {
+  return { skills: [], rationale: reason, skills_md_content: '' }
 }
 
 /**
@@ -185,7 +237,6 @@ export class SkillsLLMCatalogAdapter implements SkillCatalogAdapter {
   }
 }
 
-
 export interface ResolveSkillsOptions {
   userId: string
   projectId: string
@@ -226,10 +277,18 @@ export async function resolveProjectSkills({
   }
   if (catalogSkills.length === 0) catalogSkills = normalizeCatalog(internalCatalogFallback)
 
+  const compatibleSkills = filterCompatibleSkills(catalogSkills, currentContextRecord.contentJson)
   const providerConfig = getProviderConfig(userId)
   if (!providerConfig) {
     throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
+
+  if (compatibleSkills.length === 0) {
+    const result = emptySkillsOutput('No catalog skills are compatible with the confirmed project stack.')
+    await db.skillRecommendation.deleteMany({ where: { projectId } })
+    return result
+  }
+
   const provider = createProvider(providerConfig)
 
   // Skills are stored as recommendations and embedded into Agent.md; no standalone SKILLS.md artifact is created.
@@ -238,7 +297,7 @@ export async function resolveProjectSkills({
     project.name,
     project.classification,
     currentContextRecord.contentJson,
-    JSON.stringify(catalogSkills),
+    JSON.stringify(compatibleSkills),
   )
   let resolvedOutput: SkillResolverOutput
   try {
@@ -253,22 +312,40 @@ export async function resolveProjectSkills({
     )
     resolvedOutput = resolveCatalogOutput(
       SkillResolverOutputSchema.parse(rawOutput),
-      catalogSkills,
+      compatibleSkills,
+      currentContextRecord.contentJson,
     )
     if (resolvedOutput.skills.length === 0) {
-      resolvedOutput = {
-        skills: catalogSkills,
-        rationale: 'No catalog skills were selected; using the bounded local catalog.',
-        skills_md_content: '',
+      if (compatibleSkills.length === catalogSkills.length) {
+        resolvedOutput = {
+          skills: compatibleSkills,
+          rationale: 'No catalog skills were selected; using the bounded local catalog.',
+          skills_md_content: '',
+        }
+      } else {
+        resolvedOutput = emptySkillsOutput(
+          'No compatible skills were selected for the confirmed project stack.',
+        )
       }
     }
   } catch {
-    // If AI fails, use the validated catalog rather than invented skills.
-    resolvedOutput = {
-      skills: catalogSkills,
-      rationale: 'Baseline skills from the available catalog.',
-      skills_md_content: '',
+    // If AI fails, only use the catalog for unconstrained projects.
+    // For constrained projects, do not substitute the whole generic catalog.
+    if (compatibleSkills.length === catalogSkills.length) {
+      resolvedOutput = {
+        skills: compatibleSkills,
+        rationale: 'Baseline skills from the available catalog.',
+        skills_md_content: '',
+      }
+    } else {
+      resolvedOutput = emptySkillsOutput(
+        'Skill recommendations could not be resolved for the confirmed project stack.',
+      )
     }
+  }
+  if (resolvedOutput.skills.length === 0) {
+    await db.skillRecommendation.deleteMany({ where: { projectId } })
+    return resolvedOutput
   }
 
   // Persist SkillRecommendation DB records (clear prior recommendations first)
@@ -292,6 +369,4 @@ export async function resolveProjectSkills({
   }
 
   return resolvedOutput
-
-  // Skill recommendations are intentionally stored in SkillRecommendation rows only.
 }

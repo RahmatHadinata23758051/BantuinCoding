@@ -8,6 +8,7 @@ import {
   resolveProjectSkills,
   SkillsLLMCatalogAdapter,
   internalCatalogFallback,
+  filterCompatibleSkills,
 } from '@/lib/engine/skill-resolver'
 
 vi.mock('@repo/db', () => ({
@@ -203,6 +204,32 @@ describe('Skill Resolver Engine — resolveProjectSkills', () => {
     expect(db.skillRecommendation.create).toHaveBeenCalled()
   })
 
+  it('returns no recommendations when the provider fails for a stack-filtered catalog', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const contextJson = JSON.stringify({
+      stack_preferences: { backend: { value: 'plain JavaScript', provenance: 'confirmed' } },
+    })
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test Project', classification: 'SAAS',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: contextJson }],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'test', apiKey: 'sk-test' })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC', testConnection: vi.fn(),
+      generateStructured: vi.fn().mockRejectedValue(new Error('provider unavailable')),
+    })
+
+    const result = await resolveProjectSkills({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(result.skills).toEqual([])
+    expect(result.rationale).toContain('confirmed project stack')
+    expect(db.skillRecommendation.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'p-1' } })
+    expect(db.skillRecommendation.create).not.toHaveBeenCalled()
+  })
+
   it('bounds and validates catalog entries before prompting the provider', async () => {
     const { getProviderConfig } = await import('@/lib/byok/session-store')
     const { db } = await import('@repo/db')
@@ -294,5 +321,90 @@ describe('Skill Resolver Catalog Failure', () => {
     })
 
     expect(result.skills).toEqual(internalCatalogFallback)
+  })
+})
+
+describe('Skill Resolver Stack Compatibility Filter', () => {
+  it('filters out TypeScript and Prisma skills for confirmed plain JavaScript + SQLite projects', () => {
+    const plainJsContext = JSON.stringify({
+      stack_preferences: {
+        backend: { value: 'Node.js (plain JavaScript)', provenance: 'confirmed' },
+        database: { value: 'SQLite (without Prisma)', provenance: 'confirmed' },
+      },
+      technical_constraints: [
+        { value: 'plain javascript only, no typescript', provenance: 'confirmed' },
+        { value: 'use raw sqlite queries, no prisma', provenance: 'confirmed' },
+      ],
+    })
+
+    const filtered = filterCompatibleSkills(internalCatalogFallback, plainJsContext)
+
+    expect(filtered.some((s) => s.name === 'typescript-backend')).toBe(false)
+    expect(filtered.some((s) => s.name === 'prisma-db-architect')).toBe(false)
+    expect(filtered.some((s) => s.name === 'security-hardening')).toBe(true)
+    expect(filtered.some((s) => s.name === 'antislop')).toBe(true)
+  })
+
+  it('retains TypeScript and Prisma skills for confirmed TypeScript + PostgreSQL + Prisma projects', () => {
+    const tsContext = JSON.stringify({
+      stack_preferences: {
+        backend: { value: 'Node.js (TypeScript)', provenance: 'confirmed' },
+        database: { value: 'PostgreSQL + Prisma', provenance: 'confirmed' },
+      },
+    })
+
+    const filtered = filterCompatibleSkills(internalCatalogFallback, tsContext)
+
+    expect(filtered.some((s) => s.name === 'typescript-backend')).toBe(true)
+    expect(filtered.some((s) => s.name === 'prisma-db-architect')).toBe(true)
+  })
+
+  it('drops incompatible skills when AI returns them for a constrained project', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    const plainJsContext = JSON.stringify({
+      stack_preferences: {
+        backend: { value: 'Node.js (plain JavaScript)', provenance: 'confirmed' },
+        database: { value: 'SQLite without Prisma', provenance: 'confirmed' },
+      },
+      technical_constraints: [
+        { value: 'plain javascript only, no typescript', provenance: 'confirmed' },
+        { value: 'no prisma', provenance: 'confirmed' },
+      ],
+    })
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Plain JS Project',
+      classification: 'SAAS',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: plainJsContext }],
+    } as never)
+
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'test-model',
+      apiKey: 'test-key',
+    } as never)
+
+    const tsSkill = internalCatalogFallback.find((s) => s.name === 'typescript-backend')!
+    const securitySkill = internalCatalogFallback.find((s) => s.name === 'security-hardening')!
+
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'ANTHROPIC',
+      testConnection: vi.fn(),
+      generateStructured: vi.fn().mockResolvedValue({
+        skills: [tsSkill, securitySkill],
+        rationale: 'Mixed recommendation',
+        skills_md_content: '',
+      }),
+    } as never)
+
+    const result = await resolveProjectSkills({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(result.skills.some((s) => s.name === 'typescript-backend')).toBe(false)
+    expect(result.skills.some((s) => s.name === 'security-hardening')).toBe(true)
   })
 })
