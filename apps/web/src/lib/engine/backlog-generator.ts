@@ -6,10 +6,12 @@ import {
   BACKLOG_GENERATOR_SYSTEM_PROMPT,
   BacklogGeneratorOutputSchema,
   buildBacklogGeneratorUserPrompt,
+  type BacklogDocumentReference,
   type BacklogGeneratorOutput,
   type GeneratedBacklogPhase,
+  summarizeBacklogReference,
 } from '@/lib/prompts/backlog-generator'
-import { validateBacklogDependencies } from '@/lib/engine/backlog-validator'
+import { validateBacklogDependencies, validateBacklogQuality } from '@/lib/engine/backlog-validator'
 
 /**
  * Renders BACKLOG.md from structured phases. The server owns Markdown rendering
@@ -77,11 +79,11 @@ function normalizeBacklogOutput(raw: unknown): BacklogGeneratorOutput {
             Array.isArray(input) ? input.map(String) : []
           return {
             id: typeof t.id === 'string' ? t.id : `BK-${String(taskIndex + 1).padStart(3, '0')}`,
-            title: typeof t.title === 'string' ? t.title : 'Untitled task',
-            description: typeof t.description === 'string' ? t.description : 'No description provided.',
+            title: typeof t.title === 'string' ? t.title : '',
+            description: typeof t.description === 'string' ? t.description : '',
             dependencies: asStrings(t.dependencies),
             acceptance_criteria: asStrings(t.acceptance_criteria),
-            definition_of_done: typeof t.definition_of_done === 'string' ? t.definition_of_done : 'Verified and tested.',
+            definition_of_done: typeof t.definition_of_done === 'string' ? t.definition_of_done : '',
             relevant_docs: asStrings(t.relevant_docs),
             recommended_skills: asStrings(t.recommended_skills),
           }
@@ -104,6 +106,7 @@ export async function generateProjectBacklog({
       contexts: {
         where: { isCurrent: true },
         take: 1,
+        include: { artifactPlans: { select: { type: true, path: true, isRequired: true } } },
       },
       skillRecommendations: { select: { name: true } },
       artifacts: true,
@@ -117,18 +120,44 @@ export async function generateProjectBacklog({
     throw new Error('No Canonical Project Context found. Generate context first.')
   }
 
-  const prdArtifact = project.artifacts.find((a) => a.type === 'PRD')?.content || ''
-  const srsArtifact = project.artifacts.find((a) => a.type === 'SRS')?.content || ''
-  const archArtifact = project.artifacts.find((a) => a.type === 'ARCHITECTURE')?.content || ''
-  const designArtifact = project.artifacts.find((a) => a.type === 'DESIGN')?.content || ''
+  const plans = currentContextRecord.artifactPlans ?? []
 
+  const references: BacklogDocumentReference[] = []
+  for (const plan of plans) {
+    if (plan.type === 'BACKLOG') continue
+    const artifact = project.artifacts.find((item) => item.type === plan.type)
+    const isCurrentAndReady = artifact
+      && artifact.contextId === currentContextRecord.id
+      && ['READY', 'MODIFIED'].includes(artifact.status)
+      && artifact.content.trim()
+    if (!isCurrentAndReady) {
+      if (plan.isRequired) {
+        throw new Error(`Required ${plan.type} reference is not ready for the current context. Generate or repair it, then retry backlog generation.`)
+      }
+      continue
+    }
+    references.push({ type: plan.type, path: plan.path, content: artifact.content })
+  }
   const providerConfig = getProviderConfig(userId)
   if (!providerConfig) {
     throw new Error('No active AI provider session found. Please configure your BYOK provider first.')
   }
   const provider = createProvider(providerConfig)
+  const plannedDocumentPaths = references.map((reference) => reference.path)
 
-  // Set artifact to GENERATING before provider call
+  const boundedReferences = references.map((reference) => ({
+    ...reference,
+    content: summarizeBacklogReference(reference.content),
+  }))
+  const referenceTexts = boundedReferences.map(({ content }) => content)
+  const userPrompt = buildBacklogGeneratorUserPrompt(
+    project.name,
+    currentContextRecord.contentJson,
+    boundedReferences,
+    (project.skillRecommendations ?? []).map((skill) => skill.name),
+  )
+
+  // Set artifact to GENERATING only after deterministic inputs validate.
   await db.artifact.upsert({
     where: { projectId_type: { projectId, type: 'BACKLOG' } },
     update: { status: 'GENERATING', contextId: currentContextRecord.id },
@@ -142,16 +171,7 @@ export async function generateProjectBacklog({
     },
   })
 
-  const summarizeReference = (content: string) => content.slice(0, 2500)
-  const userPrompt = buildBacklogGeneratorUserPrompt(
-    project.name,
-    currentContextRecord.contentJson,
-    summarizeReference(prdArtifact),
-    summarizeReference(srsArtifact),
-    summarizeReference(archArtifact),
-    summarizeReference(designArtifact),
-    (project.skillRecommendations ?? []).map((skill) => skill.name),
-  )
+
   let backlogOutput: BacklogGeneratorOutput
   try {
     const rawOutput = await Promise.race([
@@ -175,6 +195,14 @@ export async function generateProjectBacklog({
         task.recommended_skills = task.recommended_skills.filter((skill) => allowedSkills.has(skill))
       }
     }
+    const qualityErrors = validateBacklogQuality(backlogOutput.phases, {
+      plannedDocumentPaths,
+      sourceTexts: referenceTexts,
+      confirmedContextJson: currentContextRecord.contentJson,
+    })
+    if (qualityErrors.length > 0) {
+      throw new Error(`Generated backlog failed project-grounding checks: ${qualityErrors.join(' ')}`)
+    }
   } catch (error) {
     await db.artifact.update({
       where: { projectId_type: { projectId, type: 'BACKLOG' } },
@@ -183,9 +211,13 @@ export async function generateProjectBacklog({
     throw error
   }
 
-  // Validate dependency references and circular dependencies
+  // Validate dependency references and circular dependencies.
   const validation = validateBacklogDependencies(backlogOutput.phases)
   if (!validation.isValid) {
+    await db.artifact.update({
+      where: { projectId_type: { projectId, type: 'BACKLOG' } },
+      data: { status: 'FAILED' },
+    })
     throw new Error('AI generated invalid dependencies or circular references. Please regenerate.')
   }
 
