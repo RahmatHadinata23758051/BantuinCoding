@@ -78,6 +78,40 @@ export function isOllamaProvider(provider: AIProviderType): boolean {
   return provider === 'OLLAMA'
 }
 
+function isTruncationFinishReason(reason: unknown): boolean {
+  return typeof reason === 'string' && ['length', 'max_tokens', 'max_output_tokens'].includes(reason.toLowerCase())
+}
+
+function extractJsonString(text: string, quoteIndex: number): string | null {
+  if (text[quoteIndex] !== '"') return null
+  let escaped = false
+  for (let i = quoteIndex + 1; i < text.length; i++) {
+    if (escaped) {
+      escaped = false
+    } else if (text[i] === '\\') {
+      escaped = true
+    } else if (text[i] === '"') {
+      try {
+        const value: unknown = JSON.parse(text.slice(quoteIndex, i + 1))
+        return typeof value === 'string' ? value : null
+      } catch {
+        return null
+      }
+    }
+  }
+  return null
+}
+
+function extractCompleteMarkdownContent(text: string): string | null {
+  const marker = /"markdown_content"\s*:/g
+  const match = marker.exec(text)
+  if (!match) return null
+  const valueStart = text.slice(marker.lastIndex).search(/\S/)
+  if (valueStart < 0) return null
+  const quoteIndex = marker.lastIndex + valueStart
+  return extractJsonString(text, quoteIndex)
+}
+
 export const OPENAI_COMPATIBLE_MODELS: Record<keyof typeof OPENAI_COMPATIBLE_DEFAULT_URLS, ModelInfo[]> = {
   DEEPSEEK: [
     { id: 'deepseek-chat', name: 'DeepSeek Chat' },
@@ -243,33 +277,13 @@ abstract class BaseProvider implements AIProvider {
       }
     }
 
-    // 5. Truncated JSON string recovery: if the output was cut off by max_tokens
-    // while emitting "markdown_content": "...", extract the unescaped markdown.
-    const marker = '"markdown_content":'
-    const markerIdx = text.indexOf(marker)
-    if (markerIdx !== -1) {
-      const afterMarker = text.slice(markerIdx + marker.length)
-      const quoteIdx = afterMarker.indexOf('"')
-      if (quoteIdx !== -1) {
-        let contentSlice = afterMarker.slice(quoteIdx + 1)
-        for (let i = 0; i < contentSlice.length; i++) {
-          if (contentSlice[i] === '"' && (i === 0 || contentSlice[i - 1] !== '\\')) {
-            contentSlice = contentSlice.slice(0, i)
-            break
-          }
-        }
-        const unescaped = contentSlice
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '\r')
-          .replace(/\\t/g, '\t')
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\')
-
-        if (unescaped.trim().length > 0) {
-          return { markdown_content: unescaped.trim() }
-        }
-      }
+    // 5. Recover a complete markdown string only when its closing quote is present.
+    const completeMarkdown = extractCompleteMarkdownContent(text)
+    if (completeMarkdown?.trim()) {
+      return { markdown_content: completeMarkdown.trim() }
     }
+
+    // An unterminated JSON string is incomplete output and must not be accepted as a draft.
 
     // 6. Direct Markdown recovery: if model returned direct markdown starting with #
     const directMd = text.replace(/^```(?:markdown|md)?\s*\n/i, '').replace(/\n```\s*$/i, '').trim()
@@ -291,30 +305,10 @@ abstract class BaseProvider implements AIProvider {
     text = text.replace(/<\?xml[^>]*>/gi, '')
     text = text.replace(/^\s*[\r\n]+/, '')
 
-    // Case A: Look for "markdown_content": "..."
-    const marker = '"markdown_content":'
-    const idx = text.indexOf(marker)
-    if (idx !== -1) {
-      const afterMarker = text.slice(idx + marker.length).trim()
-      const firstQuote = afterMarker.indexOf('"')
-      if (firstQuote !== -1) {
-        let content = afterMarker.slice(firstQuote + 1)
-        for (let i = 0; i < content.length; i++) {
-          if (content[i] === '"' && (i === 0 || content[i - 1] !== '\\')) {
-            content = content.slice(0, i)
-            break
-          }
-        }
-        const unescaped = content
-          .replace(/\\n/g, '\n')
-          .replace(/\\r/g, '\r')
-          .replace(/\\t/g, '\t')
-          .replace(/\\"/g, '"')
-          .replace(/\\\\/g, '\\')
-          .trim()
-        if (unescaped.length > 20) return unescaped
-      }
-    }
+    // Case A: Recover only a complete JSON string value; truncated strings fail closed.
+    const markdownContent = extractCompleteMarkdownContent(text)?.trim()
+    if (markdownContent && markdownContent.length > 20) return markdownContent
+
 
     // Case B: Markdown code fence ```markdown ... ``` or ```md ... ```
     const mdFence = text.match(/```(?:markdown|md)\s*\n([\s\S]*?)\n```/i)
@@ -572,7 +566,7 @@ class OpenAIProvider extends BaseProvider {
       ],
     })
 
-    if (completion.choices[0]?.finish_reason === 'length') {
+    if (isTruncationFinishReason(completion.choices[0]?.finish_reason)) {
       throw new Error('Generation truncated due to max tokens limit')
     }
 
@@ -757,7 +751,7 @@ class OpenAICompatibleProvider extends BaseProvider {
       ],
     })
 
-    if (completion.choices[0]?.finish_reason === 'length') {
+    if (isTruncationFinishReason(completion.choices[0]?.finish_reason)) {
       throw new Error('Generation truncated due to max tokens limit')
     }
 

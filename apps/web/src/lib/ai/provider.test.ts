@@ -236,6 +236,35 @@ describe('AIProvider — interface contract', () => {
     })
   })
 
+  describe('generateStructured — rejects incomplete output', () => {
+    it('does not recover an unterminated markdown_content JSON string', async () => {
+      const { Anthropic } = await import('@anthropic-ai/sdk')
+      vi.mocked(Anthropic).mockImplementationOnce(() => ({
+        messages: {
+          create: vi.fn().mockResolvedValue({
+            content: [{ type: 'text', text: '{"title":"ARCHITECTURE.md","markdown_content":"# Architecture\\n## 1. Overview\\n## 2. Partial' }],
+          }),
+        },
+      }) as never)
+
+      const DocSchema = z.object({ title: z.string(), markdown_content: z.string() })
+      const p = createProvider({ provider: 'ANTHROPIC', model: 'claude-sonnet-4-5', apiKey: 'test-key' })
+      await expect(p.generateStructured('test', DocSchema)).rejects.toThrow('[ANTHROPIC] AI response is not valid JSON')
+    })
+
+    it.each(['length', 'max_tokens'])('rejects OpenAI-compatible finish reason %s', async (finish_reason) => {
+      const { default: OpenAI } = await import('openai')
+      vi.mocked(OpenAI).mockImplementationOnce(() => ({
+        chat: { completions: { create: vi.fn().mockResolvedValue({
+          choices: [{ finish_reason, message: { content: '{"ok":true}' } }],
+        }) } },
+      }) as never)
+
+      const p = createProvider({ provider: 'GROQ', model: 'test-model', apiKey: 'test-key' })
+      await expect(p.generateStructured('test', OkSchema)).rejects.toThrow('Generation truncated due to max tokens limit')
+    })
+  })
+
   describe('error mapping — maps SDK errors to typed status', () => {
     it('returns INVALID_CREDENTIAL for 401 errors', async () => {
       const { Anthropic } = await import('@anthropic-ai/sdk')
