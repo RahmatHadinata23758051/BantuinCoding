@@ -18,14 +18,14 @@ function normalizeProvenance(val: unknown): ContextProvenance {
       return lower
     }
   }
-  return 'assumed'
+  return 'unknown'
 }
 
 function extractItem(item: unknown): AuthoritativeContextItem | null {
   if (!item) return null
   if (typeof item === 'string') {
     const trimmed = item.trim()
-    return trimmed ? { value: trimmed, provenance: 'assumed' } : null
+    return trimmed ? { value: trimmed, provenance: 'unknown' } : null
   }
   if (typeof item === 'object') {
     const record = item as Record<string, unknown>
@@ -87,6 +87,7 @@ export function buildAuthoritativeContextBlock(
     '1. [CONFIRMED] items are immutable ground truth. All generated specifications MUST adhere to them. Never contradict or replace them.',
     '2. [ASSUMED] items are provisional recommendations. Maintain alignment with them, but do not upgrade them to confirmed facts without explicit basis.',
     '3. [UNKNOWN] items are unresolved decisions. Preserve them as open questions; do NOT fabricate facts, secrets, or fake metrics.',
+    'DOCUMENT OWNERSHIP: PRD.md owns product scope and requirements; ARCHITECTURE.md owns technical design; DESIGN.md owns visual and interaction decisions; Agent.md owns coding-agent operating rules; BACKLOG.md translates these sources into tasks. These documents do not override confirmed canonical decisions or create new confirmed facts.',
     '',
   ]
 
@@ -97,7 +98,8 @@ export function buildAuthoritativeContextBlock(
     for (const tier of ['frontend', 'backend', 'database', 'styling'] as const) {
       const item = extractItem(stack[tier])
       if (item) {
-        lines.push(`- ${tier.toUpperCase()}: ${item.value} [${item.provenance.toUpperCase()}]`)
+        const provenance = item.provenance.toUpperCase()
+        lines.push(`${provenance === 'CONFIRMED' ? '- ' : '- [NON-AUTHORITATIVE] '}${tier.toUpperCase()}: ${item.value} [${provenance}]`)
       }
     }
   }
@@ -105,13 +107,15 @@ export function buildAuthoritativeContextBlock(
   // Deployment target
   const deployment = extractItem(context.deployment_target)
   if (deployment) {
-    lines.push(`- DEPLOYMENT: ${deployment.value} [${deployment.provenance.toUpperCase()}]`)
+    const provenance = deployment.provenance.toUpperCase()
+    lines.push(`${provenance === 'CONFIRMED' ? '- ' : '- [NON-AUTHORITATIVE] '}DEPLOYMENT: ${deployment.value} [${provenance}]`)
   }
 
   // Design direction
   const design = extractItem(context.design_direction)
   if (design) {
-    lines.push(`- DESIGN DIRECTION: ${design.value} [${design.provenance.toUpperCase()}]`)
+    const provenance = design.provenance.toUpperCase()
+    lines.push(`${provenance === 'CONFIRMED' ? '- ' : '- [NON-AUTHORITATIVE] '}DESIGN DIRECTION: ${design.value} [${provenance}]`)
   }
 
   // Confirmed decisions
@@ -119,9 +123,10 @@ export function buildAuthoritativeContextBlock(
     ? context.confirmed_decisions.map(extractItem).filter((i): i is AuthoritativeContextItem => i !== null)
     : []
   if (confirmedDecisions.length > 0) {
-    lines.push('', 'CONFIRMED DECISIONS (IMMUTABLE):')
+    lines.push('', 'CANONICAL DECISIONS:')
     for (const dec of confirmedDecisions) {
-      lines.push(`- ${dec.value} [${dec.provenance.toUpperCase()}]`)
+      const provenance = dec.provenance.toUpperCase()
+      lines.push(`${provenance === 'CONFIRMED' ? '- ' : '- [NON-AUTHORITATIVE] '}${dec.value} [${provenance}]`)
     }
   }
 
@@ -132,7 +137,8 @@ export function buildAuthoritativeContextBlock(
   if (constraints.length > 0) {
     lines.push('', 'TECHNICAL CONSTRAINTS:')
     for (const c of constraints) {
-      lines.push(`- ${c.value} [${c.provenance.toUpperCase()}]`)
+      const provenance = c.provenance.toUpperCase()
+      lines.push(`${provenance === 'CONFIRMED' ? '- ' : '- [NON-AUTHORITATIVE] '}${c.value} [${provenance}]`)
     }
   }
 
@@ -145,7 +151,9 @@ export function buildAuthoritativeContextBlock(
         const entObj = ent as Record<string, unknown>
         const name = typeof entObj.name === 'string' ? entObj.name : 'Entity'
         const fields = Array.isArray(entObj.fields) ? entObj.fields.join(', ') : ''
-        lines.push(`- ${name}${fields ? `: fields [${fields}]` : ''}`)
+        const provenance = typeof entObj.provenance === 'string' ? normalizeProvenance(entObj.provenance).toUpperCase() : 'UNKNOWN'
+        const value = `${name}${fields ? `: fields [${fields}]` : ''}`
+        lines.push(`${provenance === 'CONFIRMED' ? '- ' : '- [NON-AUTHORITATIVE] '}${value} [${provenance}]`)
       }
     }
   }
@@ -178,13 +186,13 @@ export function buildAuthoritativeContextBlock(
     if (assumptions.length > 0) {
       lines.push('Assumptions:')
       for (const a of assumptions) {
-        lines.push(`  - ${a.value}`)
+        lines.push(`  - ${a.value} [${a.provenance.toUpperCase()}]`)
       }
     }
     if (openQuestions.length > 0) {
       lines.push('Open Questions:')
       for (const q of openQuestions) {
-        lines.push(`  - ${q.value}`)
+        lines.push(`  - ${q.value} [${q.provenance.toUpperCase()}]`)
       }
     }
   }

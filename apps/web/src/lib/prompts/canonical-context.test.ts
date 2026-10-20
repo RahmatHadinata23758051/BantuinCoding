@@ -70,6 +70,26 @@ describe('buildAuthoritativeContextBlock (BK-035)', () => {
     expect(block).toContain('Should recurring transactions be scheduled locally?')
   })
 
+  it('keeps missing provenance non-authoritative and labels only confirmed decisions immutable', () => {
+    const block = buildAuthoritativeContextBlock({
+      core_entities: [{ name: 'Invoice', fields: ['id', 'total'] }],
+      confirmed_decisions: [
+        { value: 'SQLite is required', provenance: 'assumed' },
+        { value: 'No hosted services', provenance: 'confirmed' },
+      ],
+      assumptions: [{ value: 'Offline-first operation', provenance: 'assumed' }],
+      open_questions: [{ value: 'Should sync be supported?', provenance: 'unknown' }],
+    })
+
+    expect(block).toContain('DOCUMENT OWNERSHIP: PRD.md owns product scope and requirements')
+    expect(block).toContain('Invoice: fields [id, total] [UNKNOWN]')
+    expect(block).toContain('[NON-AUTHORITATIVE] SQLite is required [ASSUMED]')
+    expect(block).toContain('- No hosted services [CONFIRMED]')
+    expect(block).toContain('Offline-first operation [ASSUMED]')
+    expect(block).toContain('Should sync be supported? [UNKNOWN]')
+    expect(block).not.toContain('CONFIRMED DECISIONS (IMMUTABLE):\n- [NON-AUTHORITATIVE] SQLite is required')
+  })
+
   it('works identically when passed a parsed object', () => {
     const contextObj = {
       project_name: 'TestApp',
@@ -111,7 +131,7 @@ describe('buildAuthoritativeContextBlock (BK-035)', () => {
     const agentPrompt = buildAgentRulesGeneratorUserPrompt('App', contextJson)
     expect(agentPrompt).toContain('DATABASE: PostgreSQL [CONFIRMED]')
 
-    const backlogPrompt = buildBacklogGeneratorUserPrompt('App', contextJson, 'prd', 'srs', 'arch')
+    const backlogPrompt = buildBacklogGeneratorUserPrompt('App', contextJson, [{ type: 'PRD', path: 'PRD.md', content: 'prd' }, { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'arch' }])
     expect(backlogPrompt).toContain('DATABASE: PostgreSQL [CONFIRMED]')
 
     const consistencyPrompt = buildConsistencyValidatorUserPrompt('App', '[]', contextJson)

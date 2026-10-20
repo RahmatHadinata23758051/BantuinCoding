@@ -57,7 +57,7 @@ Rules:
 3. Do NOT ask questions that have already been answered in previous rounds.
 4. MANDATORY MULTIPLE-CHOICE OPTIONS: For EVERY single question, you MUST provide 2 to 4 concrete, distinct suggested_options. Do NOT omit suggested_options under any circumstances.
 5. Provide a clear "impact" explaining WHY answering this question matters for the architecture.
-6. Set is_context_sufficient to true ONLY if all critical architectural decisions are clear enough to write a complete PRD/SRS pack.
+6. Set is_context_sufficient to true ONLY if all critical architectural decisions are clear enough to write a complete project document pack.
 7. When is_context_sufficient is true, return an empty questions array. When it is false, return at least one question.`
 
 export function buildClarificationUserPrompt(
