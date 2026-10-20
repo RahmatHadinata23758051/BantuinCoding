@@ -147,19 +147,34 @@ describe('generation stages', () => {
     expect(Object.values(retry.stages).slice(1).every((stage) => stage.status === 'queued')).toBe(true)
   })
 
-  it('does not treat a planned SRS as generated', () => {
+  it('blocks an unsupported required SRS plan instead of marking documents complete', () => {
     const state = createPersistedGenerationState({
       projectStatus: 'GENERATING',
+      requiredArtifactTypes: ['PRD', 'ARCHITECTURE', 'SRS'],
       artifacts: [
         { type: 'PRD', status: 'READY' },
         { type: 'ARCHITECTURE', status: 'READY' },
       ],
     })
 
-    expect(state.stages.documents.status).toBe('queued')
+    expect(state.stages.documents.status).toBe('failed')
     expect(state.stages.agentRules.status).toBe('queued')
     expect(isGenerationComplete(state)).toBe(false)
   })
+
+  it('does not block a lean plan for dedicated Agent and Backlog artifacts', () => {
+    const state = createPersistedGenerationState({
+      projectStatus: 'GENERATING',
+      requiredArtifactTypes: ['PRD', 'ARCHITECTURE', 'AGENT', 'BACKLOG'],
+      artifacts: [
+        { type: 'PRD', status: 'READY' },
+        { type: 'ARCHITECTURE', status: 'READY' },
+      ],
+    })
+
+    expect(state.stages.documents.status).toBe('complete')
+  })
+
 
   it('reconstructs failed document progress from persisted artifact state', () => {
     const state = createPersistedGenerationState({

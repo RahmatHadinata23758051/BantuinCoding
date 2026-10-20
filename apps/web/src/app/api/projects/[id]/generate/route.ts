@@ -45,8 +45,15 @@ export async function POST(
         }
         visualReferenceId = body.visualReferenceId
       }
-      if (requestedType && ['PRD', 'ARCHITECTURE', 'DESIGN'].includes(requestedType)) {
-        types = [requestedType as 'PRD' | 'ARCHITECTURE' | 'DESIGN']
+      if (requestedType === 'SRS') {
+        return NextResponse.json({ error: 'SRS.md is not generated in the current lean documentation pack. Requirements are consolidated into PRD.md.' }, { status: 400 })
+      }
+      if (requestedType === 'PRD' || requestedType === 'ARCHITECTURE' || requestedType === 'DESIGN') {
+        types = [requestedType]
+      } else if (requestedType === 'AGENT_RULES' || requestedType === 'SYSTEM_GRAPH') {
+        // Compatibility paths handled by dedicated stages below.
+      } else if (requestedType) {
+        return NextResponse.json({ error: `Artifact type ${requestedType} is not directly regenerable. Use the corresponding workflow stage.` }, { status: 400 })
       }
     } catch {
       // Body empty or invalid — default to all core documents handled by this route.

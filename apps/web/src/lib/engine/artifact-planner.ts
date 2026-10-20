@@ -4,6 +4,7 @@ import { createProvider } from '@/lib/ai/provider'
 import {
   ARTIFACT_PLANNER_SYSTEM_PROMPT,
   ArtifactPlanSchema,
+  SUPPORTED_PLANNED_ARTIFACT_TYPES,
   buildArtifactPlannerUserPrompt,
   type ArtifactPlanOutput,
 } from '@/lib/prompts/artifact-planner'
@@ -14,6 +15,8 @@ export interface PlanArtifactsOptions {
   userId: string
   projectId: string
 }
+
+const SUPPORTED_ARTIFACT_TYPES = new Set<string>(SUPPORTED_PLANNED_ARTIFACT_TYPES)
 
 const UI_PRODUCT_CLASSIFICATIONS = new Set<ProjectClassification>([
   'STATIC_SITE',
@@ -65,13 +68,25 @@ export function ensureDesignArtifact(
   plan: ArtifactPlanOutput,
   contextJson?: string,
 ): ArtifactPlanOutput {
-  if (!requiresDesignArtifact(plan.classification, contextJson)) return plan
+  const supportedArtifacts = plan.artifacts.filter((artifact) => SUPPORTED_ARTIFACT_TYPES.has(artifact.type))
+  const omittedTypes = [...new Set(plan.artifacts
+    .filter((artifact) => !SUPPORTED_ARTIFACT_TYPES.has(artifact.type))
+    .map((artifact) => artifact.type))]
+  const normalizedPlan: ArtifactPlanOutput = {
+    ...plan,
+    artifacts: supportedArtifacts,
+    rationale: omittedTypes.length > 0
+      ? `${plan.rationale} Unsupported artifact types omitted: ${omittedTypes.join(', ')}.`
+      : plan.rationale,
+  }
 
-  const designArtifact = plan.artifacts.find((artifact) => artifact.type === 'DESIGN')
+  if (!requiresDesignArtifact(plan.classification, contextJson)) return normalizedPlan
+
+  const designArtifact = normalizedPlan.artifacts.find((artifact) => artifact.type === 'DESIGN')
   if (designArtifact) {
     return {
-      ...plan,
-      artifacts: plan.artifacts.map((artifact) =>
+      ...normalizedPlan,
+      artifacts: normalizedPlan.artifacts.map((artifact) =>
         artifact.type === 'DESIGN'
           ? {
               ...artifact,
@@ -84,11 +99,11 @@ export function ensureDesignArtifact(
     }
   }
 
-  const architectureIndex = plan.artifacts.findIndex(
+  const architectureIndex = normalizedPlan.artifacts.findIndex(
     (artifact) => artifact.type === 'ARCHITECTURE',
   )
-  const insertAt = architectureIndex >= 0 ? architectureIndex : plan.artifacts.length
-  const artifacts = [...plan.artifacts]
+  const insertAt = architectureIndex >= 0 ? architectureIndex : normalizedPlan.artifacts.length
+  const artifacts = [...normalizedPlan.artifacts]
   artifacts.splice(insertAt, 0, {
     type: 'DESIGN',
     path: 'DESIGN.md',
@@ -96,7 +111,7 @@ export function ensureDesignArtifact(
     isRequired: true,
   })
 
-  return { ...plan, artifacts }
+  return { ...normalizedPlan, artifacts }
 }
 
 /**

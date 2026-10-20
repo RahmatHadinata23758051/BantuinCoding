@@ -449,6 +449,42 @@ describe('Artifact Generator Engine — generateCoreArtifacts', () => {
     expect(db.artifact.upsert).not.toHaveBeenCalled()
   })
 
+  it('rejects an SRS request rather than returning empty content as READY', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [{
+        id: 'ctx-1', version: 1, contentJson: '{}', artifactPlans: [{ type: 'SRS', isRequired: false }],
+      }],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model', apiKey: 'test-key' })
+
+    await expect(generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1', types: ['SRS' as 'PRD'] }))
+      .rejects.toThrow('Unsupported core artifact type(s): SRS.')
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
+  })
+
+  it('rejects a legacy planned SRS before persisting an empty artifact', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Test Project',
+      contexts: [{
+        id: 'ctx-1', version: 1, contentJson: '{}', artifactPlans: [{ type: 'SRS', isRequired: true }],
+      }],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model', apiKey: 'test-key' })
+
+    await expect(generateCoreArtifacts({ userId: 'u-1', projectId: 'p-1' }))
+      .rejects.toThrow('Unsupported required artifact type(s) for generation: SRS. Re-plan the document pack before generating.')
+    expect(db.artifact.upsert).not.toHaveBeenCalled()
+  })
+
   it('supports single-artifact regeneration (e.g. PRD only)', async () => {
     const { db } = await import('@repo/db')
     const { getProviderConfig } = await import('@/lib/byok/session-store')

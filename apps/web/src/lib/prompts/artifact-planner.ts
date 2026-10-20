@@ -6,14 +6,16 @@ import type { ProjectClassification } from '@repo/types'
 // Dedicated prompt module to determine required artifact pack.
 // ============================================================
 
+export const SUPPORTED_PLANNED_ARTIFACT_TYPES = [
+  'PRD',
+  'ARCHITECTURE',
+  'DESIGN',
+  'AGENT',
+  'BACKLOG',
+] as const
+
 export const PlannedArtifactSchema = z.object({
-  type: z.enum([
-    'PRD',
-    'ARCHITECTURE',
-    'DESIGN',
-    'AGENT',
-    'BACKLOG',
-  ]),
+  type: z.enum(SUPPORTED_PLANNED_ARTIFACT_TYPES),
   path: z.string(),
   reason: z.string(),
   isRequired: z.boolean(),
@@ -43,24 +45,19 @@ export const ARTIFACT_PLANNER_SYSTEM_PROMPT = `You are a Principal Technical Arc
 
 Your job is to analyze the Canonical Project Context and determine which documents must be generated for the project bootstrap pack.
 
-CORE LEAN DOCUMENTATION PACK:
-- PRD (PRD.md): MANDATORY. Contains complete product overview, user flows, functional requirements (FR-xxx), non-functional requirements, data requirements, and error behavior.
-- ARCHITECTURE (ARCHITECTURE.md): REQUIRED for apps, dashboards, and SaaS projects. Defines tech stack, database schema, component boundaries, and API routes. (Omit only for pure static sites/landing pages with no backend).
-- DESIGN (DESIGN.md): REQUIRED for any project with a visual or UI component. Sole visual authority.
-- AGENT (Agent.md): MANDATORY. Single operational contract and rulebook for the coding agent. Absorbs operational rules, hard constraints, BYOK secret isolation, and recommended skills.
-- BACKLOG (BACKLOG.md): MANDATORY. Phased, atomic, dependency-aware task ledger.
+SUPPORTED DOCUMENT PACK:
+- PRD (PRD.md): MANDATORY. Owns product scope, user flows, functional requirements, and product acceptance criteria. Keep implementation-level technical design out of the PRD.
+- ARCHITECTURE (ARCHITECTURE.md): REQUIRED for apps, dashboards, and SaaS projects. Owns technical design, stack, data architecture, component boundaries, and API behavior. (Omit only for pure static sites/landing pages with no backend).
+- DESIGN (DESIGN.md): REQUIRED for any project with a visual or UI component. Sole authority for visual and interaction design decisions.
+- AGENT (Agent.md): MANDATORY. Owns operational coding rules, hard constraints, BYOK secret isolation, and resolved skill recommendations.
+- BACKLOG (BACKLOG.md): MANDATORY. Translates the other documents into a phased, atomic, dependency-aware task ledger; it does not create new requirements.
 
-CONDITIONAL / ADVANCED DOCUMENTS:
-- Functional requirements and agent rules/skills are consolidated into PRD.md and Agent.md. Do NOT generate separate SRS.md, RULES.md, or SKILLS.md files.
-- DATABASE (docs/DATABASE.md): Include if the project has intricate custom database schema beyond ARCHITECTURE.md.
-- API (docs/API.md): Include for multi-service or public API documentation.
-- SECURITY (docs/SECURITY.md): Include for high-risk fintech or healthcare compliance.
-- TESTING (docs/TESTING.md): Include for complex end-to-end testing setups.
+SRS.md is not generated in the current lean pack. Consolidate product and software requirements into PRD.md, and put technical design in ARCHITECTURE.md. Do NOT plan separate SRS.md, RULES.md, SKILLS.md, DATABASE.md, API.md, SECURITY.md, or TESTING.md files; these types do not have a supported end-to-end generation stage.
 
 RULES:
-1. Landing pages and static sites must produce a lean 3-4 file pack (PRD.md, DESIGN.md, Agent.md, BACKLOG.md).
+1. Landing pages and static sites must produce a lean 3-4 file pack (PRD.md, DESIGN.md when visual, Agent.md, BACKLOG.md).
 2. Standard web applications produce 4-5 files (PRD.md, ARCHITECTURE.md, DESIGN.md, Agent.md, BACKLOG.md).
-3. Do NOT create bloated duplicate files. Keep documentation concise, authoritative, and actionable.`
+3. Plan only the supported artifact types in the schema. Keep documents concise, authoritative, and actionable.`
 
 export function buildArtifactPlannerUserPrompt(
   projectName: string,

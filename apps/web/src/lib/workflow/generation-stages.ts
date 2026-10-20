@@ -94,11 +94,14 @@ export function createPersistedGenerationState({
 }): GenerationState {
   const state = createQueuedGenerationState()
   const artifactByType = new Map(artifacts.map((artifact) => [artifact.type, artifact]))
-  const coreTypes = ['PRD', 'SRS', 'DESIGN', 'ARCHITECTURE']
+  const coreTypes = ['PRD', 'DESIGN', 'ARCHITECTURE']
   const requiredCoreTypes = (requiredArtifactTypes ?? ['PRD', 'DESIGN', 'ARCHITECTURE']).filter((type) => coreTypes.includes(type))
   const coreArtifacts = requiredCoreTypes.map((type) => artifactByType.get(type))
   const isProjectActivelyGenerating = projectStatus === 'GENERATING'
-  const hasCoreFailure = coreArtifacts.some(
+  const hasUnsupportedRequiredCoreType = (requiredArtifactTypes ?? []).some((type) =>
+    !['PRD', 'DESIGN', 'ARCHITECTURE', 'AGENT', 'BACKLOG'].includes(type),
+  )
+  const hasCoreFailure = hasUnsupportedRequiredCoreType || coreArtifacts.some(
     (artifact) => artifact && (FAILED_ARTIFACT_STATUSES.has(artifact.status) || (!isProjectActivelyGenerating && RUNNING_ARTIFACT_STATUSES.has(artifact.status))),
   )
   const hasCoreRunning = isProjectActivelyGenerating && coreArtifacts.some(
@@ -106,6 +109,7 @@ export function createPersistedGenerationState({
   )
   const hasCoreCompletion =
     requiredCoreTypes.length > 0 &&
+    !hasUnsupportedRequiredCoreType &&
     coreArtifacts.every(
       (artifact) => artifact && COMPLETE_ARTIFACT_STATUSES.has(artifact.status),
     )
@@ -295,7 +299,7 @@ export function reconcileGenerationStateAfterArtifactUpdate({
     ? 'agentRules'
     : updatedType === 'BACKLOG'
       ? 'backlog'
-      : ['PRD', 'SRS', 'DESIGN', 'ARCHITECTURE'].includes(updatedType)
+      : ['PRD', 'DESIGN', 'ARCHITECTURE'].includes(updatedType)
         ? 'documents'
         : null
 
