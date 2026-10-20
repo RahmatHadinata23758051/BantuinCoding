@@ -22,9 +22,84 @@ interface ConsistencyArtifact {
   content: string
 }
 
+const STACK_CHOICES: Record<string, string[][]> = {
+  frontend: [['react', 'next.js', 'nextjs', 'vue', 'svelte', 'angular'], ['typescript', 'javascript']],
+  backend: [['node.js', 'nodejs', 'python', 'bun', 'deno', 'java', 'go', 'rust']],
+  database: [['postgresql', 'postgres', 'mysql', 'sqlite', 'mongodb', 'mariadb', 'dynamodb']],
+  styling: [['tailwind', 'css modules', 'styled-components', 'sass']],
+}
+
+function confirmedStack(contextJson: string): Record<string, string> {
+  try {
+    const context = JSON.parse(contextJson) as Record<string, unknown>
+    const preferences = context.stack_preferences
+    if (typeof preferences !== 'object' || preferences === null) return {}
+    return Object.fromEntries(Object.entries(preferences as Record<string, unknown>).flatMap(([key, value]) => {
+      if (typeof value !== 'object' || value === null) return []
+      const item = value as Record<string, unknown>
+      return typeof item.provenance === 'string' && item.provenance.toLowerCase() === 'confirmed' && typeof item.value === 'string'
+        ? [[key, item.value]]
+        : []
+    }))
+  } catch {
+    return {}
+  }
+}
+
+function choiceIn(text: string, choices: string[]): string[] {
+  const matches = choices.filter((choice) =>
+    new RegExp(`(^|[^a-z0-9])${choice.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`, 'i').test(text),
+  ).map((choice) => {
+    if (choice === 'postgres') return 'postgresql'
+    if (choice === 'nextjs' || choice === 'next.js' || choice === 'react') return 'react'
+    return choice
+  })
+  return [...new Set(matches)]
+}
+
+function confirmedStackIssues(
+  artifacts: ConsistencyArtifact[],
+  contextJson: string,
+): ConsistencyIssue[] {
+  const stack = confirmedStack(contextJson)
+  const issues: ConsistencyIssue[] = []
+  const declarations = /^\s*(?:[-*]\s*)?\*{0,2}(database|db|frontend|front-end|backend|back-end|styling)\*{0,2}\s*:\s*([^\n|]+).*$/gim
+
+  for (const artifact of artifacts) {
+    for (const [, rawDimension, value] of artifact.content.matchAll(declarations)) {
+      const label = rawDimension.toLowerCase().replace(/[- ]/g, '')
+      const dimension = label === 'db' ? 'database' : label.startsWith('front') ? 'frontend' : label.startsWith('back') ? 'backend' : label
+      const confirmed = stack[dimension]
+      const groups = STACK_CHOICES[dimension]
+      if (!confirmed || !groups) continue
+
+      for (const choices of groups) {
+        const expected = choiceIn(confirmed, choices)
+        const documented = choiceIn(value, choices)
+        if (expected.length !== 1 || documented.length !== 1 || expected[0] === documented[0]) continue
+        const category = dimension === 'database' ? 'DATABASE_MISMATCH' : 'STACK_MISMATCH'
+        if (issues.some((issue) =>
+          issue.category === category &&
+          issue.affected_documents[0] === artifact.path &&
+          issue.description.startsWith(`${artifact.path} declares ${dimension} choice`),
+        )) continue
+        issues.push({
+          severity: 'HIGH',
+          classification: 'BLOCKER',
+          category,
+          description: `${artifact.path} declares ${dimension} choice "${documented[0]}" that conflicts with confirmed project context.`,
+          affected_documents: [artifact.path],
+          recommendation: `Update the ${dimension} choice to match confirmed project context, then rerun validation.`,
+        })
+      }
+    }
+  }
+
+  return issues
+}
+
 function summarizeArtifactContent(content: string): string {
   if (content.length <= MAX_ARTIFACT_CONTENT_LENGTH) return content
-
   return `${content.slice(0, MAX_ARTIFACT_CONTENT_LENGTH)}\n\n[Document truncated for consistency audit.]`
 }
 
@@ -39,9 +114,7 @@ function finalizeReport(
     ...issue,
     classification: issue.classification ?? (isBlockerIssue(issue) ? 'BLOCKER' : 'WARNING'),
   }))
-  const blocksExport =
-    report.blocksExport ?? issues.some((issue) => issue.classification === 'BLOCKER')
-
+  const blocksExport = report.blocksExport ?? issues.some((issue) => issue.classification === 'BLOCKER')
   return {
     ...report,
     issues,
@@ -57,11 +130,9 @@ function mergeConsistencyReports(
 ): ConsistencyReportOutput {
   const issues = [...deterministic.issues]
   const knownIssues = new Set(issues.map((issue) => `${issue.category}:${issue.description}`))
-
   for (const issue of ai.issues) {
     const key = `${issue.category}:${issue.description}`
     if (!knownIssues.has(key)) {
-      // AI-only findings can guide the user but cannot independently block export.
       issues.push({ ...issue, classification: 'WARNING' })
       knownIssues.add(key)
     }
@@ -71,15 +142,13 @@ function mergeConsistencyReports(
   const mediumCount = issues.filter((issue) => issue.severity === 'MEDIUM').length
   const lowCount = issues.filter((issue) => issue.severity === 'LOW').length
   const score = Math.max(0, 100 - highCount * 25 - mediumCount * 10 - lowCount * 5)
-
   return finalizeReport({
     isConsistent: score >= 80,
     score,
     issues,
-    summary:
-      issues.length === 0
-        ? 'Documentation pack is cross-document consistent.'
-        : `Found ${issues.length} consistency issues requiring attention.`,
+    summary: issues.length === 0
+      ? 'Documentation pack is cross-document consistent.'
+      : `Found ${issues.length} consistency issues requiring attention.`,
   }, 'ai-assisted')
 }
 
@@ -100,6 +169,48 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
   }
 }
 
+function normalizeDocPath(path: string): string {
+  return path.trim().replace(/\\/g, '/').replace(/^(?:\.\/)+/, '').toLowerCase()
+}
+
+function addBacklogReferenceBlockers(
+  report: ConsistencyReportOutput,
+  artifacts: ConsistencyArtifact[],
+): ConsistencyReportOutput {
+  const backlog = artifacts.find((artifact) => artifact.type === 'BACKLOG')
+  if (!backlog) return report
+  const includedPaths = new Set(artifacts.map((artifact) => normalizeDocPath(artifact.path)))
+  const issues: ConsistencyIssue[] = []
+  const relevantDocLines = backlog.content.matchAll(/^(?:\*\*Relevant Docs:\*\*|Relevant Docs:)\s*([^\n]*)$/gim)
+  for (const [, line] of relevantDocLines) {
+    for (const item of line.split(/[,;]/)) {
+      const path = item.trim().replace(/^`|`$/g, '')
+      const normalizedPath = normalizeDocPath(path)
+      if (!/\.md$/i.test(path) || normalizedPath === 'readme.md' || includedPaths.has(normalizedPath)) continue
+      const alreadyReported = report.issues.some((issue) =>
+        issue.category === 'INVALID_BACKLOG_DOC_REF' && normalizeDocPath(issue.affected_documents[1] ?? '') === normalizedPath,
+      )
+      if (alreadyReported || issues.some((issue) => normalizeDocPath(issue.affected_documents[1] ?? '') === normalizedPath)) continue
+      issues.push({
+        severity: 'HIGH',
+        classification: 'BLOCKER',
+        category: 'INVALID_BACKLOG_DOC_REF',
+        description: `${backlog.path} references a document that is not included in the current pack: ${path}`,
+        affected_documents: [backlog.path, path],
+        recommendation: 'Remove the reference or include the planned document, then rerun validation.',
+      })
+    }
+  }
+  if (issues.length === 0) return report
+  return finalizeReport({
+    ...report,
+    isConsistent: false,
+    blocksExport: true,
+    issues: [...report.issues, ...issues],
+    summary: `Found ${report.issues.length + issues.length} consistency issues requiring attention.`,
+  }, report.auditMode)
+}
+
 function addStructuralIntegrityBlockers(
   report: ConsistencyReportOutput,
   artifacts: ConsistencyArtifact[],
@@ -107,7 +218,6 @@ function addStructuralIntegrityBlockers(
   const structuralIssues: ConsistencyIssue[] = artifacts.flatMap((artifact) => {
     const integrityIssues = validateArtifactIntegrity(artifact.type, artifact.content)
     if (integrityIssues.length === 0) return []
-
     return [{
       severity: 'HIGH',
       classification: 'BLOCKER',
@@ -117,9 +227,7 @@ function addStructuralIntegrityBlockers(
       recommendation: `Regenerate ${artifact.path} and ensure required sections and code fences are complete.`,
     }]
   })
-
   if (structuralIssues.length === 0) return report
-
   return finalizeReport({
     ...report,
     isConsistent: false,
@@ -144,17 +252,14 @@ function getCurrentPackArtifacts(project: {
 }): ConsistencyArtifact[] {
   const currentContext = project.contexts[0]
   if (!currentContext) return []
-
   const requiredPlan = currentContext.artifactPlans.filter((plan) => plan.isRequired)
   const requiredTypes = new Set(requiredPlan.map((plan) => plan.type))
   const plannedPaths = new Map(requiredPlan.map((plan) => [plan.type, plan.path]))
-
   return project.artifacts
-    .filter(
-      (artifact) =>
-        artifact.contextId === currentContext.id &&
-        requiredTypes.has(artifact.type) &&
-        (artifact.status === 'READY' || artifact.status === 'MODIFIED'),
+    .filter((artifact) =>
+      artifact.contextId === currentContext.id &&
+      requiredTypes.has(artifact.type) &&
+      (artifact.status === 'READY' || artifact.status === 'MODIFIED'),
     )
     .map((artifact) => ({
       type: artifact.type,
@@ -169,71 +274,66 @@ function getCurrentPackArtifacts(project: {
  */
 export function validateRuleBasedConsistency(
   artifacts: { type: string; path: string; content: string }[],
+  contextJson = '',
 ): ConsistencyReportOutput {
   const issues: ConsistencyIssue[] = []
   const docMap = new Map<string, string>()
-
-  for (const art of artifacts) {
-    docMap.set(art.type, art.content || '')
-  }
+  for (const artifact of artifacts) docMap.set(artifact.type, artifact.content || '')
 
   const prd = docMap.get('PRD') || ''
   const arch = docMap.get('ARCHITECTURE') || ''
-  const backlog = docMap.get('BACKLOG') || ''
+  const backlog = artifacts.find((artifact) => artifact.type === 'BACKLOG')
 
-  // Rule 1: Report a blocker only when a confirmed canonical decision is contradicted.
-  if (arch && prd) {
-    const archLower = arch.toLowerCase()
-    const prdLower = prd.toLowerCase()
-    if (archLower.includes('postgresql') && prdLower.includes('mongodb')) {
+  // Legacy cross-document rule remains advisory unless confirmed context proves the conflict.
+  if (arch && prd && arch.toLowerCase().includes('postgresql') && prd.toLowerCase().includes('mongodb')) {
+    issues.push({
+      severity: 'HIGH',
+      classification: 'WARNING',
+      category: 'DATABASE_MISMATCH',
+      description: 'ARCHITECTURE specifies PostgreSQL, but PRD mentions MongoDB.',
+      affected_documents: ['PRD.md', 'ARCHITECTURE.md'],
+      recommendation: 'Align database technology across PRD and ARCHITECTURE.',
+    })
+  }
+
+  if (backlog) {
+    const relevantDocsLines = backlog.content.match(/(?:\*\*Relevant Docs:\*\*|Relevant Docs:)[^\n]*/gi)
+    const rawRefs = relevantDocsLines
+      ? relevantDocsLines.flatMap((line) => line.match(/[A-Z0-9_\-]+\.md/gi) || [])
+      : backlog.content.match(/[A-Z0-9_\-]+\.md/gi) || []
+    const refsByNormalizedPath = new Map<string, string>()
+    for (const ref of rawRefs) {
+      const normalized = normalizeDocPath(ref)
+      if (!refsByNormalizedPath.has(normalized)) refsByNormalizedPath.set(normalized, ref)
+    }
+    const existingPaths = new Set(artifacts.map((artifact) => normalizeDocPath(artifact.path)))
+    for (const [normalized, original] of refsByNormalizedPath) {
+      if (existingPaths.has(normalized) || normalized === 'backlog.md' || normalized === 'readme.md') continue
+      const path = rawRefs.find((ref) => normalizeDocPath(ref) === normalized) ?? original
       issues.push({
-        severity: 'HIGH',
-        category: 'DATABASE_MISMATCH',
-        description: 'ARCHITECTURE specifies PostgreSQL, but PRD mentions MongoDB.',
-        affected_documents: ['PRD.md', 'ARCHITECTURE.md'],
-        recommendation: 'Align database technology across PRD and ARCHITECTURE.',
+        severity: 'MEDIUM',
+        category: 'INVALID_BACKLOG_DOC_REF',
+        description: `${backlog.path} references non-existent document file: ${normalized}`,
+        affected_documents: [backlog.path, path],
+        recommendation: `Remove or update reference to ${path} in ${backlog.path}`,
       })
     }
   }
 
-  // Rule 2: Backlog Doc References Check
-  if (backlog) {
-    const relevantDocsLines = backlog.match(/(?:\*\*Relevant Docs:\*\*|Relevant Docs:)[^\n]*/gi)
-    const rawRefs = relevantDocsLines
-      ? relevantDocsLines.flatMap((line) => line.match(/[A-Z0-9_\-]+\.md/gi) || [])
-      : (backlog.match(/[A-Z0-9_\-]+\.md/gi) || [])
-    const docRefs = new Set(rawRefs)
-    const existingPaths = new Set(artifacts.map((a) => a.path.toLowerCase()))
-
-    for (const ref of docRefs) {
-      if (!existingPaths.has(ref.toLowerCase()) && ref.toLowerCase() !== 'backlog.md' && ref.toLowerCase() !== 'readme.md') {
-        issues.push({
-          severity: 'MEDIUM',
-          category: 'INVALID_BACKLOG_DOC_REF',
-          description: `BACKLOG.md references non-existent document file: ${ref}`,
-          affected_documents: ['BACKLOG.md', ref],
-          recommendation: `Remove or update reference to ${ref} in BACKLOG.md`,
-        })
-      }
-    }
-  }
-
-  // Rule 3: Secret Leakage Preflight Check
-  for (const art of artifacts) {
+  for (const artifact of artifacts) {
     try {
-      scanContentForSecrets(art.content, art.path)
+      scanContentForSecrets(artifact.content, artifact.path)
     } catch {
       issues.push({
         severity: 'HIGH',
         category: 'SECRET_LEAKAGE',
-        description: `Potential secret or API key pattern detected in ${art.path}. Remove or replace credentials with empty placeholders before export.`,
-        affected_documents: [art.path],
-        recommendation: `Sanitize credentials, connection strings, or private keys in ${art.path} with placeholder values like "" or \${VAR_NAME}.`,
+        description: `Potential secret or API key pattern detected in ${artifact.path}. Remove or replace credentials with empty placeholders before export.`,
+        affected_documents: [artifact.path],
+        recommendation: `Sanitize credentials, connection strings, or private keys in ${artifact.path} with placeholder values like "" or \${VAR_NAME}.`,
       })
     }
   }
 
-  // Rule 4: DESIGN.md System Tokens Check
   const design = docMap.get('DESIGN') || ''
   if (design) {
     const hasFrontMatter = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(design.trim())
@@ -243,7 +343,6 @@ export function validateRuleBasedConsistency(
       /rounded\s*:/i.test(design) &&
       /spacing\s*:/i.test(design) &&
       /iconography\s*:/i.test(design)
-
     if (!hasFrontMatter || !hasRequiredTokens) {
       issues.push({
         severity: 'MEDIUM',
@@ -253,34 +352,56 @@ export function validateRuleBasedConsistency(
         recommendation: 'Ensure DESIGN.md starts with a YAML front matter block specifying colors, typography, rounded, spacing, and iconography tokens.',
       })
     } else {
-      // Deterministic WCAG contrast and token parity validation (BK-036)
-      const tokenIssues = validateDesignTokensAndContrast(design)
-      issues.push(...tokenIssues)
+      issues.push(...validateDesignTokensAndContrast(design))
     }
   }
 
-  // Rule 5: AGENT.md & DESIGN.md Consistency Check
   const agent = docMap.get('AGENT') || ''
-  if (agent && design) {
-    if (!agent.includes('DESIGN.md')) {
-      issues.push({
-        severity: 'MEDIUM',
-        category: 'AGENT_DESIGN_HIERARCHY_MISSING',
-        description: 'Agent.md does not establish DESIGN.md in its document hierarchy as the visual authority.',
-        affected_documents: ['Agent.md', 'DESIGN.md'],
-        recommendation: 'Ensure Agent.md establishes DESIGN.md as the sole visual/interaction authority.',
-      })
+  if (agent && design && !agent.includes('DESIGN.md')) {
+    issues.push({
+      severity: 'MEDIUM',
+      category: 'AGENT_DESIGN_HIERARCHY_MISSING',
+      description: 'Agent.md does not establish DESIGN.md in its document hierarchy as the visual authority.',
+      affected_documents: ['Agent.md', 'DESIGN.md'],
+      recommendation: 'Ensure Agent.md establishes DESIGN.md as the sole visual/interaction authority.',
+    })
+  }
+
+  issues.push(...confirmedStackIssues(artifacts, contextJson))
+  if (backlog) {
+    const includedPaths = new Set(artifacts.map((artifact) => normalizeDocPath(artifact.path)))
+    const explicitReferences = backlog.content.matchAll(/^(?:\*\*Relevant Docs:\*\*|Relevant Docs:)\s*([^\n]*)$/gim)
+    for (const [, line] of explicitReferences) {
+      for (const rawPath of line.split(/[,;]/)) {
+        const path = rawPath.trim().replace(/^`|`$/g, '')
+        const normalized = normalizeDocPath(path)
+        if (!/\.md$/i.test(path) || normalized === 'readme.md' || includedPaths.has(normalized)) continue
+        const existingIssue = issues.find((issue) =>
+          issue.category === 'INVALID_BACKLOG_DOC_REF' && normalizeDocPath(issue.affected_documents[1] ?? '') === normalized,
+        )
+        if (existingIssue) {
+          existingIssue.severity = 'HIGH'
+          existingIssue.classification = 'BLOCKER'
+          existingIssue.recommendation = 'Remove the reference or include the planned document, then rerun validation.'
+          continue
+        }
+        issues.push({
+          severity: 'HIGH',
+          classification: 'BLOCKER',
+          category: 'INVALID_BACKLOG_DOC_REF',
+          description: `${backlog.path} references a document that is not included in the current pack: ${path}`,
+          affected_documents: [backlog.path, path],
+          recommendation: 'Remove the reference or include the planned document, then rerun validation.',
+        })
+      }
     }
   }
 
-  // Calculate consistency score
-  const highCount = issues.filter((i) => i.severity === 'HIGH').length
-  const medCount = issues.filter((i) => i.severity === 'MEDIUM').length
-  const lowCount = issues.filter((i) => i.severity === 'LOW').length
-
-  const score = Math.max(0, 100 - (highCount * 25 + medCount * 10 + lowCount * 5))
+  const highCount = issues.filter((issue) => issue.severity === 'HIGH').length
+  const mediumCount = issues.filter((issue) => issue.severity === 'MEDIUM').length
+  const lowCount = issues.filter((issue) => issue.severity === 'LOW').length
+  const score = Math.max(0, 100 - highCount * 25 - mediumCount * 10 - lowCount * 5)
   const isConsistent = score >= 80
-
   return finalizeReport({
     isConsistent,
     score,
@@ -331,15 +452,12 @@ export async function auditProjectConsistency({
   })
 
   if (!project) throw new Error('Project not found')
-
   const artifacts = getCurrentPackArtifacts(project)
+  const currentContextJson = project.contexts[0]?.contentJson ?? ''
   const deterministicReport = addStructuralIntegrityBlockers(
-    validateRuleBasedConsistency(artifacts),
+    addBacklogReferenceBlockers(validateRuleBasedConsistency(artifacts, currentContextJson), artifacts),
     artifacts,
   )
-
-  // Deterministic validation is authoritative for known safety checks and
-  // allows export validation to complete even when the optional AI audit fails.
   const providerConfig = getProviderConfig(userId)
   if (!providerConfig || artifacts.length === 0) return deterministicReport
 
@@ -351,23 +469,18 @@ export async function auditProjectConsistency({
   const userPrompt = buildConsistencyValidatorUserPrompt(
     project.name,
     JSON.stringify(artifactsSummary),
-    project.contexts[0]?.contentJson,
+    currentContextJson,
   )
 
   try {
     const aiReport = await withTimeout(
-      provider.generateStructured(
-        userPrompt,
-        ConsistencyReportSchema,
-        {
-          system: CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
-          maxTokens: 2048,
-          temperature: 0.1,
-        },
-      ),
+      provider.generateStructured(userPrompt, ConsistencyReportSchema, {
+        system: CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
+        maxTokens: 2048,
+        temperature: 0.1,
+      }),
       AI_AUDIT_TIMEOUT_MS,
     )
-
     return mergeConsistencyReports(deterministicReport, aiReport)
   } catch {
     return deterministicReport

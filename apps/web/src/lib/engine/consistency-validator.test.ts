@@ -102,16 +102,130 @@ describe('Consistency Validator Schema & Prompt', () => {
 })
 
 describe('Rule-Based Consistency Validator', () => {
-  it('detects database mismatch between PRD and Architecture', () => {
-    const artifacts = [
-      { type: 'PRD', path: 'PRD.md', content: 'We will use MongoDB for user data.' },
-      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'Database: PostgreSQL + Prisma' },
-    ]
+  it('blocks a declared database that contradicts confirmed canonical context', () => {
+    const context = JSON.stringify({
+      stack_preferences: {
+        database: { value: 'PostgreSQL', provenance: 'confirmed' },
+        frontend: { value: 'React and TypeScript', provenance: 'confirmed' },
+      },
+    })
+    const report = validateRuleBasedConsistency([
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'Database: SQLite\nFrontend: React and TypeScript' },
+    ], context)
 
-    const report = validateRuleBasedConsistency(artifacts)
-    expect(report.isConsistent).toBe(false)
-    expect(report.issues).toHaveLength(1)
-    expect(report.issues[0]?.category).toBe('DATABASE_MISMATCH')
+    expect(report.blocksExport).toBe(true)
+    expect(report.issues).toContainEqual(expect.objectContaining({
+      category: 'DATABASE_MISMATCH',
+      classification: 'BLOCKER',
+      affected_documents: ['ARCHITECTURE.md'],
+    }))
+    expect(report.issues.some((issue) => issue.category === 'STACK_MISMATCH')).toBe(false)
+  })
+
+  it('does not infer a stack blocker from assumed context or unstructured mentions', () => {
+    const context = JSON.stringify({
+      stack_preferences: { database: { value: 'PostgreSQL', provenance: 'assumed' } },
+    })
+    const report = validateRuleBasedConsistency([
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'The import job may read old SQLite exports.' },
+    ], context)
+
+    expect(report.blocksExport).toBe(false)
+    expect(report.issues).toEqual([])
+  })
+
+  it('blocks explicit stack declarations that contradict confirmed context', () => {
+    const context = JSON.stringify({
+      stack_preferences: {
+        frontend: { value: 'Next.js 16', provenance: 'confirmed' },
+        backend: { value: 'Node.js', provenance: 'confirmed' },
+        database: { value: 'PostgreSQL', provenance: 'confirmed' },
+      },
+    })
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'ARCHITECTURE',
+        path: 'ARCHITECTURE.md',
+        content: 'Frontend: Vue\nBackend: Python\nDatabase: MySQL',
+      },
+    ], context)
+
+    expect(report.issues.filter((issue) => issue.classification === 'BLOCKER')).toHaveLength(3)
+    expect(report.blocksExport).toBe(true)
+  })
+
+  it('recognizes Next.js as matching a confirmed frontend framework', () => {
+    const context = JSON.stringify({
+      stack_preferences: { frontend: { value: 'Next.js 16', provenance: 'confirmed' } },
+    })
+    const report = validateRuleBasedConsistency([
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'Frontend: Next.js 16 and TypeScript' },
+    ], context)
+
+    expect(report.issues).toEqual([])
+  })
+
+  it('does not treat technology mentions outside labeled declarations as stack conflicts', () => {
+    const context = JSON.stringify({
+      stack_preferences: { database: { value: 'PostgreSQL', provenance: 'confirmed' } },
+    })
+    const report = validateRuleBasedConsistency([
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'The migration guide explains how SQLite data is imported.' },
+    ], context)
+
+    expect(report.issues).toEqual([])
+  })
+
+  it('accepts canonical paths when an explicit backlog reference uses a leading dot segment', () => {
+    const report = validateRuleBasedConsistency([
+      { type: 'BACKLOG', path: 'BACKLOG.md', content: '**Relevant Docs:** ./Architecture.md' },
+      { type: 'ARCHITECTURE', path: 'Architecture.md', content: '# Architecture' },
+    ])
+
+    expect(report.issues).toEqual([])
+  })
+
+  it('blocks a missing document in an explicit backlog relevant-docs entry', () => {
+    const report = validateRuleBasedConsistency([
+      { type: 'PRD', path: 'PRD.md', content: '# Product requirements' },
+      { type: 'BACKLOG', path: 'BACKLOG.md', content: '**Relevant Docs:** PRD.md, SRS.md' },
+    ])
+
+    expect(report.blocksExport).toBe(true)
+    expect(report.issues).toContainEqual(expect.objectContaining({
+      category: 'INVALID_BACKLOG_DOC_REF',
+      classification: 'BLOCKER',
+      affected_documents: ['BACKLOG.md', 'SRS.md'],
+    }))
+  })
+
+  it('accepts confirmed stack matches and its documented default alias', () => {
+    const context = JSON.stringify({
+      stack_preferences: { database: { value: 'PostgreSQL', provenance: 'confirmed' } },
+    })
+    const report = validateRuleBasedConsistency([
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'Database: PostgreSQL' },
+    ], context)
+
+    expect(report.blocksExport).toBe(false)
+    expect(report.issues).toEqual([])
+  })
+
+  it('deduplicates explicit backlog references after normalization', () => {
+    const report = validateRuleBasedConsistency([
+      { type: 'BACKLOG', path: 'BACKLOG.md', content: '**Relevant Docs:** ./UNKNOWN.md, UNKNOWN.md' },
+    ])
+
+    expect(report.issues.filter((issue) => issue.category === 'INVALID_BACKLOG_DOC_REF')).toHaveLength(1)
+  })
+
+  it('detects database mismatch between PRD and Architecture', () => {
+    const report = validateRuleBasedConsistency([
+      { type: 'PRD', path: 'PRD.md', content: 'Database: MongoDB' },
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: 'Database: PostgreSQL' },
+    ])
+
+    expect(report.issues).toContainEqual(expect.objectContaining({ category: 'DATABASE_MISMATCH' }))
   })
 
   it('detects invalid document reference in Backlog', () => {
@@ -401,6 +515,9 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
       contexts: [
         {
           id: 'context-current',
+          contentJson: JSON.stringify({
+            stack_preferences: { database: { value: 'PostgreSQL', provenance: 'confirmed' } },
+          }),
           artifactPlans: [
             { type: 'PRD', path: 'PRD.md', isRequired: true },
             { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', isRequired: true },
@@ -438,9 +555,9 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
       auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' }),
     ).resolves.toMatchObject({
       isConsistent: false,
-      blocksExport: true,
+      blocksExport: false,
       auditMode: 'deterministic-only',
-      issues: [expect.objectContaining({ category: 'DATABASE_MISMATCH' })],
+      issues: [expect.objectContaining({ category: 'DATABASE_MISMATCH', classification: 'WARNING' })],
     })
   })
 
@@ -506,6 +623,60 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
     expect(result.auditMode).toBe('ai-assisted')
     expect(result.blocksExport).toBe(false)
     expect(result.issues[0]?.classification).toBe('WARNING')
+  })
+
+  it('preserves deterministic stack blockers even when the AI report says export is safe', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+    const { createProvider } = await import('@/lib/ai/provider')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Confirmed Stack Project',
+      contexts: [{
+        id: 'context-current',
+        contentJson: JSON.stringify({
+          stack_preferences: { database: { value: 'PostgreSQL', provenance: 'confirmed' } },
+        }),
+        artifactPlans: [
+          { type: 'PRD', path: 'PRD.md', isRequired: true },
+          { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', isRequired: true },
+        ],
+      }],
+      artifacts: [
+        { contextId: 'context-current', type: 'PRD', path: 'PRD.md', content: '# Product', status: 'READY' },
+        {
+          contextId: 'context-current',
+          type: 'ARCHITECTURE',
+          path: 'ARCHITECTURE.md',
+          content: `${VALID_ARCHITECTURE}\nDatabase: SQLite`,
+          status: 'READY',
+        },
+      ],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'ANTHROPIC',
+      model: 'test-model',
+      apiKey: 'test-key',
+    } as never)
+    vi.mocked(createProvider).mockReturnValueOnce({
+      generateStructured: vi.fn().mockResolvedValue({
+        isConsistent: true,
+        blocksExport: false,
+        score: 100,
+        issues: [],
+        summary: 'AI found no export blockers.',
+      }),
+    } as never)
+
+    const result = await auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(result.blocksExport).toBe(true)
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      category: 'DATABASE_MISMATCH',
+      classification: 'BLOCKER',
+    }))
   })
 
   it('blocks export when a required artifact is structurally incomplete', async () => {

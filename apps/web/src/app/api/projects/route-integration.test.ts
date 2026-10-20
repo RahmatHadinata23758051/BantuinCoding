@@ -547,10 +547,13 @@ describe('BK-031 Route Integration, Security, and Recovery', () => {
       })
       mocks.auditProjectConsistency.mockResolvedValueOnce({
         isConsistent: false,
+        blocksExport: true,
+        auditMode: 'deterministic-only',
         score: 55,
         issues: [
-          { category: 'DATABASE_MISMATCH', description: 'PRD specifies PostgreSQL while Architecture specifies MongoDB', severity: 'HIGH', affected_documents: ['PRD.md', 'ARCHITECTURE.md'], recommendation: 'Align database choices across both documents.' },
+          { category: 'DATABASE_MISMATCH', description: 'PRD specifies PostgreSQL while Architecture specifies MongoDB', severity: 'HIGH', classification: 'BLOCKER', affected_documents: ['PRD.md', 'ARCHITECTURE.md'], recommendation: 'Align database choices across both documents.' },
         ],
+        summary: 'Confirmed database contradiction.',
       })
       mocks.updateProject.mockResolvedValueOnce({ id: projectId, status: 'READY' })
 
@@ -586,8 +589,11 @@ describe('BK-031 Route Integration, Security, and Recovery', () => {
       })
       mocks.auditProjectConsistency.mockResolvedValueOnce({
         isConsistent: true,
+        blocksExport: false,
+        auditMode: 'deterministic-only',
         score: 100,
         issues: [],
+        summary: 'Consistent after correction.',
       })
       mocks.updateProject.mockResolvedValueOnce({ id: projectId, status: 'EXPORTABLE' })
 
@@ -613,6 +619,53 @@ describe('BK-031 Route Integration, Security, and Recovery', () => {
       )
       expect(reExportRes.status).toBe(200)
       expect(reExportRes.headers.get('Content-Type')).toBe('application/zip')
+    })
+
+    it('keeps a semantically uncertain finding visible but allows export under the advisory policy', async () => {
+      mocks.requireProjectAction.mockResolvedValueOnce({ id: projectId, status: 'READY' })
+      mocks.getProjectReadiness.mockResolvedValueOnce({
+        isReady: true,
+        requiredTypes: ['PRD', 'ARCHITECTURE'],
+        missingTypes: [],
+        blockingTypes: [],
+      })
+      mocks.auditProjectConsistency.mockResolvedValueOnce({
+        isConsistent: true,
+        blocksExport: false,
+        auditMode: 'ai-assisted',
+        score: 75,
+        issues: [{
+          category: 'TERMINOLOGY_MISMATCH',
+          description: 'AI detected a possible terminology conflict requiring user judgment.',
+          severity: 'HIGH',
+          classification: 'WARNING',
+          affected_documents: ['PRD.md', 'ARCHITECTURE.md'],
+          recommendation: 'Review whether the terms represent the same domain entity.',
+        }],
+        summary: 'One semantic finding is advisory under the current policy.',
+      })
+      mocks.updateProject.mockResolvedValueOnce({ id: projectId, status: 'EXPORTABLE' })
+
+      const validateRes = await validateRoute(
+        jsonRequest(`http://localhost/api/projects/${projectId}/validate`, 'POST'),
+        params,
+      )
+      expect(validateRes.status).toBe(200)
+      const validateJson = await parseBody<{ report: { blocksExport: boolean; issues: Array<{ classification: string }> } }>(validateRes)
+      expect(validateJson.report.blocksExport).toBe(false)
+      expect(validateJson.report.issues[0]?.classification).toBe('WARNING')
+      expect(mocks.updateProject).toHaveBeenCalledWith('user-integration', projectId, { status: 'EXPORTABLE' })
+
+      mocks.requireProjectAction.mockResolvedValueOnce({ id: projectId, status: 'EXPORTABLE' })
+      mocks.exportProjectZip.mockResolvedValueOnce({
+        filename: 'Reviewed-Advisory-Pack.zip',
+        buffer: Buffer.from('PK\x03\x04clean-zip'),
+      })
+      const exportRes = await exportRoute(
+        new NextRequest(`http://localhost/api/projects/${projectId}/export`),
+        params,
+      )
+      expect(exportRes.status).toBe(200)
     })
 
     it('promotes project to EXPORTABLE and permits export when validation yields only non-blocking advisory warnings', async () => {
