@@ -22,6 +22,7 @@ export const ConsistencyIssueSchema = z.object({
     'AGENT_DESIGN_HIERARCHY_MISSING',
     'CONTRAST_WARNING',
     'DESIGN_TOKEN_MISMATCH',
+    'STRUCTURAL_INTEGRITY',
   ]),
   description: z.string(),
   affected_documents: z.array(z.string()),
@@ -53,6 +54,7 @@ export function isBlockerIssue(issue: {
   if (issue.classification === 'WARNING') return false
   if (issue.category === 'SECRET_LEAKAGE') return true
   if (issue.category === 'FATAL_ARCHITECTURE_CONTRADICTION') return true
+  if (issue.category === 'STRUCTURAL_INTEGRITY') return true
   const isHighSeverity = issue.severity === 'HIGH' || (issue.severity as string) === 'error'
   if (
     (issue.category === 'STACK_MISMATCH' || issue.category === 'DATABASE_MISMATCH') &&
@@ -130,6 +132,7 @@ CHECKS TO PERFORM:
 7. Authoritative decisions: Verify that generated documents strictly follow [CONFIRMED] canonical decisions and constraints, and do not contradict them.
 8. DESIGN.md color contrast: report advisory findings only when a confidently parsed foreground/background token pair falls below WCAG 2.1 AA targets. Do not infer token roles when names or formats are ambiguous.
 9. DESIGN.md token parity: report when a clearly paired color token differs between YAML front matter and the :root CSS block; if either representation is ambiguous or cannot be parsed safely, do not report a mismatch.
+10. Structural integrity: do not assess document completeness; deterministic validation handles this independently.
 
 RESPONSE CONTRACT:
 Return one JSON object with isConsistent, score, issues, and summary. Each issue must include severity (HIGH, MEDIUM, or LOW), category, description, affected_documents, and recommendation. Only label a finding BLOCKER when the supplied documents conclusively establish genuine credential leakage or a fatal, confirmed architecture contradiction that makes the stated product impossible to build. All other findings are WARNING. Do not label speculative or inferred findings as blockers. Do not report secrets' values.

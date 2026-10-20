@@ -11,7 +11,7 @@ import { getProjectReadiness, recomputeProjectReadiness } from './readiness-serv
 function projectWith(options: {
   contextId?: string
   requiredTypes?: string[]
-  artifacts?: Array<{ type: string; contextId: string; status: string }>
+  artifacts?: Array<{ type: string; contextId: string; status: string; content?: string }>
 }) {
   const contextId = options.contextId ?? 'ctx-current'
   return {
@@ -52,6 +52,22 @@ describe('project readiness', () => {
       artifacts: [{ type: 'PRD', contextId: 'ctx-current', status }],
     }))
     await expect(getProjectReadiness('u-1', 'p-1')).resolves.toMatchObject({ isReady: true })
+  })
+
+  it('blocks a READY architecture artifact with missing required sections', async () => {
+    dbMock.project.findFirst.mockResolvedValue(projectWith({
+      requiredTypes: ['ARCHITECTURE'],
+      artifacts: [{
+        type: 'ARCHITECTURE',
+        contextId: 'ctx-current',
+        status: 'READY',
+        content: '## 1. Overview\\n## 2. Stack\\n## 3. Components\\n## 4. Data flow\\n### 4.1 Sync\\n### 4.2 Webhook',
+      }],
+    }))
+    await expect(getProjectReadiness('u-1', 'p-1')).resolves.toMatchObject({
+      isReady: false,
+      blockingTypes: ['ARCHITECTURE'],
+    })
   })
 
   it.each(['FAILED', 'OUTDATED', 'GENERATING', 'NOT_GENERATED'])(

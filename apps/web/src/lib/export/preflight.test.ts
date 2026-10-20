@@ -7,6 +7,8 @@ vi.mock('@repo/db', () => ({
   },
 }))
 
+const VALID_ARCH_SKELETON = Array.from({ length: 8 }, (_, i) => `## ${i + 1}. Section ${i + 1}`).join('\n')
+
 const makeArtifact = (type: string, path: string, content: string, status = 'READY', contextId = 'ctx-1') => ({
   type,
   path,
@@ -15,10 +17,16 @@ const makeArtifact = (type: string, path: string, content: string, status = 'REA
   contextId,
 })
 
-const makeProject = (content: string) => ({
+const makeProject = (content: string, options?: { raw?: boolean }) => ({
   name: 'Test Project',
   contexts: [{ id: 'ctx-1', artifactPlans: [{ type: 'ARCHITECTURE' }] }],
-  artifacts: [makeArtifact('ARCHITECTURE', 'ARCHITECTURE.md', content)],
+  artifacts: [
+    makeArtifact(
+      'ARCHITECTURE',
+      'ARCHITECTURE.md',
+      options?.raw ? content : `${VALID_ARCH_SKELETON}\n${content}`,
+    ),
+  ],
 })
 
 describe('Export preflight', () => {
@@ -40,6 +48,21 @@ describe('Export preflight', () => {
     expect(() => validateExportPreflight(project)).toThrow('Missing or incomplete: ARCHITECTURE')
   })
 
+  it('blocks a persisted READY architecture document that ends at section 4.2', () => {
+    const content = [
+      '## 1. Overview',
+      '## 2. Stack',
+      '## 3. Components',
+      '## 4. Data Flow',
+      '### 4.1 Sync',
+      '### 4.2 Webhook',
+      'Truncated content',
+    ].join('\n')
+    expect(() => validateExportPreflight(makeProject(content, { raw: true }))).toThrow(
+      'Artifact ARCHITECTURE.md is structurally incomplete: Missing required section 5 of 8.',
+    )
+  })
+
   it('uses the same preflight against the persisted current project', async () => {
     const { db } = await import('@repo/db')
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
@@ -56,6 +79,14 @@ describe('Export preflight', () => {
     const project = makeProject('# Architecture')
     project.artifacts[0]!.path = '../ARCHITECTURE.md'
     expect(() => validateExportPreflight(project)).toThrow('Path traversal security risk')
+  })
+
+  it('rejects an unclosed code fence on any artifact type', () => {
+    const project = makeProject('```ts\nconst x = 1', { raw: true })
+    project.contexts[0]!.artifactPlans[0]!.type = 'NOTES'
+    project.artifacts[0]!.type = 'NOTES'
+    project.artifacts[0]!.path = 'NOTES.md'
+    expect(() => validateExportPreflight(project)).toThrow('Unclosed fenced code block')
   })
 })
  

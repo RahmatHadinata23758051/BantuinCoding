@@ -1,6 +1,7 @@
 import { db } from '@repo/db'
 import type { ProjectStatus } from '@repo/types'
 import { updateProject } from '@/lib/projects/project-service'
+import { validateArtifactIntegrity } from '@/lib/engine/artifact-integrity'
 
 const USABLE_ARTIFACT_STATUSES = new Set(['READY', 'MODIFIED'])
 
@@ -51,8 +52,14 @@ export async function getProjectReadiness(
   )
   const blockingTypes = requiredTypes.filter((type) => {
     const artifact = artifactsByType.get(type)
+    const isMalformed = Boolean(
+      artifact &&
+        artifact.content !== undefined &&
+        (typeof artifact.content !== 'string' ||
+          validateArtifactIntegrity(type, artifact.content).length > 0),
+    )
     return Boolean(
-      (artifact && !USABLE_ARTIFACT_STATUSES.has(artifact.status)) ||
+      (artifact && (!USABLE_ARTIFACT_STATUSES.has(artifact.status) || isMalformed)) ||
         (!artifact && allArtifactsByType.has(type)),
     )
   })

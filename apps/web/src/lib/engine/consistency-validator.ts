@@ -3,6 +3,7 @@ import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
 import { scanContentForSecrets } from '@/lib/export/export-service'
 import { validateDesignTokensAndContrast } from '@/lib/engine/design-token-validator'
+import { validateArtifactIntegrity } from '@/lib/engine/artifact-integrity'
 import {
   CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
   ConsistencyReportSchema,
@@ -97,6 +98,35 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
   } finally {
     if (timeoutId) clearTimeout(timeoutId)
   }
+}
+
+function addStructuralIntegrityBlockers(
+  report: ConsistencyReportOutput,
+  artifacts: ConsistencyArtifact[],
+): ConsistencyReportOutput {
+  const structuralIssues: ConsistencyIssue[] = artifacts.flatMap((artifact) => {
+    const integrityIssues = validateArtifactIntegrity(artifact.type, artifact.content)
+    if (integrityIssues.length === 0) return []
+
+    return [{
+      severity: 'HIGH',
+      classification: 'BLOCKER',
+      category: 'STRUCTURAL_INTEGRITY',
+      description: `${artifact.path} is structurally incomplete: ${integrityIssues.join(' ')}`,
+      affected_documents: [artifact.path],
+      recommendation: `Regenerate ${artifact.path} and ensure required sections and code fences are complete.`,
+    }]
+  })
+
+  if (structuralIssues.length === 0) return report
+
+  return finalizeReport({
+    ...report,
+    isConsistent: false,
+    blocksExport: true,
+    issues: [...report.issues, ...structuralIssues],
+    summary: `Found ${report.issues.length + structuralIssues.length} consistency issues requiring attention.`,
+  }, report.auditMode)
 }
 
 function getCurrentPackArtifacts(project: {
@@ -303,7 +333,10 @@ export async function auditProjectConsistency({
   if (!project) throw new Error('Project not found')
 
   const artifacts = getCurrentPackArtifacts(project)
-  const deterministicReport = validateRuleBasedConsistency(artifacts)
+  const deterministicReport = addStructuralIntegrityBlockers(
+    validateRuleBasedConsistency(artifacts),
+    artifacts,
+  )
 
   // Deterministic validation is authoritative for known safety checks and
   // allows export validation to complete even when the optional AI audit fails.

@@ -25,6 +25,11 @@ vi.mock('@/lib/ai/provider', () => ({
   createProvider: vi.fn(),
 }))
 
+const VALID_ARCHITECTURE = Array.from(
+  { length: 8 },
+  (_, index) => `## ${index + 1}. Section ${index + 1}`,
+).join('\n')
+
 describe('Consistency Validator Schema & Prompt', () => {
   it('validates a valid ConsistencyReport object', () => {
     const reportData = {
@@ -308,7 +313,7 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
           contextId: 'context-current',
           type: 'ARCHITECTURE',
           path: 'ARCHITECTURE.md',
-          content: '# Architecture',
+          content: `${VALID_ARCHITECTURE}\n# Architecture`,
           status: 'READY',
         },
       ],
@@ -414,7 +419,7 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
           contextId: 'context-current',
           type: 'ARCHITECTURE',
           path: 'ARCHITECTURE.md',
-          content: 'PostgreSQL',
+          content: `${VALID_ARCHITECTURE}\nPostgreSQL`,
           status: 'READY',
         },
       ],
@@ -469,7 +474,7 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
           contextId: 'context-current',
           type: 'ARCHITECTURE',
           path: 'ARCHITECTURE.md',
-          content: '# Architecture\nConsistent stack',
+          content: `${VALID_ARCHITECTURE}\n# Architecture\nConsistent stack`,
           status: 'READY',
         },
       ],
@@ -501,5 +506,54 @@ describe('Consistency Validator Engine — auditProjectConsistency', () => {
     expect(result.auditMode).toBe('ai-assisted')
     expect(result.blocksExport).toBe(false)
     expect(result.issues[0]?.classification).toBe('WARNING')
+  })
+
+  it('blocks export when a required artifact is structurally incomplete', async () => {
+    const { db } = await import('@repo/db')
+    const { getProviderConfig } = await import('@/lib/byok/session-store')
+
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1',
+      userId: 'u-1',
+      name: 'Truncated Project',
+      contexts: [
+        {
+          id: 'context-current',
+          artifactPlans: [
+            { type: 'PRD', path: 'PRD.md', isRequired: true },
+            { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', isRequired: true },
+          ],
+        },
+      ],
+      artifacts: [
+        {
+          contextId: 'context-current',
+          type: 'PRD',
+          path: 'PRD.md',
+          content: '# PRD',
+          status: 'READY',
+        },
+        {
+          contextId: 'context-current',
+          type: 'ARCHITECTURE',
+          path: 'ARCHITECTURE.md',
+          content: '## 1. Overview\n## 2. Stack\n## 3. Components\n## 4. Data Flow\n### 4.1 Sync\n### 4.2 Webhook',
+          status: 'READY',
+        },
+      ],
+    } as never)
+
+    vi.mocked(getProviderConfig).mockReturnValueOnce(null)
+
+    const result = await auditProjectConsistency({ userId: 'u-1', projectId: 'p-1' })
+    expect(result.isConsistent).toBe(false)
+    expect(result.blocksExport).toBe(true)
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({
+        category: 'STRUCTURAL_INTEGRITY',
+        classification: 'BLOCKER',
+        affected_documents: ['ARCHITECTURE.md'],
+      }),
+    )
   })
 })

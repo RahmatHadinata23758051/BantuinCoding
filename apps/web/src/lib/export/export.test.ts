@@ -15,6 +15,8 @@ vi.mock('@repo/db', () => ({
   },
 }))
 
+const VALID_ARCH_SKELETON = Array.from({ length: 8 }, (_, i) => `## ${i + 1}. Section ${i + 1}`).join('\n')
+
 const currentContext = (types: string[]) => ({
   id: 'ctx-1',
   artifactPlans: types.map((type) => ({ type })),
@@ -168,7 +170,10 @@ describe('ZIP Export Engine — exportProjectZip', () => {
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
       id: 'p-1', userId: 'u-1', name: 'Acme SaaS App', targetAgent: 'CLAUDE_CODE', status: 'EXPORTABLE',
       contexts: [currentContext(['PRD', 'ARCHITECTURE'])],
-      artifacts: [artifact('PRD', 'PRD.md', '# PRD'), artifact('ARCHITECTURE', 'ARCHITECTURE.md', '# ARCH')],
+      artifacts: [
+        artifact('PRD', 'PRD.md', '# PRD'),
+        artifact('ARCHITECTURE', 'ARCHITECTURE.md', `${VALID_ARCH_SKELETON}\n# ARCH`),
+      ],
     } as never)
 
     const result = await exportProjectZip({ userId: 'u-1', projectId: 'p-1' })

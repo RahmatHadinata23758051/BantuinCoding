@@ -1,4 +1,5 @@
 import { db } from '@repo/db'
+import { validateArtifactIntegrity } from '@/lib/engine/artifact-integrity'
 
 /**
  * Validates file path inside ZIP pack to prevent path traversal vulnerability.
@@ -152,6 +153,10 @@ export function validateExportPreflight(project: ExportPreflightProject): Export
     }
     normalizedPaths.add(safePath)
     scanContentForSecrets(artifact.content, safePath)
+    const integrityIssues = validateArtifactIntegrity(artifact.type, artifact.content)
+    if (integrityIssues.length > 0) {
+      throw new Error(`Artifact ${safePath} is structurally incomplete: ${integrityIssues.join(' ')}`)
+    }
   }
 
   if (!normalizedPaths.has('README.md')) {
