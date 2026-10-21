@@ -560,6 +560,7 @@ class OpenAIProvider extends BaseProvider {
       model: this.config.model,
       max_tokens: options.maxTokens ?? 4096,
       temperature: options.temperature ?? 0.3,
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemContent },
         { role: 'user', content: prompt },
