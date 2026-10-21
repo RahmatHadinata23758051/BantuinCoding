@@ -67,6 +67,22 @@ describe('validateBacklogQuality', () => {
     expect(errors).toEqual([])
   })
 
+  it('accepts an affirmative source mention alongside a negated mention', () => {
+    const errors = validateBacklogQuality(phase({
+      title: 'Persist records with Prisma',
+      description: 'Use Prisma for persistence.',
+      acceptance_criteria: ['The confirmed Prisma database layer meets the requirements.'],
+    }), {
+      plannedDocumentPaths: ['PRD.md'],
+      sourceTexts: ['Do not use Prisma for new projects. The existing system uses Prisma for persistence.'],
+      confirmedContextJson: JSON.stringify({
+        stack_preferences: { database: { value: 'PostgreSQL + Prisma', provenance: 'confirmed' } },
+      }),
+    })
+
+    expect(errors).toEqual([])
+  })
+
   it('rejects unsupported tooling, unknown document references, and filler criteria', () => {
     const errors = validateBacklogQuality(phase({
       title: 'Build with Prisma and Zod',
