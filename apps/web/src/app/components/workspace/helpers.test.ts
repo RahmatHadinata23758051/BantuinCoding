@@ -5,6 +5,8 @@ import {
   formatLabel,
   formatStatus,
   getContextProvenanceCounts,
+  getDocumentReadiness,
+  getExportBlockedReason,
   getSectionPanelId,
   getSectionTabId,
   getSectionTabKey,
@@ -154,6 +156,177 @@ describe('Workspace helpers', () => {
       expect(countContextItems('hello')).toBe(1)
       expect(countContextItems({ val: 'something', provenance: 'confirmed' })).toBe(1)
       expect(countContextItems({ a: 'one', b: 'two' })).toBe(2)
+    })
+  })
+
+  describe('getDocumentReadiness', () => {
+    it('correctly reports partial readiness with missing planned documents', () => {
+      const result = getDocumentReadiness({
+        requiredArtifactTypes: ['PRD', 'ARCHITECTURE', 'AGENT', 'BACKLOG', 'DESIGN'],
+        artifacts: [
+          { type: 'PRD', status: 'READY' },
+          { type: 'AGENT', status: 'READY' },
+          { type: 'BACKLOG', status: 'READY' },
+        ],
+        plannedDocuments: [
+          { id: 'PRD', type: 'PRD', filename: 'PRD.md', status: 'READY' },
+          { id: 'ARCHITECTURE', type: 'ARCHITECTURE', filename: 'ARCHITECTURE.md', status: 'WAITING' },
+          { id: 'DESIGN', type: 'DESIGN', filename: 'DESIGN.md', status: 'WAITING' },
+          { id: 'AGENT', type: 'AGENT', filename: 'Agent.md', status: 'READY' },
+          { id: 'BACKLOG', type: 'BACKLOG', filename: 'BACKLOG.md', status: 'READY' },
+        ],
+      })
+
+      expect(result.readyCount).toBe(3)
+      expect(result.totalCount).toBe(5)
+      expect(result.attentionCount).toBe(2)
+      expect(result.retryableCount).toBe(2) // ARCHITECTURE & DESIGN
+      expect(result.pendingDocuments).toHaveLength(2)
+      expect(result.pendingDocuments.map((d) => d.type)).toEqual(['ARCHITECTURE', 'DESIGN'])
+    })
+
+    it('correctly reports a complete required pack', () => {
+      const result = getDocumentReadiness({
+        requiredArtifactTypes: ['PRD', 'AGENT', 'BACKLOG'],
+        artifacts: [
+          { type: 'PRD', status: 'READY' },
+          { type: 'AGENT', status: 'READY' },
+          { type: 'BACKLOG', status: 'MODIFIED' },
+        ],
+        plannedDocuments: [
+          { id: 'PRD', type: 'PRD', filename: 'PRD.md', status: 'READY' },
+          { id: 'AGENT', type: 'AGENT', filename: 'Agent.md', status: 'READY' },
+          { id: 'BACKLOG', type: 'BACKLOG', filename: 'BACKLOG.md', status: 'MODIFIED' },
+        ],
+      })
+
+      expect(result.readyCount).toBe(3)
+      expect(result.totalCount).toBe(3)
+      expect(result.attentionCount).toBe(0)
+      expect(result.retryableCount).toBe(0)
+      expect(result.pendingDocuments).toHaveLength(0)
+    })
+
+    it('does not inflate required totalCount with optional extra artifacts', () => {
+      const result = getDocumentReadiness({
+        requiredArtifactTypes: ['PRD', 'AGENT'],
+        artifacts: [
+          { type: 'PRD', status: 'READY' },
+          { type: 'AGENT', status: 'READY' },
+          { type: 'CUSTOM_DOC', status: 'READY' },
+        ],
+        plannedDocuments: [
+          { id: 'PRD', type: 'PRD', filename: 'PRD.md', status: 'READY' },
+          { id: 'AGENT', type: 'AGENT', filename: 'Agent.md', status: 'READY' },
+        ],
+      })
+
+      expect(result.readyCount).toBe(2)
+      expect(result.totalCount).toBe(2)
+      expect(result.attentionCount).toBe(0)
+    })
+
+    it('distinguishes failed existing artifacts from missing pending documents', () => {
+      const result = getDocumentReadiness({
+        requiredArtifactTypes: ['PRD', 'ARCHITECTURE', 'AGENT'],
+        artifacts: [
+          { type: 'PRD', status: 'READY' },
+          { type: 'ARCHITECTURE', status: 'FAILED' },
+        ],
+        plannedDocuments: [
+          { id: 'PRD', type: 'PRD', filename: 'PRD.md', status: 'READY' },
+          { id: 'ARCHITECTURE', type: 'ARCHITECTURE', filename: 'ARCHITECTURE.md', status: 'FAILED' },
+          { id: 'AGENT', type: 'AGENT', filename: 'Agent.md', status: 'WAITING' },
+        ],
+      })
+
+      expect(result.readyCount).toBe(1)
+      expect(result.totalCount).toBe(3)
+      expect(result.attentionCount).toBe(2)
+      // Only AGENT is pending (has no artifact); ARCHITECTURE has a failed artifact
+      expect(result.pendingDocuments).toHaveLength(1)
+      expect(result.pendingDocuments[0].type).toBe('AGENT')
+      expect(result.retryableCount).toBe(2) // ARCHITECTURE (failed) + AGENT (missing)
+    })
+
+    it('does not include SRS in retryableCount', () => {
+      const result = getDocumentReadiness({
+        requiredArtifactTypes: ['PRD', 'SRS'],
+        artifacts: [],
+        plannedDocuments: [
+          { id: 'PRD', type: 'PRD', filename: 'PRD.md', status: 'WAITING' },
+          { id: 'SRS', type: 'SRS', filename: 'SRS.md', status: 'WAITING' },
+        ],
+      })
+
+      expect(result.retryableCount).toBe(1) // only PRD, not SRS
+      expect(result.pendingDocuments).toHaveLength(2)
+    })
+
+    it('falls back gracefully when requiredArtifactTypes is empty', () => {
+      const result = getDocumentReadiness({
+        requiredArtifactTypes: [],
+        artifacts: [
+          { type: 'PRD', status: 'READY' },
+          { type: 'AGENT', status: 'FAILED' },
+        ],
+        plannedDocuments: [],
+      })
+
+      expect(result.readyCount).toBe(1)
+      expect(result.totalCount).toBe(2)
+      expect(result.attentionCount).toBe(1)
+      expect(result.pendingDocuments).toHaveLength(0)
+    })
+  })
+
+  describe('getExportBlockedReason', () => {
+    it('returns null when export is allowed', () => {
+      expect(
+        getExportBlockedReason({
+          canExport: true,
+          hasAnyReadyArtifacts: true,
+          readyRequiredCount: 5,
+          totalRequiredCount: 5,
+          projectStatus: 'READY',
+        }),
+      ).toBeNull()
+    })
+
+    it('returns no-documents when zero ready artifacts exist', () => {
+      expect(
+        getExportBlockedReason({
+          canExport: false,
+          hasAnyReadyArtifacts: false,
+          readyRequiredCount: 0,
+          totalRequiredCount: 5,
+          projectStatus: 'READY',
+        }),
+      ).toBe('no-documents')
+    })
+
+    it('returns incomplete-pack when some required artifacts are missing', () => {
+      expect(
+        getExportBlockedReason({
+          canExport: false,
+          hasAnyReadyArtifacts: true,
+          readyRequiredCount: 3,
+          totalRequiredCount: 5,
+          projectStatus: 'READY',
+        }),
+      ).toBe('incomplete-pack')
+    })
+
+    it('returns project-not-ready when all required documents are ready but project status blocks export', () => {
+      expect(
+        getExportBlockedReason({
+          canExport: false,
+          hasAnyReadyArtifacts: true,
+          readyRequiredCount: 5,
+          totalRequiredCount: 5,
+          projectStatus: 'GENERATING',
+        }),
+      ).toBe('project-not-ready')
     })
   })
 })
