@@ -12,6 +12,7 @@ import {
 import {
   ArchitectureDocumentSchema,
   buildArchitectureGeneratorUserPrompt,
+  extractSystemGraphFromMarkdown,
   ARCHITECTURE_GENERATOR_SYSTEM_PROMPT,
 } from '@/lib/prompts/architecture-generator'
 import {
@@ -158,6 +159,46 @@ describe('Artifact Generation Prompts & Schemas', () => {
       markdown_content: '# ARCHITECTURE\n\nContent',
     })
     expect(result.success).toBe(true)
+  })
+
+  it('extracts components from section 3 and directed relationships from section 4 data flows', () => {
+    const graph = extractSystemGraphFromMarkdown([
+      '## 3. System Component Breakdown',
+      '### Web Client',
+      'Browser interface for project users.',
+      '### Project API',
+      'Validates and routes project requests.',
+      '## 4. Data Flow',
+      '### Project Creation Flow',
+      '1. Web Client submits a project request.',
+      '2. Project API validates and stores project data.',
+      '## 5. Data Model',
+    ].join('\n'))
+
+    expect(graph?.nodes.map(({ label }) => label)).toEqual(['Web Client', 'Project API'])
+    expect(graph?.edges).toEqual([{ source: 'web-client', target: 'project-api', label: 'Project Creation Flow' }])
+  })
+
+  it('extracts components from section 4 boundaries and directed relationships from section 7 data flows', () => {
+    const graph = extractSystemGraphFromMarkdown([
+      '## 4. Component Boundaries & Inter-Module Communication Contracts',
+      '### Checkout UI',
+      'Presents checkout to customers.',
+      '### Payment Service',
+      'Authorizes and records charges.',
+      '## 5. Data Model',
+      'Table definitions.',
+      '## 6. API Contracts',
+      'REST endpoints.',
+      '## 7. Critical Data Flows & Primary Sequences',
+      '### Payment Authorization Flow',
+      '1. Checkout UI sends a payment request.',
+      '2. Payment Service authorizes the transaction.',
+      '## 8. Deployment',
+    ].join('\n'))
+
+    expect(graph?.nodes.map(({ label }) => label)).toEqual(['Checkout UI', 'Payment Service'])
+    expect(graph?.edges).toEqual([{ source: 'checkout-ui', target: 'payment-service', label: 'Payment Authorization Flow' }])
   })
 
   it('validates a valid DESIGN document object', () => {
