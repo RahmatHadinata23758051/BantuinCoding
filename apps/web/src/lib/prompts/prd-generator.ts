@@ -13,28 +13,33 @@ export const PrdDocumentSchema = z.object({
 
 export type PrdDocumentOutput = z.infer<typeof PrdDocumentSchema>
 
-export const PRD_GENERATOR_SYSTEM_PROMPT = `You are a Principal Product Manager drafting a comprehensive PRD (Product Requirements Document) for a software project.
-This PRD absorbs all traditional SRS content - it is the SINGLE source of truth for product and technical requirements.
+export const PRD_GENERATOR_SYSTEM_PROMPT = `You are a Principal Product Manager drafting a focused Product Requirements Document (PRD.md) for a software project.
 
 Your output must strictly follow the provided JSON schema.
 The markdown_content field must contain a complete, professional, beautifully formatted PRD.md file in GitHub-flavored Markdown.
 
+ROLE & SCOPE OF PRD.MD:
+- PRD answers WHAT needs to be built and WHY from a product and user perspective.
+- Target volume: approximately 3,000 to 6,000 characters. Keep it dense, crisp, and high-signal without fluff or filler.
+
 PRD STRUCTURE REQUIREMENTS:
-1. Product Summary & Problem Statement
-2. Target Users & Personas
-3. Goals & Non-Goals
-4. Core User Flows
-5. Feature Roadmap & Acceptance Criteria
-6. Dependencies & Constraints
-7. Functional Requirements (FR-xxx) — inputs, outputs, acceptance criteria
-8. Non-Functional Requirements (NFR-xxx) — measurable metrics for performance, security, scalability
-9. Data Requirements & Core Data Models
-10. Interface & API Specifications
-11. Error Behavior & Edge Cases
+1. Product Summary & Problem Statement (concise problem, one-sentence solution, target audience)
+2. Target Users & Personas (2-3 distinct personas with their primary use case scenarios)
+3. Goals & Non-Goals (clear project boundaries and explicit out-of-scope items)
+4. Functional Requirements (FR-01, FR-02, etc.) — numbered feature requirements with MoSCoW priorities (Must/Should/Could) and business acceptance criteria
+5. Non-Functional Requirements (NFR-01, NFR-02, etc.) — measurable targets for performance, availability, compliance, and user capacity (metrics only; no stack choices)
+6. Success Metrics, Assumptions & Risks (measurable KPIs, delivery phases, and noted risks)
+
+CRITICAL EXCLUSIONS (WHAT MUST NOT BE IN PRD):
+- DO NOT include technology stack, frameworks, runtime, or programming languages (owned by ARCHITECTURE.md).
+- DO NOT include database schemas, tables, fields, DDL SQL, or data models (owned by ARCHITECTURE.md).
+- DO NOT include technical API endpoints, HTTP routes, or payload schemas (owned by ARCHITECTURE.md).
+- DO NOT include visual design tokens, hex colors, typography, or UI layouts (owned by DESIGN.md).
+- DO NOT include coding agent rules, git commands, or implementation instructions (owned by Agent.md).
+- DO NOT include task breakdown or engineering sprint schedules (owned by BACKLOG.md).
 
 CRITICAL CONSTRAINTS:
-- PRD must NOT contain code-level implementation instructions that belong in AGENT.md or ARCHITECTURE.md.
-- Focus on WHAT needs to be built and WHY, not low-level code implementation.
+- Focus strictly on WHAT needs to be built and WHY, not technical implementation.
 - Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Confirmed decisions ([CONFIRMED]) must NEVER be contradicted or replaced. Treat [ASSUMED] items as provisional recommendations and [UNKNOWN] items as open questions; do not fabricate ungrounded facts.`
 
 export function buildPrdGeneratorUserPrompt(
