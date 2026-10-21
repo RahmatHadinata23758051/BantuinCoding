@@ -42,6 +42,8 @@ import {
   formatDate,
   formatLabel,
   getContextProvenanceCounts,
+  getDocumentReadiness,
+  getExportBlockedReason,
   getSectionPanelId,
   getSectionTabId,
   hasContextData,
@@ -181,49 +183,32 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const attentionArtifacts = artifacts.filter(
     (artifact) => artifact.status !== 'READY' && artifact.status !== 'MODIFIED',
   )
+  const supportedRetryTypes = ['PRD', 'ARCHITECTURE', 'DESIGN', 'AGENT']
   const requiredDocumentTypes = initialData.requiredArtifactTypes.filter((type) =>
-    ['PRD', 'SRS', 'ARCHITECTURE', 'DESIGN', 'AGENT'].includes(type),
+    supportedRetryTypes.includes(type),
   )
   const retryableDocumentArtifacts = requiredDocumentTypes.filter((type) => {
     const artifact = artifacts.find((candidate) => candidate.type === type)
     return !artifact || (artifact.status !== 'READY' && artifact.status !== 'MODIFIED')
   })
   const retryableDocumentCount = retryableDocumentArtifacts.length
-  const allTasks = phases.flatMap((phase) => phase.tasks)
-  const readyTasks = allTasks.filter((task) => task.status === 'READY')
-  const blockedTasks = allTasks.filter((task) => task.status === 'BLOCKED')
-  const pendingClarifications = clarifications.filter((question) => question.status === 'PENDING')
-  const answeredClarifications = clarifications.filter((question) => question.status === 'ANSWERED')
-  const contextReady = hasContextData(projectContext)
-  const contextCategories = CONTEXT_CATEGORY_DEFINITIONS.map((category) => {
-    const categoryKeys = category.keys.filter((key) => Object.prototype.hasOwnProperty.call(projectContext ?? {}, key))
-    const counts = getContextProvenanceCounts(projectContext ?? {}, categoryKeys)
-    const itemCount = categoryKeys.reduce((total, key) => total + countContextItems(projectContext?.[key]), 0)
-
-    return { ...category, categoryKeys, counts, itemCount }
-  }).filter((category) => category.itemCount > 0)
-  const contextProvenanceCounts = contextCategories.reduce<ContextProvenanceCounts>(
-    (total, category) => ({
-      confirmed: total.confirmed + category.counts.confirmed,
-      assumed: total.assumed + category.counts.assumed,
-      unknown: total.unknown + category.counts.unknown,
-    }),
-    { confirmed: 0, assumed: 0, unknown: 0 },
-  )
-  const selectedContextCategory = contextCategories.find((category) => category.id === openContextCategory) ?? null
   const requiredArtifacts = initialData.requiredArtifactTypes
     .map((type) => artifacts.find((artifact) => artifact.type === type))
     .filter((artifact): artifact is WorkspaceArtifactItem => Boolean(artifact))
   const readyRequiredArtifacts = requiredArtifacts.filter(
     (artifact) => artifact.status === 'READY' || artifact.status === 'MODIFIED',
   )
-  // The export action first runs validation, so READY projects with a complete
-  // current pack must still be able to start that validation request.
   const canExport =
     (projectStatus === 'READY' || projectStatus === 'EXPORTABLE') &&
     initialData.requiredArtifactTypes.length > 0 &&
     readyRequiredArtifacts.length === initialData.requiredArtifactTypes.length
-
+  const exportBlockedReason = getExportBlockedReason({
+    canExport,
+    hasAnyReadyArtifacts: readyArtifacts.length > 0,
+    readyRequiredCount: readyRequiredArtifacts.length,
+    totalRequiredCount: initialData.requiredArtifactTypes.length,
+    projectStatus,
+  })
   const sidebarDocuments = (() => {
     const plannedTypes: { type: string; filename: string }[] = [
       { type: 'PRD', filename: 'PRD.md' },
@@ -246,6 +231,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
       if (artifact) {
         return {
           id: artifact.id || type,
+          type,
           filename: artifact.path.split('/').pop() ?? filename,
           status: artifact.status,
         }
@@ -272,11 +258,44 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
 
       return {
         id: type,
+        type,
         filename,
         status,
       }
     })
   })()
+  const documentReadiness = getDocumentReadiness({
+    requiredArtifactTypes: initialData.requiredArtifactTypes,
+    artifacts,
+    plannedDocuments: sidebarDocuments,
+  })
+  const pendingRequiredDocuments = documentReadiness.pendingDocuments.map(({ id, filename, status }) => ({
+    id,
+    filename,
+    status,
+  }))
+  const allTasks = phases.flatMap((phase) => phase.tasks)
+  const readyTasks = allTasks.filter((task) => task.status === 'READY')
+  const blockedTasks = allTasks.filter((task) => task.status === 'BLOCKED')
+  const pendingClarifications = clarifications.filter((question) => question.status === 'PENDING')
+  const answeredClarifications = clarifications.filter((question) => question.status === 'ANSWERED')
+  const contextReady = hasContextData(projectContext)
+  const contextCategories = CONTEXT_CATEGORY_DEFINITIONS.map((category) => {
+    const categoryKeys = category.keys.filter((key) => Object.prototype.hasOwnProperty.call(projectContext ?? {}, key))
+    const counts = getContextProvenanceCounts(projectContext ?? {}, categoryKeys)
+    const itemCount = categoryKeys.reduce((total, key) => total + countContextItems(projectContext?.[key]), 0)
+
+    return { ...category, categoryKeys, counts, itemCount }
+  }).filter((category) => category.itemCount > 0)
+  const contextProvenanceCounts = contextCategories.reduce<ContextProvenanceCounts>(
+    (total, category) => ({
+      confirmed: total.confirmed + category.counts.confirmed,
+      assumed: total.assumed + category.counts.assumed,
+      unknown: total.unknown + category.counts.unknown,
+    }),
+    { confirmed: 0, assumed: 0, unknown: 0 },
+  )
+  const selectedContextCategory = contextCategories.find((category) => category.id === openContextCategory) ?? null
 
   const [copiedPrompt, setCopiedPrompt] = useState(false)
   const [isBriefExpanded, setIsBriefExpanded] = useState(false)
@@ -517,8 +536,12 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     {
       id: 'documents',
       label: t('tabDocuments'),
-      value: attentionArtifacts.length > 0 ? t('needAttention', { count: attentionArtifacts.length }) : readyArtifacts.length > 0 ? t('docsReady', { ready: readyArtifacts.length, total: artifacts.length }) : t('noDocsGenerated'),
-      tone: attentionArtifacts.length > 0 ? 'attention' : readyArtifacts.length > 0 ? 'ready' : 'idle',
+      value: documentReadiness.attentionCount > 0
+        ? t('needAttention', { count: documentReadiness.attentionCount })
+        : documentReadiness.readyCount > 0
+          ? t('docsReady', { ready: documentReadiness.readyCount, total: documentReadiness.totalCount })
+          : t('noDocsGenerated'),
+      tone: documentReadiness.attentionCount > 0 ? 'attention' : documentReadiness.readyCount > 0 ? 'ready' : 'idle',
     },
     {
       id: 'backlog',
@@ -1964,9 +1987,11 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                 active={activeTab === 'documents'}
                 isGenerating={isGenerating}
                 artifacts={artifacts}
-                readyArtifactsCount={readyArtifacts.length}
-                attentionArtifactsCount={attentionArtifacts.length}
+                readyArtifactsCount={documentReadiness.totalCount > 0 ? documentReadiness.readyCount : readyArtifacts.length}
+                attentionArtifactsCount={documentReadiness.totalCount > 0 ? documentReadiness.attentionCount : attentionArtifacts.length}
+                requiredDocumentCount={documentReadiness.totalCount}
                 retryableDocumentCount={retryableDocumentCount}
+                pendingDocuments={pendingRequiredDocuments}
                 handleRegenerateIncompleteDocuments={handleRegenerateIncompleteDocuments}
                 handleGenerateAll={handleGenerateAll}
                 generateButton={generateButton}
@@ -1991,6 +2016,9 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
                 active={activeTab === 'export'}
                 isGenerating={isGenerating}
                 canExport={canExport}
+                blockedReason={exportBlockedReason}
+                readyRequiredCount={readyRequiredArtifacts.length}
+                totalRequiredCount={initialData.requiredArtifactTypes.length}
                 exportManifestArtifacts={exportManifestArtifacts}
                 exportFileCount={exportFileCount}
                 includesReadme={includesReadme}
