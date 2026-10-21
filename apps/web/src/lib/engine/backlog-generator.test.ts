@@ -453,7 +453,11 @@ describe('Backlog Generator Schema & Prompt', () => {
     }] }] })
     vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured })
 
-    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).rejects.toThrow('unsupported or conflicting technology/tool "Prisma"')
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' }))
+      .rejects.toMatchObject({ status: 502, message: expect.stringContaining('after a repair attempt') })
+    expect(generateStructured).toHaveBeenCalledTimes(2)
+    expect(generateStructured.mock.calls[1]?.[0]).toContain('unsupported or conflicting technology/tool "Prisma"')
+    expect(db.$transaction).not.toHaveBeenCalled()
   })
 
   it('accepts a supported tool that appears only in a late full-source section', async () => {
@@ -729,15 +733,17 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
     vi.mocked(getProviderConfig).mockReturnValueOnce({
       provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key',
     })
+    const generateStructured = vi.fn().mockResolvedValue({
+      phases: [{ name: 'Empty phase', order: 1, tasks: [] }],
+    })
     vi.mocked(createProvider).mockReturnValueOnce({
-      type: 'ANTHROPIC', testConnection: vi.fn(),
-      generateStructured: vi.fn().mockResolvedValueOnce({
-        phases: [{ name: 'Empty phase', order: 1, tasks: [] }],
-      }),
+      type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured,
     })
 
     await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' }))
-      .rejects.toThrow('Each backlog phase must contain at least one task')
+      .rejects.toMatchObject({ status: 502, message: expect.stringContaining('after a repair attempt') })
+    expect(generateStructured).toHaveBeenCalledTimes(2)
+    expect(generateStructured.mock.calls[1]?.[0]).toContain('Each backlog phase must contain at least one task')
     expect(dbMocks.tx.backlogPhase.deleteMany).not.toHaveBeenCalled()
     expect(db.$transaction).not.toHaveBeenCalled()
     expect(dbMocks.tx.artifact.update).toHaveBeenCalledWith({
