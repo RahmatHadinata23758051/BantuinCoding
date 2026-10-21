@@ -1,6 +1,22 @@
 import type { ContextProvenanceCounts } from './types'
 import { SENSITIVE_CONTEXT_KEY, SENSITIVE_CONTEXT_VALUE } from './constants'
 import type { WorkspaceSection } from '@/lib/navigation/workspace'
+import type { SystemGraphData } from '@repo/types'
+
+export function shouldShowDesignSystemGraph(
+  graph: SystemGraphData | null | undefined,
+  classification?: string | null,
+): boolean {
+  if (!classification || classification === 'LANDING_PAGE' || classification === 'STATIC_SITE') {
+    return false
+  }
+  if (!graph || !Array.isArray(graph.nodes) || graph.nodes.length < 2 || !Array.isArray(graph.edges)) {
+    return false
+  }
+
+  const nodeIds = new Set(graph.nodes.map(({ id }) => id))
+  return graph.edges.some((edge) => edge.source !== edge.target && nodeIds.has(edge.source) && nodeIds.has(edge.target))
+}
 
 export function getSectionTabKey(id: WorkspaceSection) {
   if (id === 'design-system') return 'tabDesignSystem'
