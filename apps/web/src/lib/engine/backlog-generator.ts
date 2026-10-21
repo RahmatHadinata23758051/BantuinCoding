@@ -149,7 +149,6 @@ export async function generateProjectBacklog({
     ...reference,
     content: summarizeBacklogReference(reference.content),
   }))
-  const referenceTexts = boundedReferences.map(({ content }) => content)
   const userPrompt = buildBacklogGeneratorUserPrompt(
     project.name,
     currentContextRecord.contentJson,
@@ -197,7 +196,7 @@ export async function generateProjectBacklog({
     }
     const qualityErrors = validateBacklogQuality(backlogOutput.phases, {
       plannedDocumentPaths,
-      sourceTexts: referenceTexts,
+      sourceTexts: references.map(({ content }) => content),
       confirmedContextJson: currentContextRecord.contentJson,
     })
     if (qualityErrors.length > 0) {
