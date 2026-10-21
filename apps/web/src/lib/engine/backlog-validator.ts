@@ -40,7 +40,8 @@ const STACK_AND_TOOL_TERMS = [
 ]
 
 function normalizeDocPath(path: string): string {
-  return path.trim().replace(/\\/g, '/').replace(/^(?:\.\/)+/, '').toLowerCase()
+  const normalized = path.trim().replace(/^[`'"]+|[`'"]+$/g, '').replace(/\\/g, '/').replace(/^(?:\.\/)+/, '').toLowerCase()
+  return normalized.replace(/(\.(?:md|markdown|json|ts|tsx|js|jsx|css|html|yaml|yml|toml|sql))(?:[\s#§:(].*)?$/i, '$1')
 }
 
 function isDocumentedRepositoryPath(path: string, sourceTexts: string[]): boolean {
