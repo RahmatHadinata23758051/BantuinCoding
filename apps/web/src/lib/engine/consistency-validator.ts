@@ -3,6 +3,7 @@ import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
 import { scanContentForSecrets } from '@/lib/export/export-service'
 import { validateDesignTokensAndContrast } from '@/lib/engine/design-token-validator'
+import { extractCssCustomProperties, isNonVisualDesign } from '@/lib/prompts/design-generator'
 import { validateArtifactIntegrity } from '@/lib/engine/artifact-integrity'
 import {
   CONSISTENCY_VALIDATOR_SYSTEM_PROMPT,
@@ -170,7 +171,8 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 }
 
 function normalizeDocPath(path: string): string {
-  return path.trim().replace(/\\/g, '/').replace(/^(?:\.\/)+/, '').toLowerCase()
+  const normalized = path.trim().replace(/^[`'"]+|[`'"]+$/g, '').replace(/\\/g, '/').replace(/^(?:\.\/)+/, '').toLowerCase()
+  return normalized.replace(/(\.(?:md|markdown|json|ts|tsx|js|jsx|css|html|yaml|yml|toml|sql))(?:[\s#§:(].*)?$/i, '$1')
 }
 
 function addBacklogReferenceBlockers(
@@ -186,7 +188,7 @@ function addBacklogReferenceBlockers(
     for (const item of line.split(/[,;]/)) {
       const path = item.trim().replace(/^`|`$/g, '')
       const normalizedPath = normalizeDocPath(path)
-      if (!/\.md$/i.test(path) || normalizedPath === 'readme.md' || includedPaths.has(normalizedPath)) continue
+      if (!normalizedPath.endsWith('.md') || normalizedPath === 'readme.md' || includedPaths.has(normalizedPath)) continue
       const alreadyReported = report.issues.some((issue) =>
         issue.category === 'INVALID_BACKLOG_DOC_REF' && normalizeDocPath(issue.affected_documents[1] ?? '') === normalizedPath,
       )
@@ -299,8 +301,8 @@ export function validateRuleBasedConsistency(
   if (backlog) {
     const relevantDocsLines = backlog.content.match(/(?:\*\*Relevant Docs:\*\*|Relevant Docs:)[^\n]*/gi)
     const rawRefs = relevantDocsLines
-      ? relevantDocsLines.flatMap((line) => line.match(/[A-Z0-9_\-]+\.md/gi) || [])
-      : backlog.content.match(/[A-Z0-9_\-]+\.md/gi) || []
+      ? relevantDocsLines.flatMap((line) => line.match(/[A-Z0-9_.\-/]+\.md(?![\w.-])/gi) || [])
+      : backlog.content.match(/[A-Z0-9_.\-/]+\.md(?![\w.-])/gi) || []
     const refsByNormalizedPath = new Map<string, string>()
     for (const ref of rawRefs) {
       const normalized = normalizeDocPath(ref)
@@ -336,24 +338,16 @@ export function validateRuleBasedConsistency(
 
   const design = docMap.get('DESIGN') || ''
   if (design) {
-    const hasFrontMatter = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(design.trim())
-    const hasRequiredTokens =
-      /colors\s*:/i.test(design) &&
-      /typography\s*:/i.test(design) &&
-      /rounded\s*:/i.test(design) &&
-      /spacing\s*:/i.test(design) &&
-      /iconography\s*:/i.test(design)
-    if (!hasFrontMatter || !hasRequiredTokens) {
+    if (!isNonVisualDesign(design) && !extractCssCustomProperties(design).size) {
       issues.push({
         severity: 'MEDIUM',
         category: 'INVALID_DESIGN_SYSTEM',
-        description: 'DESIGN.md is missing required machine-readable YAML front matter tokens (colors, typography, rounded, spacing, or iconography).',
+        description: 'DESIGN.md is missing its authoritative CSS :root token block.',
         affected_documents: ['DESIGN.md'],
-        recommendation: 'Ensure DESIGN.md starts with a YAML front matter block specifying colors, typography, rounded, spacing, and iconography tokens.',
+        recommendation: 'Define semantic CSS tokens in one :root block, or declare UI scope: none for a genuinely nonvisual project.',
       })
-    } else {
-      issues.push(...validateDesignTokensAndContrast(design))
     }
+    issues.push(...validateDesignTokensAndContrast(design))
   }
 
   const agent = docMap.get('AGENT') || ''
@@ -375,7 +369,7 @@ export function validateRuleBasedConsistency(
       for (const rawPath of line.split(/[,;]/)) {
         const path = rawPath.trim().replace(/^`|`$/g, '')
         const normalized = normalizeDocPath(path)
-        if (!/\.md$/i.test(path) || normalized === 'readme.md' || includedPaths.has(normalized)) continue
+        if (!normalized.endsWith('.md') || normalized === 'readme.md' || includedPaths.has(normalized)) continue
         const existingIssue = issues.find((issue) =>
           issue.category === 'INVALID_BACKLOG_DOC_REF' && normalizeDocPath(issue.affected_documents[1] ?? '') === normalized,
         )
