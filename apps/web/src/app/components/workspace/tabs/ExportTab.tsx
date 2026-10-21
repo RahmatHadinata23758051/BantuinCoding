@@ -15,11 +15,15 @@ import { SectionHeading } from '../components/SectionHeading'
 import { EmptyState } from '../components/EmptyState'
 import { BUTTON_FOCUS_CLASS, PANEL_CLASS } from '../constants'
 import type { WorkspaceArtifactItem } from '@/app/components/MarkdownWorkspace'
+import type { ExportBlockedReason } from '@/app/components/workspace/helpers'
 
 export interface ExportTabProps {
   active: boolean
   isGenerating: boolean
   canExport: boolean
+  blockedReason: ExportBlockedReason
+  readyRequiredCount: number
+  totalRequiredCount: number
   exportManifestArtifacts: WorkspaceArtifactItem[]
   exportFileCount: number
   includesReadme: boolean
@@ -108,6 +112,9 @@ export function ExportTab({
   active,
   isGenerating,
   canExport,
+  blockedReason,
+  readyRequiredCount,
+  totalRequiredCount,
   exportManifestArtifacts,
   exportFileCount,
   includesReadme,
@@ -163,9 +170,24 @@ export function ExportTab({
       {!canExport ? (
         <EmptyState
           icon={Package}
-          title={t('archiveNoEligibleDocuments')}
-          description={t('archiveNoEligibleDocumentsDesc')}
-          action={generateButton}
+          title={t(
+            blockedReason === 'incomplete-pack'
+              ? 'exportMissingDocumentsTitle'
+              : blockedReason === 'project-not-ready'
+                ? 'exportProjectNotReadyTitle'
+                : 'exportNoReadyDocumentsTitle',
+          )}
+          description={t(
+            blockedReason === 'incomplete-pack'
+              ? 'exportMissingDocumentsDesc'
+              : blockedReason === 'project-not-ready'
+                ? 'exportProjectNotReadyDesc'
+                : 'exportNoReadyDocumentsDesc',
+            blockedReason === 'incomplete-pack'
+              ? { ready: readyRequiredCount, total: totalRequiredCount }
+              : undefined,
+          )}
+          action={blockedReason === 'project-not-ready' ? null : generateButton}
         />
       ) : (
         <div className="space-y-6">
