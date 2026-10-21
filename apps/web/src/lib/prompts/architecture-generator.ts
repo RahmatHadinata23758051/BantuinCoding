@@ -160,13 +160,15 @@ export function buildArchitectureSystemGraph(
  * Edges only come from components mentioned in an explicitly ordered flow sequence.
  */
 export function extractSystemGraphFromMarkdown(markdown: string): SystemGraphData | null {
-  const section3 = markdown.match(/##\s+3[.\s][^\n]*\n([\s\S]*?)(?=\n##\s+[4-8][.\s]|\s*$)/i)?.[1]
-  if (!section3) return null
+  const componentSection =
+    markdown.match(/##\s+(?:3|4)[.\s][^\n]*(?:component|module|boundar)[^\n]*\n([\s\S]*?)(?=\n##\s+[4-8][.\s]|\s*$)/i)?.[1] ??
+    markdown.match(/##\s+3[.\s][^\n]*\n([\s\S]*?)(?=\n##\s+[4-8][.\s]|\s*$)/i)?.[1]
+  if (!componentSection) return null
 
   const headings: Array<{ name: string; start: number; bodyStart: number }> = []
   const headingPattern = /^###\s+(?:\d+(?:\.\d+)*\s+)?([^\n]+)/gm
   let match: RegExpExecArray | null
-  while ((match = headingPattern.exec(section3)) !== null) {
+  while ((match = headingPattern.exec(componentSection)) !== null) {
     headings.push({
       name: match[1].trim(),
       start: match.index,
@@ -178,8 +180,8 @@ export function extractSystemGraphFromMarkdown(markdown: string): SystemGraphDat
   const nodeIds = new Set<string>()
   for (let i = 0; i < headings.length; i += 1) {
     const heading = headings[i]
-    const end = headings[i + 1]?.start ?? section3.length
-    const firstParagraph = section3.slice(heading.bodyStart, end).trim().split(/\n\s*\n/)[0] || heading.name
+    const end = headings[i + 1]?.start ?? componentSection.length
+    const firstParagraph = componentSection.slice(heading.bodyStart, end).trim().split(/\n\s*\n/)[0] || heading.name
     const description = firstParagraph.replace(/[*_#`[\]]/g, '').replace(/\n+/g, ' ').slice(0, 200).trim()
     const id = graphId(heading.name, `component-${nodes.length + 1}`)
     if (nodeIds.has(id)) continue
@@ -194,13 +196,16 @@ export function extractSystemGraphFromMarkdown(markdown: string): SystemGraphDat
 
   if (nodes.length === 0) return null
 
-  const section4 = markdown.match(/##\s+4[.\s][^\n]*\n([\s\S]*?)(?=\n##\s+[5-8][.\s]|\s*$)/i)?.[1]
-  if (!section4) return { nodes, edges: [] }
+  const sectionFlow =
+    markdown.match(/##\s+(?:4|7)[.\s][^\n]*(?:flow|sequence)[^\n]*\n([\s\S]*?)(?=\n##\s+[5-8][.\s]|\s*$)/i)?.[1] ??
+    markdown.match(/##\s+4[.\s][^\n]*\n([\s\S]*?)(?=\n##\s+[5-8][.\s]|\s*$)/i)?.[1] ??
+    markdown.match(/##\s+7[.\s][^\n]*\n([\s\S]*?)(?=\n##\s+8[.\s]|\s*$)/i)?.[1]
+  if (!sectionFlow) return { nodes, edges: [] }
 
   const flows: Array<{ name: string; body: string }> = []
   const flowPattern = /^###\s+(?:\d+(?:\.\d+)*\s+)?([^\n]+)/gm
   const flowHeadings: Array<{ name: string; start: number; bodyStart: number }> = []
-  while ((match = flowPattern.exec(section4)) !== null) {
+  while ((match = flowPattern.exec(sectionFlow)) !== null) {
     flowHeadings.push({
       name: match[1].trim(),
       start: match.index,
@@ -210,7 +215,7 @@ export function extractSystemGraphFromMarkdown(markdown: string): SystemGraphDat
   for (let i = 0; i < flowHeadings.length; i += 1) {
     flows.push({
       name: flowHeadings[i].name,
-      body: section4.slice(flowHeadings[i].bodyStart, flowHeadings[i + 1]?.start ?? section4.length),
+      body: sectionFlow.slice(flowHeadings[i].bodyStart, flowHeadings[i + 1]?.start ?? sectionFlow.length),
     })
   }
 
@@ -274,20 +279,30 @@ export const ARCHITECTURE_GENERATOR_SYSTEM_PROMPT = `You are a Principal Softwar
 Your output must strictly follow the provided JSON schema.
 The markdown_content field must contain a complete, architectural blueprint in GitHub-flavored Markdown.
 
+ROLE & SCOPE OF ARCHITECTURE.MD:
+- ARCHITECTURE.md answers HOW the system is technically structured, stored, and executed.
+- Target volume: approximately 4,000 to 8,000 characters. Dense, technical, precise, and implementation-ready.
+
 ARCHITECTURE STRUCTURE REQUIREMENTS:
-1. Executive System Overview
-2. Selected Technology Stack & Rationale
-3. System Component Breakdown & Module Boundaries
-4. Data Flow & Sequence Descriptions
-5. Security & BYOK Key Handling Architecture
-6. Storage & Database Design
-7. Deployment Expectations & Environment Setup
-8. Hidden System Architecture Graph (include a fenced Mermaid flowchart with the real runtime components and supported directional data flows)
+1. System Overview & High-Level Architecture
+2. Selected Technology Stack & Technical Rationale
+3. Directory Structure & Module Responsibilities
+4. Component Boundaries & Inter-Module Communication Contracts
+5. Data Model & Database Design (definitive DDL SQL, tables, relations, fields, and enums)
+6. API Contracts, Error Formats & Authentication Protocol
+7. Critical Data Flows & Primary Sequences
+8. Infrastructure, Deployment & Security Boundaries (include the system graph and Mermaid flowchart here)
+
+CRITICAL EXCLUSIONS (WHAT MUST NOT BE IN ARCHITECTURE):
+- DO NOT include target user personas, marketing copy, or business user stories (reference PRD FR-xx instead).
+- DO NOT include visual design tokens, hex codes, typography, or UI layout rules (owned by DESIGN.md).
+- DO NOT include git commit discipline or agent operational instructions (owned by Agent.md).
+- DO NOT include backlog task breakdowns or sprint schedules (owned by BACKLOG.md).
 
 SYSTEM_GRAPH REQUIREMENTS:
 - Return system_graph as a project-specific directed graph of real components and relationships described by the canonical context.
 - Always provide system_graph whenever the architecture describes identifiable components, modules, or services.
-- In Section 8 of markdown_content, always embed a fenced Mermaid flowchart using the same component ids and direction as system_graph; leave the graph without edges when no supported relationships are described.
+- In Section 8 of markdown_content, embed a fenced Mermaid flowchart using the same component ids and direction as system_graph; leave the graph without edges when no supported relationships are described.
 - Use the allowed categories only: client, ui, api, service, database, external, auth.
 - Each node needs a stable id, a concise label, and a plain-language responsibility description.
 - Each edge must reference existing node ids and describe a real data or control-flow relationship.
@@ -313,6 +328,15 @@ const ALLOWED_GRAPH_CATEGORIES: SystemGraphCategory[] = [
 ]
 
 /**
+ * Extracts the explicit Mermaid diagram block from ARCHITECTURE.md into a standalone diagram.md document.
+ */
+export function extractMermaidDiagram(markdown: string): string | null {
+  const match = markdown.match(/```mermaid\s*([\s\S]*?)```/i)
+  if (!match) return null
+  return `# System Architecture Diagram\n\n\`\`\`mermaid\n${match[1].trim()}\n\`\`\`\n`
+}
+
+/**
  * Parses an explicit Mermaid architecture diagram from Markdown content.
  * Extracts declared components, categories, and directed flow edges.
  * ponytail: line-based regex parses standard flowchart/graph syntax; upgrade to full AST parser if complex nested subgraphs are required.
@@ -325,6 +349,31 @@ export function parseMermaidSystemGraph(markdown: string): SystemGraphData | nul
   const nodes: SystemGraphNode[] = []
   const nodeIds = new Set<string>()
   const edges: SystemGraphEdge[] = []
+
+  const addNode = (id: string, rawText: string) => {
+    if (nodeIds.has(id)) return
+    const parts = rawText.split(/\\n|\n/)
+    const label = parts[0].trim().replace(/^["'([/\\<]+|["')\]/\\>]+$/g, '') || id
+    let category: SystemGraphCategory | undefined
+
+    if (parts[1]) {
+      const candidate = parts[1].toLowerCase()
+      category = ALLOWED_GRAPH_CATEGORIES.find((cat) => candidate.includes(cat))
+    }
+    if (!category) category = inferGraphCategory(label)
+
+    nodeIds.add(id)
+    nodes.push({ id, label, category, description: label })
+  }
+
+  const parseNode = (token: string) => {
+    const trimmed = token.trim()
+    const bracketMatch = trimmed.match(/^([a-zA-Z0-9_-]+)\s*([\[\(\{]+[\/\\]?)([\s\S]*?)([\/\\]?[\]\)\}]+)$/)
+    if (bracketMatch) return { id: bracketMatch[1], rawText: bracketMatch[3] }
+    const bareMatch = trimmed.match(/^([a-zA-Z0-9_-]+)$/)
+    if (bareMatch) return { id: bareMatch[1], rawText: undefined }
+    return null
+  }
 
   for (const rawLine of content.split('\n')) {
     const line = rawLine.trim()
@@ -339,44 +388,22 @@ export function parseMermaidSystemGraph(markdown: string): SystemGraphData | nul
       continue
     }
 
-    // Edge pattern: A -->|label| B or A --> B or A -.-> B or A ==> B
-    const edgeMatch = line.match(/^([a-zA-Z0-9_-]+)\s*(?:-->|-\.->|==>)\s*(?:\|([^|]+)\|\s*)?([a-zA-Z0-9_-]+)$/)
-    if (edgeMatch) {
-      edges.push({
-        source: edgeMatch[1],
-        target: edgeMatch[3],
-        label: edgeMatch[2]?.trim(),
-      })
+    const arrowIndex = line.search(/-->|-\.->|==>/)
+    if (arrowIndex >= 0) {
+      const arrow = line.slice(arrowIndex).match(/^(-->|-\.->|==>)/)?.[0]
+      if (!arrow) continue
+      const source = parseNode(line.slice(0, arrowIndex))
+      const targetText = line.slice(arrowIndex + arrow.length).replace(/^\s*\|([^|]+)\|\s*/, '')
+      const target = parseNode(targetText)
+      if (!source || !target) continue
+      if (source.rawText) addNode(source.id, source.rawText)
+      if (target.rawText) addNode(target.id, target.rawText)
+      edges.push({ source: source.id, target: target.id, label: line.slice(arrowIndex + arrow.length).match(/^\s*\|([^|]+)\|/)?.[1]?.trim() })
       continue
     }
 
-    // Node pattern: id[label\ncategory] or id[(label)\ncategory] etc
-    const nodeMatch = line.match(/^([a-zA-Z0-9_-]+)\s*([\[\(\{]+[\/\\]?)([\s\S]*?)([\/\\]?[\]\)\}]+)$/)
-    if (nodeMatch) {
-      const id = nodeMatch[1]
-      const rawText = nodeMatch[3]
-      const parts = rawText.split(/\\n|\n/)
-      const label = parts[0].trim().replace(/^["'([/\\<]+|["')\]/\\>]+$/g, '') || id
-      let category: SystemGraphCategory | undefined
-
-      if (parts[1]) {
-        const candidate = parts[1].toLowerCase()
-        category = ALLOWED_GRAPH_CATEGORIES.find((cat) => candidate.includes(cat))
-      }
-      if (!category) {
-        category = inferGraphCategory(label)
-      }
-
-      if (!nodeIds.has(id)) {
-        nodeIds.add(id)
-        nodes.push({
-          id,
-          label,
-          category,
-          description: label,
-        })
-      }
-    }
+    const node = parseNode(line)
+    if (node?.rawText) addNode(node.id, node.rawText)
   }
 
   if (nodes.length === 0) return null
