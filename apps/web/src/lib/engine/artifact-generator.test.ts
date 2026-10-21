@@ -20,8 +20,10 @@ import {
   DesignDocumentPayloadSchema,
   DesignDocumentSchema,
   buildDesignGeneratorUserPrompt,
+  isNonVisualContext,
+  MAX_DESIGN_CHARS,
 } from '@/lib/prompts/design-generator'
-import { generateDesignArtifactContent, validateDesignMarkdown } from '@/lib/engine/design-generator'
+import { generateDesignArtifactContent, generateDesignArtifactResult, validateDesignMarkdown } from '@/lib/engine/design-generator'
 import { buildFallbackDesignMarkdown } from '@/lib/engine/fallback-design'
 import { scanContentForSecrets } from '@/lib/export/export-service'
 import {
@@ -44,71 +46,39 @@ vi.mock('@/lib/byok/session-store', () => ({ getProviderConfig: vi.fn() }))
 vi.mock('@/lib/ai/provider', () => ({ createProvider: vi.fn() }))
 vi.mock('@/lib/projects/project-service', () => ({ updateProject: vi.fn() }))
 
-const VALID_DESIGN_MARKDOWN = `---
-name: "Test Project Design System"
-archetype: "Contemporary Institutional"
-colors:
-  canvas: "#F2EEE6"
-  surface: "#FBF9F4"
-  border: "#A8AEA2"
-  ink-primary: "#20251F"
-  ink-muted: "#5E665D"
-  accent: "#8B4A2F"
-typography:
-  display: { fontFamily: "Source Serif 4" }
-  headline: { fontFamily: "Source Serif 4" }
-  body: { fontFamily: "Source Sans 3" }
-  mono: { fontFamily: "IBM Plex Mono" }
-rounded:
-  none: "0px"
-  sm: "2px"
-  md: "4px"
-spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
-iconography:
-  library: "lucide-react"
-  defaultStrokeWidth: 1.5
-  sizes: { sm: "14px", md: "18px", lg: "24px" }
-components:
-  button: { radius: "4px", padding: "8px 16px" }
----
-# DESIGN.md — Test Project
+const VALID_DESIGN_MARKDOWN = `# DESIGN.md — Test Project
 
-## 1. Design DNA
-- **Visual thesis:** A field notebook for the primary workflow.
-- **Material metaphor:** A stitched field notebook.
-- **Rejected direction 1:** Generic SaaS cards — rejected because they hide the workflow.
-- **Rejected direction 2:** Decorative dashboard — rejected because it adds noise.
-- **Exactly three signature design moves:**
-  1. **Composition:** Keep the task in one readable region.
-  2. **Typography:** Use a deliberate editorial pairing.
-  3. **Material / interaction:** Use crisp rules for state changes.
+## Direction & Decisions
+Recommended: a focused transaction-review workspace. Confirmed data contracts take precedence.
 
-## 2. Color & Contrast System
-Palette and contrast rules.
-
-## 3. Typography & Rhythm
-Type scale and rhythm.
-
-## 4. Layout & Spatial System
-Responsive layout rules.
-
-## 5. Signature Screen Blueprints
-- Only screens supported by the context receive blueprints.
-
-## 6. Iconography & Interaction
-Keyboard and pointer rules.
-
-## 7. Implementation Tokens
+## Design Tokens
 \`\`\`css
-:root { --color-canvas: #F2EEE6; --color-ink: #20251F; }
+:root {
+  --color-canvas: #FFFFFF;
+  --color-surface: #F5F5F5;
+  --color-ink: #111827;
+  --color-muted: #4B5563;
+  --color-accent: #334155;
+  --color-on-accent: #FFFFFF;
+  --color-focus: #2563EB;
+  --font-body: system-ui, sans-serif;
+  --space-unit: 8px;
+}
 \`\`\`
 
-## 8. Anti-Defaults & Acceptance Checklist
-Acceptance criteria.
+## Composition & Responsive Behavior
+Prioritize the current transaction; reflow actions on narrow screens without page overflow.
+
+## Components & States
+Only documented workflows; share loading, empty, and error/recovery behavior.
+
+## Accessibility & Interaction
+Keyboard access, visible focus, accessible names, reduced motion, and non-color cues.
+Normal text >= 4.5:1; essential UI indicators >= 3:1.
+
+## Implementation Boundaries
+Hard: confirmed scope, data, brand, and accessibility. Adaptable: layout, type, spacing, elevation.
+- [ ] Verify supported workflows and keyboard access at narrow widths.
 `
 
 const makeDesignResponse = (markdown = VALID_DESIGN_MARKDOWN) => ({
@@ -210,22 +180,22 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects DESIGN markdown without YAML front matter', () => {
-    const noFrontMatter = VALID_DESIGN_MARKDOWN.replace(/^---[\s\S]*?---\r?\n/m, '')
-    const result = DesignDocumentSchema.safeParse(makeDesignResponse(noFrontMatter))
+  it('rejects duplicated YAML front matter', () => {
+    const result = DesignDocumentSchema.safeParse(makeDesignResponse(`---\ncolors:\n  canvas: '#fff'\n---\n${VALID_DESIGN_MARKDOWN}`))
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((i) => i.message.includes('YAML front matter'))).toBe(true)
-    }
+    if (!result.success) expect(result.error.issues.some((i) => i.message.includes('remove YAML'))).toBe(true)
   })
 
-  it('rejects YAML front matter missing required keys', () => {
-    const missingKey = VALID_DESIGN_MARKDOWN.replace(/iconography:[\s\S]*?(?=components:)/m, '')
-    const result = DesignDocumentSchema.safeParse(makeDesignResponse(missingKey))
+  it('rejects missing semantic CSS tokens', () => {
+    const result = DesignDocumentSchema.safeParse(makeDesignResponse(VALID_DESIGN_MARKDOWN.replace('  --color-focus: #2563EB;\n', '')))
     expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues.some((i) => i.message.includes('iconography'))).toBe(true)
-    }
+    if (!result.success) expect(result.error.issues.some((i) => i.message.includes('--color-focus'))).toBe(true)
+  })
+
+  it('enforces the size ceiling without imposing a minimum or truncating', () => {
+    const oversized = `${VALID_DESIGN_MARKDOWN}\n${'details '.repeat(1500)}`
+    expect(DesignDocumentSchema.safeParse(makeDesignResponse(oversized)).success).toBe(false)
+    expect(DesignDocumentSchema.safeParse(makeDesignResponse()).success).toBe(true)
   })
 
   it('builds an anti-slop design prompt with context integrity rules', () => {
@@ -246,21 +216,20 @@ describe('Artifact Generation Prompts & Schemas', () => {
     expect(promptDesign).toContain('Canonical Context Version: 3')
     expect(promptDesign).toContain('<canonical_context>')
     expect(promptDesign).toContain('canonical_context')
-    expect(promptDesign).toContain('Create screen blueprints only for screens supported by canonical_context')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Cards, gradients, borders, shadows, containers, and varied corner shapes are available choices')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Choose radius, borders, shadows, and elevation to fit the stated direction')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Include compact ASCII wireframes where helpful')
+    expect(promptDesign).toContain('No ASCII wireframes or invented fields.')
+    expect(promptDesign).toContain('One CSS token source; maximum 10000 characters.')
+    expect(promptDesign).toContain('Preserve exploration freedom within hard invariants.')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('visual-systems architect and art director')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('No YAML front matter')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Target 6,000–9,000 characters')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('ONE authoritative fenced css block with ONE top-level :root')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('NOT a rigid ceiling')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('purposeful micro-interactions')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('Visible keyboard focus and non-color-only semantic cues')
-    expect(promptDesign).toContain('layout composition, visual hierarchy, real canonical entities, complete interaction states')
-    expect(promptDesign).toContain('optional compact ASCII wireframes')
-    expect(promptDesign).toContain('Tokens are an approved baseline, not a ceiling')
-    expect(promptDesign).toContain('preserving contrast, responsiveness, reduced-motion, keyboard focus, and non-color-only semantic cues')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('UI scope: none')
+    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('Include compact ASCII wireframes where helpful')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('Exactly THREE signature design moves')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('ZERO icon container slop')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('## 4. Layout & Surface Grammar')
-    expect(DESIGN_GENERATOR_SYSTEM_PROMPT).toContain('## 4. Layout & Spatial System')
     expect(promptDesign).not.toContain('rigid 14px/18px/24px sizes')
     expect(promptDesign).not.toContain('universal rounded-2xl')
     const referencedPrompt = buildDesignGeneratorUserPrompt(
@@ -321,29 +290,126 @@ describe('Design generator validation', () => {
     expect(generateStructured.mock.calls[1]?.[0]).toContain('Missing top-level # DESIGN.md heading')
   })
 
-  it('retains a substantive draft when repair fails', async () => {
+  it('falls back to a valid contextual document when repair fails', async () => {
     const invalid = VALID_DESIGN_MARKDOWN.replace('# DESIGN.md — Test Project', 'Design contract')
     const generateStructured = vi.fn()
       .mockResolvedValueOnce(makeDesignResponse(invalid))
       .mockRejectedValueOnce(new Error('provider unavailable'))
     const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
 
-    await expect(generateDesignArtifactContent(provider, 'Acme', '{}', 1)).resolves.toBe(invalid)
+    const result = await generateDesignArtifactContent(provider, 'Acme', '{}', 1)
+    expect(result).toContain('# DESIGN.md — Acme')
     expect(generateStructured).toHaveBeenCalledTimes(2)
+  })
+
+  it('falls back to a valid contextual document when repair result remains invalid', async () => {
+    const invalid = VALID_DESIGN_MARKDOWN.replace('# DESIGN.md — Test Project', 'Design contract')
+    const generateStructured = vi.fn()
+      .mockResolvedValueOnce(makeDesignResponse(invalid))
+      .mockResolvedValueOnce(makeDesignResponse(invalid))
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+
+    const result = await generateDesignArtifactContent(provider, 'Acme', '{}', 1)
+    expect(result).toContain('# DESIGN.md — Acme')
+    expect(generateStructured).toHaveBeenCalledTimes(2)
+  })
+
+  it('repairs oversized Markdown once without returning a truncated draft', async () => {
+    const oversized = `${VALID_DESIGN_MARKDOWN}\n${'detail '.repeat(2_000)}`
+    const generateStructured = vi.fn()
+      .mockResolvedValueOnce(makeDesignResponse(oversized))
+      .mockResolvedValueOnce(makeDesignResponse())
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+
+    const result = await generateDesignArtifactResult(provider, 'Acme', '{}', 1)
+    expect(result).toEqual({ content: VALID_DESIGN_MARKDOWN, status: 'repaired', violations: [] })
+    expect(generateStructured).toHaveBeenCalledTimes(2)
+    expect(generateStructured.mock.calls[1]?.[0]).toContain('exceeds 10000 characters')
+    expect(generateStructured.mock.calls[1]?.[0]).toContain(oversized)
+  })
+
+  it('uses a validated fallback if the repair is still oversized or has unsafe contrast', async () => {
+    for (const invalid of [
+      `${VALID_DESIGN_MARKDOWN}\n${'detail '.repeat(2_000)}`,
+      VALID_DESIGN_MARKDOWN.replace('--color-muted: #4B5563', '--color-muted: #CCCCCC'),
+    ]) {
+      const generateStructured = vi.fn().mockResolvedValue(makeDesignResponse(invalid))
+      const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+      const result = await generateDesignArtifactResult(provider, 'Acme', '{}', 1)
+      expect(result.status).toBe('fallback')
+      expect(result.violations.length).toBeGreaterThan(0)
+      expect(result.content).not.toBe(invalid)
+      expect(result.content.length).toBeLessThanOrEqual(MAX_DESIGN_CHARS)
+      expect(validateDesignMarkdown(result.content, {})).toEqual([])
+      expect(generateStructured).toHaveBeenCalledTimes(2)
+    }
+  })
+
+  it('preserves confirmed direction rather than promoting a styling reference in fallback', async () => {
+    const context = { design_direction: { value: 'Quiet monochrome editorial', provenance: 'confirmed' } }
+    const generateStructured = vi.fn().mockRejectedValue(new Error('provider unavailable'))
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+    const result = await generateDesignArtifactResult(provider, 'Acme', JSON.stringify(context), 1, 'plite')
+    expect(result.status).toBe('fallback')
+    expect(result.content).toContain('Direction excerpt (confirmed):** Quiet monochrome editorial')
+    expect(result.content).toContain('Optional styling reference:')
+    expect(result.content).toContain('cannot override confirmed direction')
+    expect(validateDesignMarkdown(result.content, context)).toEqual([])
+    expect(context.design_direction).toEqual({ value: 'Quiet monochrome editorial', provenance: 'confirmed' })
+  })
+
+  it('does not accept a nonvisual marker for a documented web application', async () => {
+    const context = { stack_preferences: { frontend: { value: 'React', provenance: 'confirmed' } } }
+    const nonvisual = buildFallbackDesignMarkdown('CLI', { summary: 'CLI-only tool' })
+    const generateStructured = vi.fn().mockResolvedValue(makeDesignResponse(nonvisual))
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+    const result = await generateDesignArtifactResult(provider, 'Web App', JSON.stringify(context), 1)
+    expect(result.status).toBe('fallback')
+    expect(result.content).not.toContain('UI scope: none')
+    expect(validateDesignMarkdown(result.content, context)).toEqual([])
+    expect(generateStructured).toHaveBeenCalledTimes(2)
+  })
+
+  it('accepts a nonvisual brief when canonical context supports it', async () => {
+    const context = { summary: 'API-only service without a web UI' }
+    const content = buildFallbackDesignMarkdown('API', context)
+    const generateStructured = vi.fn().mockResolvedValue(makeDesignResponse(content))
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
+    expect(await generateDesignArtifactResult(provider, 'API', JSON.stringify(context), 1))
+      .toEqual({ content, status: 'accepted', violations: [] })
+    expect(generateStructured).toHaveBeenCalledTimes(1)
   })
 
   it('reports strict structural and content violations', () => {
     expect(validateDesignMarkdown('')).toEqual(['Markdown content cannot be empty'])
-    const violations = validateDesignMarkdown('# DESIGN.md\n\n## 1. Design DNA')
-    expect(violations).toContain('Missing required heading: ## 2. Color & Contrast System')
-    expect(violations).toContain('Missing meaningful CSS token block with :root custom properties')
-    expect(violations).toContain('Missing conditional screen blueprint rule')
+    const violations = validateDesignMarkdown('# DESIGN.md\n\n## Direction & Decisions\nContent')
+    expect(violations.some((v) => v.includes('Missing design section'))).toBe(true)
+    expect(violations.some((v) => v.includes('Missing CSS token') || v.includes(':root'))).toBe(true)
   })
 
   it('rejects headings inside CSS fences and empty CSS token blocks', () => {
-    const fencedHeading = VALID_DESIGN_MARKDOWN.replace('## 8. Anti-Defaults & Acceptance Checklist', '```text\n## 8. Anti-Defaults & Acceptance Checklist\n```')
-    expect(validateDesignMarkdown(fencedHeading)).toContain('Missing required heading: ## 8. Anti-Defaults & Acceptance Checklist')
-    expect(validateDesignMarkdown(VALID_DESIGN_MARKDOWN.replace(/:root \{[^}]+\}/, ':root {}'))).toContain('Missing meaningful CSS token block with :root custom properties')
+    const fencedHeading = VALID_DESIGN_MARKDOWN.replace('## Implementation Boundaries', '```text\n## Implementation Boundaries\n```')
+    expect(validateDesignMarkdown(fencedHeading).some((v) => v.includes('Implementation Boundaries') || v.includes('Missing design section'))).toBe(true)
+    expect(validateDesignMarkdown(VALID_DESIGN_MARKDOWN.replace(/:root \{[^}]+\}/, ':root {}')).some((v) => v.includes(':root') || v.includes('Missing CSS token'))).toBe(true)
+  })
+})
+
+describe('Canonical UI scope', () => {
+  it.each([
+    { context: { summary: 'API-only service' }, expected: true },
+    { context: { summary: 'CLI-only telemetry tool, no web UI' }, expected: true },
+    { context: { summary: 'Service without a web UI' }, expected: true },
+    { context: { stack_preferences: { frontend: { value: 'None', provenance: 'confirmed' } } }, expected: true },
+    { context: { stack_preferences: { frontend: { value: 'None', provenance: 'unknown' } } }, expected: false },
+    { context: { classification: 'API_SERVICE' }, expected: false },
+    { context: { summary: 'CLI tool with a companion web console' }, expected: false },
+    { context: { summary: 'API-only service', stack_preferences: { frontend: { value: 'React', provenance: 'confirmed' } } }, expected: false },
+    { context: { summary: 'API-only service', screens: [{ name: 'Overview' }] }, expected: false },
+    { context: { summary: 'CLI tool', functional_requirements: [{ title: 'Web dashboard', description: 'Show telemetry', provenance: 'confirmed' }] }, expected: false },
+    { context: { confirmed_decisions: [{ value: 'No UI', provenance: 'assumed' }] }, expected: false },
+    { context: {}, expected: false },
+  ])('detects nonvisual=$expected for $context', ({ context, expected }) => {
+    expect(isNonVisualContext(context)).toBe(expected)
   })
 })
 
@@ -392,52 +458,103 @@ describe('Artifact Generator Fallbacks', () => {
 
   it('does not invent authentication or data views when context is silent', () => {
     const md = generateFallbackDesign('Static Page', { summary: 'A single informational page for a local event' })
-    expect(md).toContain('no screen blueprint is invented')
+    expect(md.toLowerCase()).toContain('no screen blueprint is invented')
     expect(md).not.toContain('Authentication states')
     expect(md).not.toContain('Data views use')
   })
 
-  it('includes only context-supported screen guidance', () => {
+  it('includes only context-supported screen guidance without inventing mock data', () => {
     const md = generateFallbackDesign('Ledger', { summary: 'Users sign in to review transaction records in a table' })
-    expect(md).toContain('Authentication states are described only if present in the context.')
-    expect(md).toContain('Data views use only project objects and density stated in the context.')
+    expect(md.toLowerCase()).toContain('no screen blueprint is invented')
+    expect(md).toContain('Display only documented data; do not add invented metrics')
   })
 
-  it('grounds fallback screen blueprints and canonical entities from context', () => {
+  it('grounds fallback surfaces from context screens without ASCII wireframes', () => {
     const md = buildFallbackDesignMarkdown('Ledger', {
       screens: [{
         name: 'Transaction Review',
-        layout: 'A compact table with date and amount columns.',
-        entities: ['Transaction'],
       }],
       core_entities: [{ name: 'Transaction' }],
     })
     expect(DesignDocumentSchema.safeParse({ title: 'DESIGN.md', markdown_content: md }).success).toBe(true)
-    expect(md).toContain('**Transaction Review:** A compact table with date and amount columns. Canonical entities: Transaction.')
-    expect(md).toContain('**Canonical entities:** Transaction.')
-    expect(md).toContain('**Interaction states:** define loading, empty, error, success, and recovery states for supported screens.')
-    expect(md).toContain('**Wireframe:** add a compact ASCII layout sketch')
+    expect(md).toContain('Context-supported surface examples: Transaction Review')
+    expect(md).not.toContain('ASCII')
   })
 
-  it('detects context-supported views from canonical functional requirements without explicit screens', () => {
-    const md = buildFallbackDesignMarkdown('Portal', {
-      functional_requirements: [
-        { id: 'FR-001', title: 'User authentication and login', description: 'Session management' },
-        { id: 'FR-002', title: 'Analytics dashboard', description: 'Table of transactions' },
-      ],
-      core_entities: [{ name: 'Session' }],
+  it('handles non-visual contexts by setting UI scope: none and omitting tokens', () => {
+    const md = buildFallbackDesignMarkdown('API Gateway', {
+      stack_preferences: { frontend: { value: 'None (API only)' } },
+      confirmed_decisions: [{ value: 'API-only service', provenance: 'confirmed' }],
     })
-    expect(md).toContain('Authentication states are described only if present in the context.')
-    expect(md).toContain('Data views use only project objects and density stated in the context.')
-    expect(md).toContain('**Canonical entities:** Session.')
+    expect(md).toContain('UI scope: none')
+    expect(md).not.toContain(':root {')
+    expect(DesignDocumentSchema.safeParse({ title: 'DESIGN.md', markdown_content: md }).success).toBe(true)
   })
 
-  it('does not invent screen blueprints when screens and view evidence are absent', () => {
+  it('does not invent screen blueprints when screens are absent', () => {
     const md = buildFallbackDesignMarkdown('Landing Page', {
       core_entities: [{ name: 'Visitor' }],
     })
-    expect(md).toContain('no screen blueprint is invented because the supplied context does not name a concrete UI journey.')
-    expect(md).toContain('**Canonical entities:** Visitor.')
+    expect(md.toLowerCase()).toContain('no screen blueprint is invented')
+    expect(DesignDocumentSchema.safeParse({ title: 'DESIGN.md', markdown_content: md }).success).toBe(true)
+  })
+
+  it('keeps fallback document size bounded and context-safe across diverse project types', () => {
+    // 1. Fullstack product with long context
+    const fullstackContext = {
+      summary: 'A complete recruitment and hiring platform with applicant tracking and interview scheduling.'.repeat(10),
+      design_direction: { value: 'Crisp editorial aesthetic with high contrast and structured queues.', provenance: 'confirmed' },
+      stack_preferences: { frontend: { value: 'Next.js 16' }, styling: { value: 'Tailwind CSS v4' } },
+      screens: [
+        { name: 'Candidate Pipeline' },
+        { name: 'Interview Scheduler' },
+        { name: 'Job Board Public View' },
+        { name: 'Ignored Fourth Screen' },
+      ],
+      core_entities: [{ name: 'Applicant' }, { name: 'Job' }],
+    }
+    const fullstackMd = buildFallbackDesignMarkdown('HireFlow', fullstackContext)
+    expect(fullstackMd.length).toBeLessThan(10_000)
+    expect(fullstackMd.length).toBeGreaterThan(1_000)
+    expect(validateDesignMarkdown(fullstackMd, fullstackContext)).toEqual([])
+    expect(fullstackMd).toContain('Context-supported surface examples: Candidate Pipeline, Interview Scheduler, Job Board Public View')
+    expect(fullstackMd).not.toContain('Ignored Fourth Screen')
+
+    // 2. Dense operational dashboard
+    const operationalContext = {
+      summary: 'Real-time financial reconciliation and ledger dispatch terminal.',
+      design_direction: { value: 'Dense tabular monospace data terminal with subtle alert states.', provenance: 'confirmed' },
+      stack_preferences: { frontend: { value: 'React 19' }, styling: { value: 'CSS Modules' } },
+    }
+    const operationalMd = buildFallbackDesignMarkdown('LedgerTerminal', operationalContext)
+    expect(operationalMd.length).toBeLessThan(10_000)
+    expect(validateDesignMarkdown(operationalMd, operationalContext)).toEqual([])
+    expect(operationalMd.toLowerCase()).toContain('no screen blueprint is invented')
+
+    // 3. API/CLI-only project
+    const cliContext = {
+      summary: 'Telemetry collection CLI daemon and metrics exporter.',
+      stack_preferences: { frontend: { value: 'None (CLI tool)', provenance: 'confirmed' } },
+      confirmed_decisions: [{ value: 'CLI-only tool, no web UI', provenance: 'confirmed' }],
+    }
+    const cliMd = buildFallbackDesignMarkdown('TelemetryCLI', cliContext)
+    expect(cliMd).toContain('UI scope: none')
+    expect(cliMd).not.toContain(':root {')
+    expect(validateDesignMarkdown(cliMd, cliContext)).toEqual([])
+
+    // 4. Hybrid API with Web UI (must remain visual)
+    const hybridContext = {
+      summary: 'API service with a companion web console and documentation viewer.',
+      stack_preferences: { frontend: { value: 'Next.js 16' } },
+      confirmed_decisions: [
+        { value: 'REST API backend', provenance: 'confirmed' },
+        { value: 'Web UI for dashboard and interactive documentation', provenance: 'confirmed' },
+      ],
+    }
+    const hybridMd = buildFallbackDesignMarkdown('CloudEngine', hybridContext)
+    expect(hybridMd).not.toContain('UI scope: none')
+    expect(hybridMd).toContain(':root {')
+    expect(validateDesignMarkdown(hybridMd, hybridContext)).toEqual([])
   })
 })
 
