@@ -23,7 +23,8 @@ function normalizeGraph(graph: SystemGraphData): SystemGraphData {
 export function parseWorkspaceSystemGraph(content: string): SystemGraphData | null {
   try {
     const parsed = JSON.parse(content) as SystemGraphData
-    if (Array.isArray(parsed.nodes) && parsed.nodes.length > 0 && Array.isArray(parsed.edges)) {
+    const hasCorruptedNodeLabels = parsed.nodes?.some((n) => /-->|-\.->|==>/.test(n.label))
+    if (!hasCorruptedNodeLabels && Array.isArray(parsed.nodes) && parsed.nodes.length > 0 && Array.isArray(parsed.edges)) {
       const nodeIds = new Set(parsed.nodes.map((node) => node.id))
       return normalizeGraph({
         nodes: parsed.nodes,
