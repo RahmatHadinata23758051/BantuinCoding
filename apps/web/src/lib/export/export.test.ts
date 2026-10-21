@@ -182,6 +182,32 @@ describe('ZIP Export Engine — exportProjectZip', () => {
     expect(result.buffer.length).toBeGreaterThan(0)
   })
 
+  it('includes diagram.md only when Architecture contains Mermaid', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Acme System', targetAgent: 'CLAUDE_CODE', status: 'EXPORTABLE',
+      contexts: [currentContext(['ARCHITECTURE'])],
+      artifacts: [artifact('ARCHITECTURE', 'ARCHITECTURE.md', [VALID_ARCH_SKELETON, '```mermaid', 'flowchart LR', '  app[App] --> api[API]', '```'].join('\n'))],
+    } as never)
+
+    const result = await exportProjectZip({ userId: 'u-1', projectId: 'p-1' })
+    const zip = await JSZip.loadAsync(result.buffer)
+    expect(await zip.file('diagram.md')?.async('string')).toContain('flowchart LR')
+  })
+
+  it('omits diagram.md when Architecture has no Mermaid block', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Acme System', targetAgent: 'CLAUDE_CODE', status: 'EXPORTABLE',
+      contexts: [currentContext(['ARCHITECTURE'])],
+      artifacts: [artifact('ARCHITECTURE', 'ARCHITECTURE.md', `${VALID_ARCH_SKELETON}\nNo diagram.`)],
+    } as never)
+
+    const result = await exportProjectZip({ userId: 'u-1', projectId: 'p-1' })
+    const zip = await JSZip.loadAsync(result.buffer)
+    expect(zip.file('diagram.md')).toBeNull()
+  })
+
   it('includes a READY DESIGN artifact and canonical README order in the ZIP', async () => {
     const { db } = await import('@repo/db')
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
