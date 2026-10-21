@@ -6,6 +6,7 @@ import {
   validateExportPreflight,
   validateZipPath,
 } from '@/lib/export/preflight'
+import { extractMermaidDiagram } from '@/lib/prompts/architecture-generator'
 
 export { generateBootstrapReadme, scanContentForSecrets, validateZipPath }
 
@@ -50,6 +51,16 @@ export async function exportProjectZip({
     const safePath = validateZipPath(art.path)
     normalizedPaths.add(safePath)
     zip.file(safePath, art.content)
+  }
+
+  const architecture = exportableArtifacts.find((artifact) => artifact.type === 'ARCHITECTURE')
+  if (architecture) {
+    const diagramContent = extractMermaidDiagram(architecture.content)
+    if (diagramContent) {
+      const safePath = validateZipPath('diagram.md')
+      scanContentForSecrets(diagramContent, safePath)
+      zip.file(safePath, diagramContent)
+    }
   }
 
   if (!normalizedPaths.has('README.md')) {
