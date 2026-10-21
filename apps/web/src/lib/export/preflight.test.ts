@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getExportPreflightArtifacts, validateExportPreflight } from '@/lib/export/preflight'
+import { getExportPreflightArtifacts, validateExportPreflight, validateZipPath } from '@/lib/export/preflight'
 
 vi.mock('@repo/db', () => ({
   db: {
@@ -61,6 +61,29 @@ describe('Export preflight', () => {
     expect(() => validateExportPreflight(makeProject(content, { raw: true }))).toThrow(
       'Artifact ARCHITECTURE.md is structurally incomplete: Missing required section 5 of 8.',
     )
+  })
+
+  it('validates Architecture with a diagram without making the diagram a required artifact', () => {
+    const diagram = ['```mermaid', 'flowchart LR', '  app[App] --> api[API]', '```'].join('\n')
+    const project = makeProject(diagram)
+    expect(validateExportPreflight(project)).toHaveLength(1)
+  })
+
+  it('rejects secrets in an architecture diagram before export', () => {
+    const diagram = ['```mermaid', 'flowchart LR', '  app[sk-12345678901234567890] --> api[API]', '```'].join('\n')
+    expect(() => validateExportPreflight(makeProject(diagram))).toThrow('SECURITY ALERT')
+  })
+
+  it('rejects an existing artifact path that would collide with diagram.md', () => {
+    const diagram = ['```mermaid', 'flowchart LR', '  app[App] --> api[API]', '```'].join('\n')
+    const project = makeProject(diagram)
+    project.contexts[0]!.artifactPlans.push({ type: 'NOTES' })
+    project.artifacts.push(makeArtifact('NOTES', 'diagram.md', '# Existing notes'))
+    expect(() => validateExportPreflight(project)).toThrow('Duplicate file path detected')
+  })
+
+  it('validates the fixed diagram export path', () => {
+    expect(validateZipPath('diagram.md')).toBe('diagram.md')
   })
 
   it('uses the same preflight against the persisted current project', async () => {
