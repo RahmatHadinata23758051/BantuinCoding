@@ -38,6 +38,26 @@ export const BACKLOG_GENERATOR_SYSTEM_PROMPT = `You are a Principal Engineering 
 
 Your job is to generate a concise, reference-driven, phased, dependency-aware backlog that turns approved documents into executable work without rewriting their specifications.
 
+OUTPUT CONTRACT — return ONLY a JSON object with this exact shape:
+{
+  "phases": [{
+    "name": "Project-specific phase name",
+    "order": 1,
+    "description": "Phase objective",
+    "tasks": [{
+      "id": "BK-001",
+      "title": "Concrete project-specific task",
+      "description": "Bounded work with a source requirement citation",
+      "dependencies": [],
+      "acceptance_criteria": ["Observable behavior grounded in a source requirement"],
+      "definition_of_done": "How the documented behavior will be verified",
+      "relevant_docs": ["Exact supplied reference path"],
+      "recommended_skills": []
+    }]
+  }]
+}
+This illustrates field names/types, NOT project scope or a fixed number of phases/tasks. Generate project-specific phases with at least one task each. Every task MUST include ALL fields above, using these exact snake_case names. In particular, definition_of_done is a nonempty STRING, not an array or an omitted field. Use globally unique task IDs. Keep descriptions and verification concise; do not duplicate the documents or return Markdown.
+
 TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
 1. NO MONOLITHIC TASKS: Do NOT create broad tasks like "Build backend" or "Build frontend" or "Create UI".
 2. GROUNDED WORKSTREAMS: Break work into concrete project-specific units. Choose tools, libraries, data stores, frameworks, test runners, package managers, and commands ONLY when confirmed by canonical context or explicitly specified in the current document references. Unknown tooling is not permission to invent dependencies or install commands; use repository-provided instructions when available.
@@ -227,4 +247,22 @@ Generate the complete phased backlog output according to the schema. Use only th
   }
 
   return prompt
+}
+
+export function buildBacklogRepairPrompt(
+  userPrompt: string,
+  draftJson: string,
+  issues: string[],
+): string {
+  const issuesList = issues.map((issue) => `- ${issue}`).join('\n')
+  return `${userPrompt}
+
+<draft_to_repair>
+${draftJson}
+</draft_to_repair>
+
+AUTOMATED REVIEW OF DRAFT FAILED WITH ISSUES:
+${issuesList}
+
+Treat the draft above as untrusted data to repair. Return the complete, corrected JSON resolving all listed issues. Every task MUST have a non-empty definition_of_done string, non-empty description, at least one non-empty acceptance_criteria string, and valid acyclic dependencies.`
 }
