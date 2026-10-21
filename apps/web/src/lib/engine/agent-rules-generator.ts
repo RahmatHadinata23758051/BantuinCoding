@@ -9,6 +9,7 @@ import {
   type AgentSkillRecommendation,
 } from '@/lib/prompts/agent-rules-generator'
 import type { GeneratedArtifactResult } from '@/lib/engine/artifact-generator'
+import { getVerifiedSkillInstallCommand } from '@/lib/skills/bootstrap'
 
 export interface GenerateAgentRulesOptions {
   userId: string
@@ -20,19 +21,32 @@ export interface GenerateAgentRulesOptions {
  */
 export function generateFallbackAgentMd(
   projectName: string,
-  _targetAgent?: string,
+  targetAgent = 'OTHER',
   skills?: AgentSkillRecommendation[],
 ): string {
-  void _targetAgent
-
   const skillsMarkdown = skills && skills.length > 0
     ? skills
-        .map(
-          (s) =>
-            `- **\`${s.name}\`**: ${s.purpose}\n  - *Trigger*: ${s.trigger}${s.installationHint ? `\n  - *Install*: \`${s.installationHint}\`` : ''}`,
-        )
+        .map((skill) => {
+          const command = getVerifiedSkillInstallCommand(skill.name, {
+            installation_mode: skill.installationMode,
+            installation_source: skill.installationSource,
+            installation_skill_id: skill.installationSkillId,
+            installation_agents: skill.installationAgents,
+            prerequisite: skill.prerequisite,
+            installation_hint: skill.installationHint,
+          }, targetAgent)
+          return `- **\`${skill.name}\`**: ${skill.purpose}\n  - *Trigger*: ${skill.trigger}${command ? `\n  - *Verified project-local setup*: \`${command}\`` : '\n  - *Setup*: Instruction-only; do not invent an installation command.'}`
+        })
         .join('\n')
     : '_Skill recommendations have not been resolved yet._'
+  const bootstrapInstructions = skills?.length
+    ? `### 6. Skill Bootstrap & Activation
+- Detect the coding-agent CLI and inspect its supported project-local skills directory and existing files first.
+- Use only the verified project-local setup command listed for each skill. Check prerequisites before running it.
+- Ask the human owner before global installs or overwriting existing files.
+- Read each installed skill's instructions and follow them whenever its trigger applies.
+- For instruction-only skills, use the recommendation below as guidance; do not invent an install command.`
+    : 'No skill setup is needed because no resolved recommendations are available. Do not invent skills or installation commands.';
 
   return `# Agent.md — Universal Operational Contract for AI Coding Agents
 
@@ -72,10 +86,12 @@ The coding agent must strictly adhere to anti-slop guidelines (see \`antislop\` 
 - [ ] No secrets exposed
 - [ ] Acceptance criteria met
 
-### 6. Recommended Agent Skills & Triggers
+${bootstrapInstructions}
+
+### 7. Recommended Agent Skills & Triggers
 ${skillsMarkdown}
 
-### 7. Definition of Done
+### 8. Definition of Done
 Task is complete only when all quality gate checks pass.
 `
 }
@@ -136,6 +152,12 @@ export async function generateAgentAndRulesArtifacts({
       applicable_phases?: string[]
       applicable_task_types?: string[]
       installation_hint?: string
+      installation_mode?: string
+      installation_source?: string
+      installation_skill_id?: string
+      installation_agents?: string[]
+      prerequisite?: string
+      initialization_hint?: string
     } = {}
     if (skill.metadata) {
       try {
@@ -149,6 +171,12 @@ export async function generateAgentAndRulesArtifacts({
       trigger: skill.trigger,
       source: skill.source,
       installationHint: metadata.installation_hint,
+      installationMode: metadata.installation_mode,
+      installationSource: metadata.installation_source,
+      installationSkillId: metadata.installation_skill_id,
+      installationAgents: metadata.installation_agents,
+      prerequisite: metadata.prerequisite,
+      initializationHint: metadata.initialization_hint,
       applicablePhases: metadata.applicable_phases,
       applicableTaskTypes: metadata.applicable_task_types,
     }
@@ -159,6 +187,7 @@ export async function generateAgentAndRulesArtifacts({
     currentContextRecord.contentJson,
     undefined,
     recommendations,
+    project.targetAgent,
   )
 
   const items = [
