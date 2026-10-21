@@ -86,8 +86,8 @@ describe('Backlog Generator Schema & Prompt', () => {
   it('retains late priority sections within the bounded section-aware summary', () => {
     const content = [
       '# Long specification',
-      `## Overview\n${'overview '.repeat(400)}`,
-      `## User stories\n${'story '.repeat(400)}`,
+      `## Overview\n${'overview '.repeat(700)}`,
+      `## User stories\n${'story '.repeat(700)}`,
       `## Security constraints\n${'guard '.repeat(300)}\nConfirmed security requirement SEC-42: never expose tokens.`,
       `## Export decisions\n${'export '.repeat(300)}\nConfirmed export decision: exclude private files.`,
     ].join('\n\n')
@@ -99,9 +99,106 @@ describe('Backlog Generator Schema & Prompt', () => {
     expect(summary).toContain('Omitted complete sections')
   })
 
-  it('fails explicitly when priority sections cannot fit the reference limit', () => {
-    const content = `# Long spec\n\n## Security\n${'critical security constraint '.repeat(400)}`
-    expect(() => summarizeBacklogReference(content)).toThrow('Priority sections in a backlog reference exceed')
+  it('truncates oversized priority sections without exceeding the reference limit', () => {
+    const content = `# Long spec\n\n## Security\n${'critical security constraint '.repeat(900)}`
+    const summary = summarizeBacklogReference(content)
+
+    expect(summary.length).toBeLessThanOrEqual(MAX_BACKLOG_REFERENCE_CHARS)
+    expect(summary).toContain('## Security')
+    expect(summary).toContain('section truncated for reference brevity')
+    expect(summary).toContain('Truncated sections')
+  })
+
+  it('bounds a long unsectioned document without requiring headings', () => {
+    const summary = summarizeBacklogReference('Unsectioned content '.repeat(MAX_BACKLOG_REFERENCE_CHARS))
+
+    expect(summary.length).toBeLessThanOrEqual(MAX_BACKLOG_REFERENCE_CHARS)
+    expect(summary).toContain('document truncated for reference brevity')
+  })
+
+  it('bounds summary notices when many sections are omitted', () => {
+    const content = Array.from({ length: 400 }, (_, index) => `## Overview ${index}\n${'detail '.repeat(100)}`).join('\n\n')
+    const summary = summarizeBacklogReference(content)
+
+    expect(summary.length).toBeLessThanOrEqual(MAX_BACKLOG_REFERENCE_CHARS)
+    expect(summary).toContain('Omitted complete sections')
+  })
+
+  it('fits comprehensive priority sections by keeping document-order excerpts', () => {
+    const content = Array.from({ length: 8 }, (_, index) => `## Security requirement ${index}\n${`fact-${index} `.repeat(800)}`).join('\n\n')
+    const summary = summarizeBacklogReference(content)
+
+    expect(summary.length).toBeLessThanOrEqual(MAX_BACKLOG_REFERENCE_CHARS)
+    expect(summary).toContain('fact-0')
+    expect(summary).toContain('Truncated sections')
+    expect(summary).toContain('Omitted complete sections')
+  })
+
+  it('validates generated backlog grounding against full source references', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const fullSource = `# PRD\n\n## Stack\n${'documented details '.repeat(1200)}\nUse Prisma for persistence.`
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-current', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [{ type: 'PRD', path: 'PRD.md', contextId: 'ctx-current', content: fullSource, status: 'READY' }],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key' })
+    const generated = vi.fn().mockResolvedValueOnce({ phases: [{ name: 'Phase 1', order: 1, tasks: [{
+      id: 'BK-001', title: 'Persist confirmed records with Prisma', description: 'Use Prisma for persistence.', dependencies: [],
+      acceptance_criteria: ['Persistence follows the documented Prisma data model.'],
+      definition_of_done: 'Persistence behavior is verified against the documented Prisma constraints.', relevant_docs: ['PRD.md'], recommended_skills: [],
+    }] }] })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: generated })
+    dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: 'phase-1', ...data }))
+    dbMocks.tx.backlogTask.create.mockImplementation(async ({ data }) => ({ id: 'task-1', ...data }))
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).resolves.toBeDefined()
+    expect(generated.mock.calls[0]?.[0]).not.toContain('Use Prisma for persistence.')
+  })
+
+  it('fails before the provider when the complete prompt exceeds its maximum size', async () => {
+    const { db } = await import('@repo/db')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-current', isCurrent: true, contentJson: 'x'.repeat(MAX_BACKLOG_PROMPT_CHARS), artifactPlans: [] }],
+      artifacts: [], skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key' })
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).rejects.toThrow('Backlog generation input exceeds')
+    expect(dbMocks.tx.artifact.upsert).not.toHaveBeenCalled()
+  })
+
+  it('keeps the bounded provider input below the configured prompt ceiling for large references', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-current', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [{ type: 'PRD', path: 'PRD.md', contextId: 'ctx-current', content: `# PRD\n\n## Requirements\n${'requirement '.repeat(20_000)}`, status: 'READY' }],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key' })
+    const generated = vi.fn().mockResolvedValueOnce({ phases: mockPhases })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: generated })
+    dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: 'phase-1', ...data }))
+    dbMocks.tx.backlogTask.create.mockImplementation(async ({ data }) => ({ id: 'task-1', ...data }))
+
+    await generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })
+    const prompt = generated.mock.calls[0]?.[0] as string
+    expect(prompt.length).toBeLessThanOrEqual(MAX_BACKLOG_PROMPT_CHARS)
+    expect(prompt).toContain('section truncated for reference brevity')
+  })
+
+  it('validates a valid BacklogGeneratorOutput object', () => {
+    const data = {
+      phases: mockPhases,
+      backlog_md_content: '# BACKLOG.md',
+    }
+    const result = BacklogGeneratorOutputSchema.safeParse(data)
+    expect(result.success).toBe(true)
   })
 
   it('fails when the assembled prompt exceeds its maximum size', () => {
@@ -283,7 +380,7 @@ describe('Backlog Generator Schema & Prompt', () => {
     expect(generateStructured.mock.calls[0]?.[0]).toContain('Do not log secrets.')
   })
 
-  it('rejects over-limit references before marking BACKLOG generating', async () => {
+  it('handles over-limit references before marking BACKLOG generating', async () => {
     const { db } = await import('@repo/db')
     const { createProvider } = await import('@/lib/ai/provider')
     vi.mocked(db.project.findFirst).mockResolvedValueOnce({
@@ -293,11 +390,82 @@ describe('Backlog Generator Schema & Prompt', () => {
       skillRecommendations: [],
     } as never)
     vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key' })
-    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn() })
+    const generateStructured = vi.fn().mockResolvedValueOnce({ phases: mockPhases })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured })
+    dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: 'phase-1', ...data }))
+    dbMocks.tx.backlogTask.create.mockImplementation(async ({ data }) => ({ id: 'task-1', ...data }))
 
-    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' }))
-      .rejects.toThrow('Priority sections in a backlog reference exceed')
-    expect(dbMocks.tx.artifact.upsert).not.toHaveBeenCalled()
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).resolves.toBeDefined()
+    expect(generateStructured).toHaveBeenCalledOnce()
+    expect(dbMocks.tx.artifact.upsert).toHaveBeenCalledOnce()
+  })
+
+  it('accepts documented repository paths present only after the bounded excerpt', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const fullSource = `# PRD\n\n## Overview\n${'overview '.repeat(1500)}\n\n## Repository\nUse the file "src/server/db.ts" for database access.`
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-current', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [{ type: 'PRD', path: 'PRD.md', contextId: 'ctx-current', content: fullSource, status: 'READY' }],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key' })
+    const generateStructured = vi.fn().mockResolvedValueOnce({ phases: [{ name: 'Phase 1', order: 1, tasks: [{
+      id: 'BK-001', title: 'Use the documented persistence module', description: 'Update the confirmed module.', dependencies: [],
+      acceptance_criteria: ['The documented persistence module retains required behavior.'],
+      definition_of_done: 'Module behavior is verified against the project requirements.', relevant_docs: ['src/server/db.ts'], recommended_skills: [],
+    }] }] })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured })
+    dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: 'phase-1', ...data }))
+    dbMocks.tx.backlogTask.create.mockImplementation(async ({ data }) => ({ id: 'task-1', ...data }))
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).resolves.toBeDefined()
+    expect(generateStructured).toHaveBeenCalledOnce()
+  })
+
+  it('rejects an unsupported tool that appears only after the bounded excerpt', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const fullSource = `# PRD\n\n## Overview\n${'overview '.repeat(1500)}\n\n## Stack\nDo not use Prisma.`
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-current', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [{ type: 'PRD', path: 'PRD.md', contextId: 'ctx-current', content: fullSource, status: 'READY' }],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key' })
+    const generateStructured = vi.fn().mockResolvedValueOnce({ phases: [{ name: 'Phase 1', order: 1, tasks: [{
+      id: 'BK-001', title: 'Persist records with Prisma', description: 'Use Prisma for persistence.', dependencies: [],
+      acceptance_criteria: ['Persistence uses the Prisma schema.'],
+      definition_of_done: 'Persistence behavior is verified against the project requirements.', relevant_docs: ['PRD.md'], recommended_skills: [],
+    }] }] })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured })
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).rejects.toThrow('unsupported or conflicting technology/tool "Prisma"')
+  })
+
+  it('accepts a supported tool that appears only in a late full-source section', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    const fullSource = `# PRD\n\n## Stack\n${'documented details '.repeat(1200)}\nUse Prisma for persistence.`
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-current', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [{ type: 'PRD', path: 'PRD.md', contextId: 'ctx-current', content: fullSource, status: 'READY' }],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({ provider: 'ANTHROPIC', model: 'model-1', apiKey: 'test-key' })
+    const generateStructured = vi.fn().mockResolvedValueOnce({ phases: [{ name: 'Phase 1', order: 1, tasks: [{
+      id: 'BK-001', title: 'Persist records with Prisma', description: 'Use Prisma for persistence.', dependencies: [],
+      acceptance_criteria: ['Persistence uses the documented Prisma schema.'],
+      definition_of_done: 'Persistence behavior is verified against the documented Prisma constraints.', relevant_docs: ['PRD.md'], recommended_skills: [],
+    }] }] })
+    vi.mocked(createProvider).mockReturnValueOnce({ type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured })
+    dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: 'phase-1', ...data }))
+    dbMocks.tx.backlogTask.create.mockImplementation(async ({ data }) => ({ id: 'task-1', ...data }))
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).resolves.toBeDefined()
   })
 
   it('validates a valid BacklogGeneratorOutput object', () => {
