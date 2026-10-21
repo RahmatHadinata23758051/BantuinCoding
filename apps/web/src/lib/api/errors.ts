@@ -7,6 +7,9 @@ const SAFE_ERROR_PATTERNS: Array<[RegExp, string | ((msg: string) => string)]> =
   [/project is not exportable/i, 'Project validation must pass before export.'],
   [/project has no current context/i, 'Canonical context is required before export.'],
   [/project documents are not ready for export/i, 'All required documents must be ready before export.'],
+  [/generated backlog failed project-grounding checks/i, (msg) => msg],
+  [/required .* reference is not ready/i, (msg) => msg],
+  [/backlog reference.*limit/i, (msg) => msg],
   [
     /security alert.*potential api key leakage detected in ([a-z0-9_.-]+)/i,
     (msg: string) => {
