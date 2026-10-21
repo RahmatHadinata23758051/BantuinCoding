@@ -2,10 +2,12 @@ import { db } from '@repo/db'
 import { z } from 'zod'
 import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
+import { BacklogGenerationError, getSafeApiErrorMessage } from '@/lib/api/errors'
 import {
   BACKLOG_GENERATOR_SYSTEM_PROMPT,
   BacklogGeneratorOutputSchema,
   buildBacklogGeneratorUserPrompt,
+  buildBacklogRepairPrompt,
   type BacklogDocumentReference,
   type BacklogGeneratorOutput,
   type GeneratedBacklogPhase,
@@ -77,15 +79,19 @@ function normalizeBacklogOutput(raw: unknown): BacklogGeneratorOutput {
           const t = task && typeof task === 'object' ? (task as Record<string, unknown>) : {}
           const asStrings = (input: unknown): string[] =>
             Array.isArray(input) ? input.map(String) : []
+          const dod = t.definition_of_done ?? t.definitionOfDone
+          const ac = t.acceptance_criteria ?? t.acceptanceCriteria
+          const docs = t.relevant_docs ?? t.relevantDocs
+          const skills = t.recommended_skills ?? t.recommendedSkills
           return {
             id: typeof t.id === 'string' ? t.id : `BK-${String(taskIndex + 1).padStart(3, '0')}`,
             title: typeof t.title === 'string' ? t.title : '',
             description: typeof t.description === 'string' ? t.description : '',
             dependencies: asStrings(t.dependencies),
-            acceptance_criteria: asStrings(t.acceptance_criteria),
-            definition_of_done: typeof t.definition_of_done === 'string' ? t.definition_of_done : '',
-            relevant_docs: asStrings(t.relevant_docs),
-            recommended_skills: asStrings(t.recommended_skills),
+            acceptance_criteria: asStrings(ac),
+            definition_of_done: typeof dod === 'string' ? dod : '',
+            relevant_docs: asStrings(docs),
+            recommended_skills: asStrings(skills),
           }
         }),
       }
@@ -156,10 +162,16 @@ export async function generateProjectBacklog({
     (project.skillRecommendations ?? []).map((skill) => skill.name),
   )
 
-  // Set artifact to GENERATING only after deterministic inputs validate.
+  const previousBacklog = project.artifacts.find((artifact) => artifact.type === 'BACKLOG')
+  const failureStatus = previousBacklog?.content.trim()
+    && ['READY', 'MODIFIED', 'OUTDATED'].includes(previousBacklog.status)
+    ? previousBacklog.status
+    : 'FAILED'
+
+  // Keep the previous content/context until the replacement transaction commits.
   await db.artifact.upsert({
     where: { projectId_type: { projectId, type: 'BACKLOG' } },
-    update: { status: 'GENERATING', contextId: currentContextRecord.id },
+    update: { status: 'GENERATING' },
     create: {
       projectId,
       contextId: currentContextRecord.id,
@@ -170,55 +182,87 @@ export async function generateProjectBacklog({
     },
   })
 
-
-  let backlogOutput: BacklogGeneratorOutput
-  try {
-    const rawOutput = await Promise.race([
-      provider.generateStructured(
-        userPrompt,
-        z.unknown(),
-        {
+  const generateDraft = async (prompt: string): Promise<unknown> => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        provider.generateStructured(prompt, z.unknown(), {
           system: BACKLOG_GENERATOR_SYSTEM_PROMPT,
           maxTokens: 32000,
           temperature: 0.2,
-        },
-      ),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Backlog generation timed out after 120 seconds. Please regenerate.')), 120_000)
-      }),
-    ])
-    backlogOutput = BacklogGeneratorOutputSchema.parse(normalizeBacklogOutput(rawOutput))
-    const allowedSkills = new Set((project.skillRecommendations ?? []).map((s) => s.name))
-    for (const phase of backlogOutput.phases) {
+        }),
+        new Promise<never>((_, reject) => {
+          // Match the OpenAI-compatible transport deadline instead of failing at 120s.
+          timer = setTimeout(() => reject(new BacklogGenerationError(
+            'Backlog generation timed out after 180 seconds. Retry or choose a faster model.', 504,
+          )), 180_000)
+        }),
+      ])
+    } catch (error) {
+      if (error instanceof BacklogGenerationError) throw error
+      const timedOut = error instanceof Error && /timeout|timed out/i.test(error.message)
+      const fallback = 'The provider could not generate the backlog. Please retry or choose another model.'
+      const message = getSafeApiErrorMessage(error, fallback)
+      // Some legacy mappings echo internal errors; never forward a provider payload.
+      throw new BacklogGenerationError(
+        error instanceof Error && message === error.message ? fallback : message,
+        timedOut ? 504 : 502,
+      )
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  const allowedSkills = new Set((project.skillRecommendations ?? []).map((skill) => skill.name))
+  const validateDraft = (raw: unknown): BacklogGeneratorOutput => {
+    const output = BacklogGeneratorOutputSchema.parse(normalizeBacklogOutput(raw))
+    for (const phase of output.phases) {
       for (const task of phase.tasks) {
         task.recommended_skills = task.recommended_skills.filter((skill) => allowedSkills.has(skill))
       }
     }
-    const qualityErrors = validateBacklogQuality(backlogOutput.phases, {
-      plannedDocumentPaths,
-      sourceTexts: references.map(({ content }) => content),
-      confirmedContextJson: currentContextRecord.contentJson,
-    })
-    if (qualityErrors.length > 0) {
-      throw new Error(`Generated backlog failed project-grounding checks: ${qualityErrors.join(' ')}`)
+    const errors = [
+      ...validateBacklogQuality(output.phases, {
+        plannedDocumentPaths,
+        sourceTexts: references.map(({ content }) => content),
+        confirmedContextJson: currentContextRecord.contentJson,
+      }),
+      ...validateBacklogDependencies(output.phases).errors,
+    ]
+    if (errors.length) throw new Error(errors.join('\n'))
+    return output
+  }
+
+  let backlogOutput: BacklogGeneratorOutput
+  try {
+    const rawOutput = await generateDraft(userPrompt)
+    try {
+      backlogOutput = validateDraft(rawOutput)
+    } catch (initialError) {
+      const issues = initialError instanceof z.ZodError
+        ? initialError.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+        : [initialError instanceof Error ? initialError.message : 'Invalid backlog task graph']
+      const repairPrompt = buildBacklogRepairPrompt(userPrompt, JSON.stringify(rawOutput) ?? 'null', issues)
+      // A failed repair request keeps its upstream/timeout classification.
+      const repairedOutput = await generateDraft(repairPrompt)
+      try {
+        backlogOutput = validateDraft(repairedOutput)
+      } catch {
+        const message = initialError instanceof z.ZodError
+          ? initialError.issues.map((issue) => issue.message).join('; ')
+          : initialError instanceof Error
+            ? initialError.message
+            : 'Invalid backlog task graph'
+        throw new BacklogGenerationError(message, 502)
+      }
     }
   } catch (error) {
     await db.artifact.update({
       where: { projectId_type: { projectId, type: 'BACKLOG' } },
-      data: { status: 'FAILED' },
+      data: { status: failureStatus },
     })
     throw error
   }
-
-  // Validate dependency references and circular dependencies.
   const validation = validateBacklogDependencies(backlogOutput.phases)
-  if (!validation.isValid) {
-    await db.artifact.update({
-      where: { projectId_type: { projectId, type: 'BACKLOG' } },
-      data: { status: 'FAILED' },
-    })
-    throw new Error('AI generated invalid dependencies or circular references. Please regenerate.')
-  }
 
   try {
     await db.$transaction(async (tx) => {
@@ -285,9 +329,9 @@ export async function generateProjectBacklog({
   } catch {
     await db.artifact.update({
       where: { projectId_type: { projectId, type: 'BACKLOG' } },
-      data: { status: 'FAILED' },
+      data: { status: failureStatus },
     })
-    throw new Error('Backlog replacement failed. The previous backlog was preserved.')
+    throw new BacklogGenerationError('Backlog replacement failed. The previous backlog was preserved.', 500)
   }
 
   return backlogOutput
