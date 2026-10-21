@@ -100,6 +100,17 @@ describe('validateBacklogQuality', () => {
     expect(errors).toContain('BK-001 references unplanned or undocumented document path "SRS.md".')
   })
 
+  it('accepts planned file paths with section citations and quoted paths', () => {
+    const optionsWithArch = {
+      ...plainJavaScriptOptions,
+      plannedDocumentPaths: ['PRD.md', 'Agent.md', 'ARCHITECTURE.md', 'BACKLOG.md'],
+    }
+    for (const doc of ['Agent.md §2, §3, §6', 'ARCHITECTURE.md §1–§3', 'PRD.md §4 FR-01', '`PRD.md`']) {
+      const errors = validateBacklogQuality(phase({ relevant_docs: [doc] }), optionsWithArch)
+      expect(errors, doc).toEqual([])
+    }
+  })
+
   it('permits a repository path explicitly quoted in supplied documentation', () => {
     const errors = validateBacklogQuality(phase({ relevant_docs: ['src/server.js'] }), {
       ...plainJavaScriptOptions,
@@ -107,5 +118,17 @@ describe('validateBacklogQuality', () => {
     })
 
     expect(errors).toEqual([])
+  })
+
+  it('does not treat an unrelated suffix as a section citation', () => {
+    const errors = validateBacklogQuality(phase({ relevant_docs: ['PRD.md.backup'] }), plainJavaScriptOptions)
+
+    expect(errors).toContain('BK-001 references unplanned or undocumented document path "PRD.md.backup".')
+  })
+
+  it('rejects an unplanned markdown document even when it includes a section citation', () => {
+    const errors = validateBacklogQuality(phase({ relevant_docs: ['SRS.md §4 FR-01'] }), plainJavaScriptOptions)
+
+    expect(errors).toContain('BK-001 references unplanned or undocumented document path "SRS.md §4 FR-01".')
   })
 })
