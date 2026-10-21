@@ -140,10 +140,22 @@ describe('AIProvider — interface contract', () => {
       expect(result).toEqual({ ok: true })
     })
 
-    it('OPENAI: returns validated object', async () => {
+    it('OPENAI: returns validated object and requests JSON mode', async () => {
+      const { default: OpenAI } = await import('openai')
+      const create = vi.fn().mockResolvedValue({
+        choices: [{ message: { content: '{"ok":true}' } }],
+      })
+      vi.mocked(OpenAI).mockImplementationOnce(() => ({
+        chat: { completions: { create } },
+      }) as never)
+
       const p = createProvider({ provider: 'OPENAI', model: 'gpt-4o', apiKey: 'sk-test' })
       const result = await p.generateStructured('test prompt', OkSchema)
+
       expect(result).toEqual({ ok: true })
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({
+        response_format: { type: 'json_object' },
+      }))
     })
 
     it('GEMINI: returns validated object', async () => {
