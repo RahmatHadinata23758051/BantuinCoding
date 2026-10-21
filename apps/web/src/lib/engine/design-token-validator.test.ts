@@ -8,240 +8,133 @@ import {
   validateDesignTokensAndContrast,
 } from './design-token-validator'
 
+const accessibleDesign = `# DESIGN.md
+\`\`\`css
+:root {
+  --color-canvas: #FFFFFF;
+  --color-surface: #F5F5F5;
+  --color-ink: #111827;
+  --color-muted: #4B5563;
+  --color-accent: #334155;
+  --color-on-accent: #FFFFFF;
+  --color-focus: #2563EB;
+}
+\`\`\``
+
 describe('Design Token Validator — WCAG Math & Parsing', () => {
-  it('parses valid 3-digit and 6-digit hex colors with and without hash', () => {
+  it('parses opaque short and long hex colors', () => {
     expect(parseHexColor('#fff')).toEqual({ r: 255, g: 255, b: 255 })
     expect(parseHexColor('#000')).toEqual({ r: 0, g: 0, b: 0 })
     expect(parseHexColor('111827')).toEqual({ r: 17, g: 24, b: 39 })
     expect(parseHexColor('#F5F5F5')).toEqual({ r: 245, g: 245, b: 245 })
   })
 
-  it('safely rejects malformed or non-hex color strings without throwing', () => {
-    expect(parseHexColor('#zzz')).toBeNull()
-    expect(parseHexColor('#12')).toBeNull()
-    expect(parseHexColor('#12345')).toBeNull()
-    expect(parseHexColor('rgb(0,0,0)')).toBeNull()
-    expect(parseHexColor('var(--color)')).toBeNull()
-    expect(parseHexColor('')).toBeNull()
+  it.each(['#zzz', '#12', '#12345', '#0008', '#00000080', 'rgb(0,0,0)', 'var(--color)', ''])('rejects unsupported color %s', (color) => {
+    expect(parseHexColor(color)).toBeNull()
   })
 
-  it('computes exact relative luminance bounds for black and white', () => {
+  it('computes WCAG luminance and contrast without rounding the decision', () => {
     expect(getRelativeLuminance(0, 0, 0)).toBe(0)
     expect(getRelativeLuminance(255, 255, 255)).toBe(1)
-  })
-
-  it('calculates contrast ratios matching standard WCAG 2.1 specifications', () => {
-    // Black and white is 21:1
     expect(calculateContrastRatio('#FFFFFF', '#000000')).toBe(21)
     expect(calculateContrastRatio('#000000', '#FFFFFF')).toBe(21)
-
-    // Identical colors are 1:1
     expect(calculateContrastRatio('#FFFFFF', '#FFFFFF')).toBe(1)
-
-    // Typical accessible dark text on white
-    const darkOnWhite = calculateContrastRatio('#111827', '#FFFFFF')
-    expect(darkOnWhite).toBeGreaterThan(15)
-
-    // Low contrast grey on white
-    const lightGreyOnWhite = calculateContrastRatio('#CCCCCC', '#FFFFFF')
-    expect(lightGreyOnWhite).toBeLessThan(2)
-
-    // Returns null for invalid color
+    expect(calculateContrastRatio('#111827', '#FFFFFF')).toBeGreaterThan(15)
     expect(calculateContrastRatio('#INVALID', '#FFFFFF')).toBeNull()
+    // This pair rounds to 4.50, but is below the required ratio.
+    expect(calculateContrastRatio('#777777', '#FEFEFE')).toBeLessThan(4.5)
+    const issues = validateDesignTokensAndContrast(accessibleDesign
+      .replace('--color-canvas: #FFFFFF', '--color-canvas: #FEFEFE')
+      .replace('--color-ink: #111827', '--color-ink: #777777'))
+    expect(issues.some((issue) => issue.description.includes('--color-ink against --color-canvas'))).toBe(true)
   })
 })
 
 describe('Design Token Validator — Extraction', () => {
-  const sampleMarkdown = `---
-name: "Acme Design System"
-archetype: "Modern Clean"
+  it('extracts legacy flat YAML colors only from front matter', () => {
+    const yaml = `---
 colors:
   canvas: "#FFFFFF"
-  surface: "#F9FAFB" # light grey
-  border: "#E5E7EB"
-  ink-primary: '#111827'
-  ink-muted: "#6B7280"
-  accent: "#2563EB"
+  surface: '#F9FAFB' # light grey
+  ink-primary: "#111827"
 typography:
-  body: { fontFamily: "Inter" }
-rounded:
-  sm: "4px"
-spacing:
-  sm: "8px"
-iconography:
-  library: "lucide-react"
+  body: Inter
 ---
-# DESIGN.md
-
-## 7. Implementation Tokens
-\`\`\`css
-:root {
-  --color-canvas: #FFFFFF;
-  --color-surface: #F9FAFB;
-  --color-border: #E5E7EB;
-  --color-ink: #111827;
-  --color-muted: #6B7280;
-  --color-accent: #2563EB;
-}
-\`\`\`
-`
-
-  it('extracts color tokens from YAML front matter', () => {
-    const tokens = extractYamlColorTokens(sampleMarkdown)
-    expect(tokens['canvas']).toBe('#FFFFFF')
-    expect(tokens['surface']).toBe('#F9FAFB')
-    expect(tokens['border']).toBe('#E5E7EB')
-    expect(tokens['ink-primary']).toBe('#111827')
-    expect(tokens['ink-muted']).toBe('#6B7280')
-    expect(tokens['accent']).toBe('#2563EB')
+# DESIGN.md`
+    expect(extractYamlColorTokens(yaml)).toEqual({ canvas: '#FFFFFF', surface: '#F9FAFB', 'ink-primary': '#111827' })
+    expect(extractYamlColorTokens('# DESIGN.md\ncolors:\n  canvas: "#fff"\n')).toEqual({})
   })
 
-  it('extracts CSS custom properties from :root block', () => {
-    const props = extractCssCustomProperties(sampleMarkdown)
-    expect(props.get('--color-canvas')).toBe('#FFFFFF')
-    expect(props.get('--color-ink')).toBe('#111827')
-    expect(props.get('--color-accent')).toBe('#2563EB')
+  it('extracts only literal top-level CSS roots, ignoring comments, prose, and theme overrides', () => {
+    const markdown = `:root { --prose: ignored; }
+\`\`\`text
+:root { --text-fence: ignored; }
+\`\`\`
+\`\`\`css
+/* :root { --comment: ignored; } */
+:root {
+  --color-canvas: #fff; /* source */
+  --font-body: system-ui, sans-serif;
+}
+[data-theme="dark"] { --color-canvas: #000; }
+@media (prefers-color-scheme: dark) {
+  :root { --nested: ignored; }
+}
+\`\`\``
+    expect(Object.fromEntries(extractCssCustomProperties(markdown))).toEqual({
+      '--color-canvas': '#fff', '--font-body': 'system-ui, sans-serif',
+    })
+  })
+
+  it('supports tilde fences and CRLF', () => {
+    expect(extractCssCustomProperties('~~~css\r\n:root { --color-canvas: #fff; }\r\n~~~').get('--color-canvas')).toBe('#fff')
   })
 })
 
 describe('Design Token Validator — Validation Logic', () => {
-  it('passes cleanly for accessible, synchronized design tokens', () => {
-    const validMarkdown = `---
-name: "Clean"
-colors:
-  canvas: "#FFFFFF"
-  surface: "#F5F5F5"
-  border: "#D1D5DB"
-  ink-primary: "#111827"
-  ink-muted: "#4B5563"
-  accent: "#334155"
-typography:
-  body: { fontFamily: "Inter" }
-rounded:
-  sm: "4px"
-spacing:
-  sm: "8px"
-iconography:
-  library: "lucide-react"
----
-# DESIGN.md
-\`\`\`css
-:root {
-  --color-canvas: #FFFFFF;
-  --color-surface: #F5F5F5;
-  --color-border: #D1D5DB;
-  --color-ink: #111827;
-  --color-muted: #4B5563;
-  --color-accent: #334155;
-}
-\`\`\`
-`
-    const issues = validateDesignTokensAndContrast(validMarkdown)
-    expect(issues).toHaveLength(0)
+  it('accepts accessible CSS-only semantic colors', () => {
+    expect(validateDesignTokensAndContrast(accessibleDesign)).toEqual([])
   })
 
-  it('emits an advisory contrast warning when normal text fails WCAG AA (4.5:1)', () => {
-    const lowContrastMarkdown = `---
-name: "Failing Contrast"
-colors:
-  canvas: "#FFFFFF"
-  surface: "#FFFFFF"
-  border: "#EEEEEE"
-  ink-primary: "#AAAAAA" # ~2.3:1 contrast against white
-  ink-muted: "#CCCCCC"
-  accent: "#EEEEEE"
----
-# DESIGN.md
-`
-    const issues = validateDesignTokensAndContrast(lowContrastMarkdown)
-    const contrastIssue = issues.find((i) => i.category === 'CONTRAST_WARNING' && i.description.includes('primary text'))
-    expect(contrastIssue).toBeDefined()
-    expect(contrastIssue?.severity).toBe('MEDIUM')
-    expect(contrastIssue?.description).toContain('WCAG AA requires at least 4.5:1')
+  it.each([
+    ['ink', '#AAAAAA', 'MEDIUM', '4.5'],
+    ['muted', '#888888', 'LOW', '4.5'],
+    ['on-accent', '#334155', 'MEDIUM', '4.5'],
+    ['focus', '#CCCCCC', 'MEDIUM', '3'],
+  ])('checks --color-%s with the correct threshold', (name, value, severity, minimum) => {
+    const markdown = accessibleDesign.replace(new RegExp(`--color-${name}: #[\\da-f]+`, 'i'), `--color-${name}: ${value}`)
+    const issue = validateDesignTokensAndContrast(markdown).find((item) => item.description.includes(`--color-${name} against`))
+    expect(issue?.category).toBe('CONTRAST_WARNING')
+    expect(issue?.severity).toBe(severity)
+    expect(issue?.description).toContain(`requires at least ${minimum}:1`)
   })
 
-  it('emits an advisory contrast warning when muted text is below 3:1', () => {
-    const lowMutedMarkdown = `---
-name: "Low Muted"
-colors:
-  canvas: "#FFFFFF"
-  surface: "#FFFFFF"
-  border: "#EEEEEE"
-  ink-primary: "#111827" # good
-  ink-muted: "#DDDDDD" # ~1.3:1 contrast against white (< 3:1)
-  accent: "#334155"
----
-# DESIGN.md
-`
-    const issues = validateDesignTokensAndContrast(lowMutedMarkdown)
-    const mutedIssue = issues.find((i) => i.category === 'CONTRAST_WARNING' && i.description.includes('muted text'))
-    expect(mutedIssue).toBeDefined()
-    expect(mutedIssue?.severity).toBe('LOW')
-    expect(mutedIssue?.description).toContain('target at least 3:1')
+  it.each(['#ZZZZZZ', '#12', '#11182780', '#0008', 'rgb(0,0,0)', 'var(--ink)', '111827'])('reports unverifiable semantic color %s instead of passing silently', (value) => {
+    const issues = validateDesignTokensAndContrast(accessibleDesign.replace('--color-ink: #111827', `--color-ink: ${value}`))
+    expect(issues.some((issue) => issue.category === 'INVALID_DESIGN_SYSTEM' && issue.description.includes('contrast cannot be verified'))).toBe(true)
   })
 
-  it('reports unparseable hex formats gracefully as advisory warnings', () => {
-    const malformedMarkdown = `---
-name: "Malformed"
-colors:
-  canvas: "#ZZZZZZ"
-  surface: "#12"
-  ink-primary: "#111827"
----
-# DESIGN.md
-`
-    const issues = validateDesignTokensAndContrast(malformedMarkdown)
-    expect(issues.some((i) => i.category === 'INVALID_DESIGN_SYSTEM' && i.description.includes('#ZZZZZZ'))).toBe(true)
-    expect(issues.some((i) => i.category === 'INVALID_DESIGN_SYSTEM' && i.description.includes('#12'))).toBe(true)
+  it('uses CSS rather than stale YAML and emits no parity warnings', () => {
+    const markdown = `---\ncolors:\n  canvas: "#000000"\n  ink-primary: "#000000"\n  accent: "#ZZZZZZ"\n---\n${accessibleDesign}`
+    expect(validateDesignTokensAndContrast(markdown)).toEqual([])
+    expect(validateDesignTokensAndContrast(`${markdown}\n`)).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ category: 'DESIGN_TOKEN_MISMATCH' }),
+    ]))
   })
 
-  it('detects missing CSS custom properties when :root block is present', () => {
-    const missingCssMarkdown = `---
-name: "Missing CSS"
-colors:
-  canvas: "#FFFFFF"
-  surface: "#F5F5F5"
-  border: "#D1D5DB"
-  ink-primary: "#111827"
-  accent: "#FF0000"
----
-# DESIGN.md
-\`\`\`css
-:root {
-  --color-canvas: #FFFFFF;
-  --color-ink: #111827;
-}
-\`\`\`
-`
-    const issues = validateDesignTokensAndContrast(missingCssMarkdown)
-    const missingAccent = issues.find((i) => i.category === 'DESIGN_TOKEN_MISMATCH' && i.description.includes('accent'))
-    expect(missingAccent).toBeDefined()
+  it('still checks legacy YAML contrast when no CSS exists', () => {
+    const issues = validateDesignTokensAndContrast('---\ncolors:\n  canvas: "#fff"\n  ink-primary: "#aaa"\n---\n# DESIGN.md')
+    expect(issues.some((issue) => issue.category === 'CONTRAST_WARNING')).toBe(true)
   })
 
-  it('detects value mismatch between YAML token and CSS custom property', () => {
-    const mismatchMarkdown = `---
-name: "Mismatch"
-colors:
-  canvas: "#FFFFFF"
-  surface: "#F5F5F5"
-  border: "#D1D5DB"
-  accent: "#334155"
-  ink-primary: "#111827"
----
-# DESIGN.md
-\`\`\`css
-:root {
-  --color-canvas: #000000; /* Mismatch with #FFFFFF */
-  --color-surface: #F5F5F5;
-  --color-border: #D1D5DB;
-  --color-accent: #334155;
-  --color-ink: #111827;
-}
-\`\`\`
-`
-    const issues = validateDesignTokensAndContrast(mismatchMarkdown)
-    const mismatchIssue = issues.find((i) => i.category === 'DESIGN_TOKEN_MISMATCH' && i.description.includes('canvas'))
-    expect(mismatchIssue).toBeDefined()
-    expect(mismatchIssue?.description).toContain('YAML specifies "#FFFFFF" but CSS property --color-canvas is "#000000"')
+  it('does not mix missing CSS values with legacy YAML roles', () => {
+    const markdown = '---\ncolors:\n  canvas: "#fff"\n---\n```css\n:root { --color-ink: #aaa; }\n```'
+    expect(validateDesignTokensAndContrast(markdown)).toEqual([])
+  })
+
+  it('skips UI colors for nonvisual documents but not markers inside code examples', () => {
+    expect(validateDesignTokensAndContrast('# DESIGN.md\nUI scope: none')).toEqual([])
+    const markdown = `${accessibleDesign.replace('--color-ink: #111827', '--color-ink: #AAAAAA')}\n\n\`\`\`text\nUI scope: none\n\`\`\``
+    expect(validateDesignTokensAndContrast(markdown).some((issue) => issue.category === 'CONTRAST_WARNING')).toBe(true)
   })
 })
