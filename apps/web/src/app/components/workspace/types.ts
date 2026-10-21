@@ -33,6 +33,7 @@ export interface ProjectWorkspaceProps {
     name: string
     description: string | null
     classification: string
+    targetAgent: string
     classificationStatus: string
     classificationError: string | null
     language: string
@@ -63,6 +64,12 @@ export interface ProjectWorkspaceProps {
         applicable_phases?: string[]
         applicable_task_types?: string[]
         installation_hint?: string
+        installation_mode?: string
+        installation_source?: string
+        installation_skill_id?: string
+        installation_agents?: string[]
+        prerequisite?: string
+        initialization_hint?: string
       } | null
     }[]
     phases: {
