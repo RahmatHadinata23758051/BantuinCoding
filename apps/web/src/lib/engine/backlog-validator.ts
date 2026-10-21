@@ -89,20 +89,23 @@ function isExplicitlyExcludedByConfirmedFacts(term: string, confirmedFacts: stri
   return false
 }
 
-function termPattern(term: string): RegExp {
-  return new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+function countMatches(text: string, term: string): number {
+  const matches = text.match(new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'))
+  return matches ? matches.length : 0
 }
 
 function mentionsTermAffirmatively(text: string, term: string): boolean {
-  if (!termPattern(term).test(text)) return false
-  const negatedTerms = new Set<string>()
+  const totalMatches = countMatches(text, term)
+  if (totalMatches === 0) return false
+
   const negatedClauses = text.matchAll(/\b(?:without|no|not\s+using|do\s+not\s+use|exclude(?:d)?|avoid)\b([^.!?;\n]*)/gi)
-  for (const [, clause] of negatedClauses) {
-    for (const candidate of STACK_AND_TOOL_TERMS) {
-      if (termPattern(candidate).test(clause)) negatedTerms.add(candidate)
-    }
+  let negatedMatches = 0
+  for (const [, rawClause] of negatedClauses) {
+    const clause = rawClause.split(/\b(?:but|however|although|whereas)\b/i)[0]
+    negatedMatches += countMatches(clause, term)
   }
-  return !negatedTerms.has(term)
+
+  return totalMatches > negatedMatches
 }
 
 function normalizedText(value: string): string {
@@ -139,7 +142,7 @@ export function validateBacklogQuality(
       const taskText = [task.title, task.description, ...task.acceptance_criteria, task.definition_of_done].join('\n')
       for (const term of STACK_AND_TOOL_TERMS) {
         if (!mentionsTermAffirmatively(taskText, term)) continue
-        if (!termPattern(term).test(documentedText) || isExplicitlyExcludedByConfirmedFacts(term, confirmedFacts)) {
+        if (!mentionsTermAffirmatively(documentedText, term) || isExplicitlyExcludedByConfirmedFacts(term, confirmedFacts)) {
           errors.push(`${task.id} uses unsupported or conflicting technology/tool "${term}".`)
         }
       }
