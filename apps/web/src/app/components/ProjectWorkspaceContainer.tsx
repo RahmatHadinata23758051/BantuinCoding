@@ -46,11 +46,13 @@ import {
   getSectionTabId,
   hasContextData,
   isSensitiveContextValue,
+  shouldShowDesignSystemGraph,
 } from '@/app/components/workspace/helpers'
 import type { ContextProvenanceCounts, ProjectWorkspaceProps } from '@/app/components/workspace/types'
 import type { SystemGraphData } from '@repo/types'
 import { parseProjectBrief, type ParsedProjectBrief } from '@/lib/projects/brief-parser'
 import { VisualReferenceStep } from '@/app/components/visual-references/VisualReferenceStep'
+import { generateOneShotKickoffPrompt as buildOneShotKickoffPrompt } from '@/lib/prompts/one-shot-kickoff'
 
 import { Modal } from '@/app/components/ui'
 import {
@@ -94,9 +96,19 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedTab = parseWorkspaceTab(searchParams.get('tab'))
-  const showDesignSystem = initialData.classification !== 'LANDING_PAGE'
+  const [currentClassification, setCurrentClassification] = useState(initialData.classification)
+  const [systemGraph, setSystemGraph] = useState<SystemGraphData | null>(initialData.systemGraph)
+  const showDesignSystem = shouldShowDesignSystemGraph(systemGraph, currentClassification)
   const sectionItems = ALL_SECTIONS.filter((section) => section.id !== 'design-system' || showDesignSystem)
   const activeTab = requestedTab === 'design-system' && !showDesignSystem ? 'overview' : requestedTab
+
+  useEffect(() => {
+    if (showDesignSystem || requestedTab !== 'design-system') return
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('tab')
+    const query = params.toString()
+    router.replace(query ? `?${query}` : '?', { scroll: false })
+  }, [requestedTab, router, searchParams, showDesignSystem])
 
   const selectTab = (section: WorkspaceSection) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -118,7 +130,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const [projectName, setProjectName] = useState(initialData.name)
   const [projectLang, setProjectLang] = useState(initialData.language || 'id')
   const [artifacts, setArtifacts] = useState<WorkspaceArtifactItem[]>(initialData.artifacts)
-  const [systemGraph, setSystemGraph] = useState<SystemGraphData | null>(initialData.systemGraph)
   const [isRepairingSystemGraph, setIsRepairingSystemGraph] = useState(false)
   const [systemGraphError, setSystemGraphError] = useState<string | null>(null)
   const [phases, setPhases] = useState(initialData.phases)
@@ -134,7 +145,6 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   )
   const [isGenerating, setIsGenerating] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [currentClassification, setCurrentClassification] = useState(initialData.classification)
   const [classificationStatus, setClassificationStatus] = useState(initialData.classificationStatus)
   const [classificationRetryError, setClassificationRetryError] = useState<string | null>(null)
   const [classificationTimedOut, setClassificationTimedOut] = useState(false)
@@ -585,28 +595,12 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     }
   }
 
-  const generateOneShotKickoffPrompt = () => {
-    return `# Project implementation brief — ${initialData.name}
-
-Prepare an implementation plan for **${initialData.name}** (${initialData.classification}). Use the generated pack as the source of project context, and keep the human owner in control of scope, sequencing, and execution.
-
-## Pack reading order
-Read the available specification files before making implementation decisions:
-1. \`PRD.md\` — product goals, scope, user flows, and non-goals
-2. \`ARCHITECTURE.md\` — system boundaries, data flow, and technical structure
-3. \`DESIGN.md\` — the visual authority for interface direction, interaction, responsive behavior, and accessibility
-4. \`Agent.md\` — coding-agent workflow, constraints, and quality expectations
-5. \`BACKLOG.md\` — implementation tasks, acceptance criteria, and verification steps
-6. \`SRS.md\` — read this only when it is included in the pack; it provides detailed software requirements for higher-complexity projects
-
-The lean pack generates \`PRD.md\`, conditional \`SRS.md\`, \`ARCHITECTURE.md\`, \`DESIGN.md\`, \`Agent.md\`, and \`BACKLOG.md\`. Guidance that older packs may have placed in standalone \`RULES.md\` or \`SKILLS.md\` is incorporated into \`Agent.md\`; do not expect those standalone files.
-
-## Working guidance
-- Treat \`DESIGN.md\` as the visual source of truth. Do not invent a competing visual system or override it with conventions from this prompt.
-- Review the backlog and its dependencies, then propose the next appropriate task for the human owner’s approval before implementation.
-- Follow the pack’s quality gates, verify your work with the relevant checks, and report assumptions, changes, and unresolved decisions clearly.
-- Do not assume that every backlog item is in scope for this session; do not silently expand the project beyond the generated requirements.`
-  }
+  const generateOneShotKickoffPrompt = () => buildOneShotKickoffPrompt({
+    name: initialData.name,
+    classification: initialData.classification,
+    targetAgent: initialData.targetAgent,
+    skills: initialData.skills,
+  })
 
   const handleCopyOneShotPrompt = () => {
     const promptText = generateOneShotKickoffPrompt()
