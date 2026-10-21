@@ -247,12 +247,9 @@ export async function generateProjectBacklog({
       try {
         backlogOutput = validateDraft(repairedOutput)
       } catch {
-        const message = initialError instanceof z.ZodError
-          ? initialError.issues.map((issue) => issue.message).join('; ')
-          : initialError instanceof Error
-            ? initialError.message
-            : 'Invalid backlog task graph'
-        throw new BacklogGenerationError(message, 502)
+        throw new BacklogGenerationError(
+          'Provider response could not be validated after a repair attempt. Retry or choose a more capable model.', 502,
+        )
       }
     }
   } catch (error) {
