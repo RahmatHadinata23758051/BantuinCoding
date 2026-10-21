@@ -1,0 +1,54 @@
+.living-contour {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 40% 47% at -9% 56%, rgba(221, 147, 108, .18), transparent 77%),
+    radial-gradient(ellipse 39% 51% at 111% 64%, rgba(205, 125, 89, .15), transparent 78%),
+    radial-gradient(ellipse 46% 23% at 51% -16%, rgba(238, 218, 200, .20), transparent 90%),
+    #f8f7f5;
+}
+.living-contour::before,
+.living-contour::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(35px);
+  opacity: .22;
+  will-change: transform;
+}
+.living-contour::before {
+  width: 320px;
+  height: 320px;
+  left: -200px;
+  top: 32%;
+  background: radial-gradient(circle, #eec3a4, transparent 70%);
+  animation: contour-float-left 19s ease-in-out infinite alternate;
+}
+.living-contour::after {
+  width: 330px;
+  height: 400px;
+  right: -175px;
+  top: 43%;
+  background: radial-gradient(circle, #d5a384, transparent 69%);
+  animation: contour-float-right 24s ease-in-out infinite alternate;
+}
+.living-contour > canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+@keyframes contour-float-left {
+  to { transform: translate(32px, 80px) scale(1.12); }
+}
+@keyframes contour-float-right {
+  to { transform: translate(-22px, -70px) scale(.92); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .living-contour::before,
+  .living-contour::after { animation: none; }
+}
