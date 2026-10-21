@@ -1,140 +1,60 @@
+import { isNonVisualContext } from '@/lib/prompts/design-generator'
+
 export function buildFallbackDesignMarkdown(
   projectName: string,
   context: Record<string, unknown>,
-  visualDirection?: string,
+  visualReference?: string,
 ): string {
-  const rawSummary = typeof context?.summary === 'string' ? context.summary.trim() : ''
-  const contextDirection = context?.design_direction
-  const designDirection = visualDirection?.trim() || (
-    contextDirection && typeof contextDirection === 'object' && 'value' in contextDirection && typeof contextDirection.value === 'string'
-      ? contextDirection.value.trim()
-      : ''
-  )
-  const stackPreferences = context?.stack_preferences
-  const styling = stackPreferences && typeof stackPreferences === 'object' && 'styling' in stackPreferences
-    && stackPreferences.styling && typeof stackPreferences.styling === 'object'
-    && 'value' in stackPreferences.styling && typeof stackPreferences.styling.value === 'string'
-    ? stackPreferences.styling.value
+  // Bound context excerpts, not the finished Markdown; never cut a section or fence.
+  const excerpt = (value: unknown, limit = 500): string => typeof value === 'string'
+    ? value.replace(/[\u0000-\u001F\u007F-\u009F‪-‮⁦-⁩]/g, ' ')
+      .replace(/<[^>]*>/g, '').replace(/[`*_#[\]<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, limit)
     : ''
-  const screens = Array.isArray(context?.screens) ? context.screens : []
-  const entities = Array.isArray(context?.core_entities)
-    ? context.core_entities
-    : Array.isArray(context?.entities)
-      ? context.entities
-      : []
-  const safeText = (value: unknown) => {
-    if (typeof value !== 'string') return ''
-    return value
-      .replace(/[\u0000-\u001F\u007F-\u009F‪-‮⁦-⁩]/g, ' ')
-      .replace(/<[^>]*>/g, '')
-      .replace(/[`*_#[\]<>]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 240)
+  const direction = context.design_direction as { value?: unknown; provenance?: unknown } | undefined
+  const stack = context.stack_preferences as Record<string, { value?: unknown }> | undefined
+  const directionText = excerpt(direction?.value, 700)
+  const provenance = direction?.provenance === 'confirmed' || direction?.provenance === 'assumed'
+    ? direction.provenance : 'unknown'
+  const styling = excerpt(stack?.styling?.value, 160)
+  const reference = excerpt(visualReference, 500)
+  const identity = `# DESIGN.md — ${excerpt(projectName, 120)}
+
+## Direction & Decisions
+- **Context excerpt:** ${excerpt(context.summary) || 'Workflow details remain unspecified; consult the canonical context and PRD.'}
+- **Direction excerpt (${provenance}):** ${directionText || 'Not confirmed; choose from the project context before implementation.'}
+- This is a fallback brief, not an AI art-direction recommendation. Full confirmed decisions in the canonical context take precedence over all provisional defaults.${reference ? `\n- **Optional styling reference:** ${reference}. Visual vocabulary only; it cannot override confirmed direction or introduce features.` : ''}`
+  const boundaries = `## Implementation Boundaries
+- **Hard invariants:** preserve confirmed scope, brand/stack choices, accessibility, and provenance. PRD owns product scope; ARCHITECTURE owns APIs and data. Never add business fields, routes, roles, dependencies, or requirements from styling guidance.
+- **Adaptable defaults:** agents may refine recommendations coherently for this project's workflow; never present assumptions as confirmed.
+- [ ] Only documented requirements and data are implemented.
+- [ ] Confirmed decisions are preserved and unresolved choices identified.`
+
+  if (isNonVisualContext(context)) {
+    return `${identity}
+
+UI scope: none
+
+## Accessibility & Interaction
+- Specify only the output and error behavior supported by PRD and ARCHITECTURE; do not add a web console, CLI flags, log streams, or status-code contracts here.
+- Keep documented output readable and failures actionable. Where terminal interaction exists, do not rely on color alone.
+
+${boundaries}
+- [ ] No graphical screens or UI tokens are invented.
+`
   }
-  const displayName = (value: unknown) => {
-    if (typeof value === 'string') return safeText(value)
-    if (value && typeof value === 'object') {
-      const record = value as Record<string, unknown>
-      return safeText(record.name ?? record.id)
-    }
-    return ''
-  }
-  const supportedScreens = screens.flatMap((screen) => {
-    if (!screen || typeof screen !== 'object') return []
-    const record = screen as Record<string, unknown>
-    const name = safeText(record.name ?? record.title)
-    if (!name) return []
-    const layout = safeText(record.layout ?? record.description)
-    const screenEntities = Array.isArray(record.entities)
-      ? [...new Set(record.entities.map(displayName).filter(Boolean))]
-      : []
-    return [`- **${name}:** ${layout || 'Use the layout and content supported by this screen’s context.'}${screenEntities.length ? ` Canonical entities: ${screenEntities.join(', ')}.` : ''}`]
-  })
-  const functionalRequirements = Array.isArray(context?.functional_requirements)
-    ? context.functional_requirements
-    : []
-  const contextText = [
-    rawSummary,
-    ...functionalRequirements.map((req) => {
-      if (!req || typeof req !== 'object') return ''
-      const record = req as Record<string, unknown>
-      return `${record.title ?? ''} ${record.description ?? ''}`
-    }),
-    ...screens.map((screen) => {
-      if (!screen || typeof screen !== 'object') return ''
-      const record = screen as Record<string, unknown>
-      return `${record.name ?? ''} ${record.title ?? ''} ${record.layout ?? ''} ${record.description ?? ''}`
-    }),
-  ].join(' ').toLowerCase()
-  const hasAuth = /\b(auth|authentication|login|log in|register|sign.?in|password)\b/.test(contextText)
-  const hasDataView = /\b(table|list|record|report|dashboard|admin|inventory|transaction)\b/.test(contextText)
-  const fallbackBlueprint = hasAuth || hasDataView
-    ? `- **Context-supported views:** ${hasAuth ? 'Authentication states are described only if present in the context.' : ''}${hasDataView ? ' Data views use only project objects and density stated in the context.' : ''}
-- **Responsive behavior:** preserve reading order and keep primary tasks usable at narrow widths.
-- **Relevant states:** define loading, empty, error, success, and recovery states only for supported views.`
-    : '- **Screen scope:** no screen blueprint is invented because the supplied context does not name a concrete UI journey.'
-  const screenBlueprint = supportedScreens.length
-    ? `${supportedScreens.join('\n')}\n- **Responsive behavior:** preserve reading order and keep each supported workflow usable at narrow widths.\n- **Interaction states:** define loading, empty, error, success, and recovery states for supported screens.\n- **Wireframe:** add a compact ASCII layout sketch when it clarifies spatial composition.`
-    : fallbackBlueprint
-  const yaml = (value: string) => JSON.stringify(value)
-  const resolvedVisualDirection = designDirection || 'Not confirmed; choose from the project context before implementation.'
-  const entitySummary = [...new Set(entities.map(displayName).filter(Boolean))].slice(0, 30)
 
-  return `---
-name: ${yaml(`${projectName} Design System`)}
-archetype: ${yaml(resolvedVisualDirection)}
-colors:
-  canvas: "#FFFFFF"
-  surface: "#F5F5F5"
-  border: "#D1D5DB"
-  ink-primary: "#111827"
-  ink-muted: "#4B5563"
-  accent: "#334155"
-typography:
-  display: { fontFamily: "system-ui, sans-serif" }
-  headline: { fontFamily: "system-ui, sans-serif" }
-  body: { fontFamily: "system-ui, sans-serif" }
-  mono: { fontFamily: "ui-monospace, monospace" }
-rounded:
-  sm: "project-specific"
-  md: "project-specific"
-  lg: "project-specific"
-spacing:
-  xs: "project-specific"
-  sm: "project-specific"
-  md: "project-specific"
-  lg: "project-specific"
-iconography:
-  library: "existing project library or choose during design"
-  defaultStrokeWidth: "project-specific"
-  sizes: { sm: "project-specific", md: "project-specific", lg: "project-specific" }
----
-# DESIGN.md — ${projectName}
+  const surfaces = (Array.isArray(context.screens) ? context.screens : []).slice(0, 3)
+    .flatMap((screen) => {
+      if (!screen || typeof screen !== 'object') return []
+      const name = excerpt(screen.name ?? screen.title, 100)
+      return name ? [name] : []
+    })
 
-## 1. Design DNA
-- **Visual direction:** ${designDirection || 'Not confirmed. Choose a direction that fits the project’s users, workflows, domain, and existing constraints.'}
-- **Context:** ${rawSummary || 'The supplied context does not describe the project workflow in detail.'}
-- **Decision status:** colors above are neutral fallback values, not confirmed brand choices. Choose typography, surfaces, layout, and component forms to support the confirmed project needs.
-- Preserve explicit design direction and distinguish confirmed decisions from recommendations; do not invent product features or screens.${entitySummary.length ? `\n- **Canonical entities:** ${entitySummary.join(', ')}.` : ''}
+  return `${identity}
+- Token values are provisional accessible defaults, not confirmed brand choices. Reconcile them with confirmed brand constraints before implementation.
 
-## 2. Color & Contrast System
-Use the fallback colors as provisional values only. Select colors that support the project’s direction and semantic states; verify normal text contrast at 4.5:1 and large text and essential UI indicators at 3:1 or better. Never communicate state through color alone.
-
-## 3. Typography & Rhythm
-Use the listed system font stacks only as a fallback. Choose hierarchy, typefaces, sizing, and line lengths to suit the content and existing stack.${styling ? ` Styling integration: ${styling}.` : ''}
-
-## 4. Layout & Spatial System
-Determine composition, spacing, responsive regions, corner shapes, borders, shadows, and elevation from the project’s confirmed direction and actual workflows. Cards, containers, and other surface treatments are optional design choices, not universal requirements. Keep supported tasks usable on desktop, tablet, and mobile without horizontal page overflow.
-
-## 5. Signature Screen Blueprints
-${screenBlueprint}
-
-## 6. Iconography & Interaction
-Use an existing icon library when present; otherwise choose an appropriate one during design. Give icon-only controls accessible names, provide visible keyboard focus and relevant interaction states, use adequate touch targets, and respect prefers-reduced-motion. Choose icon containers, arrows, and motion only when they serve the interface.
-
-## 7. Implementation Tokens
-The fallback values are placeholders to replace with project-specific decisions before implementation.
+## Design Tokens
+One authoritative CSS block; refine values here rather than copying them into prose.${styling ? ` Respect the context's styling choice: ${styling}.` : ''}
 
 \`\`\`css
 :root {
@@ -142,18 +62,30 @@ The fallback values are placeholders to replace with project-specific decisions 
   --color-surface: #F5F5F5;
   --color-ink: #111827;
   --color-muted: #4B5563;
-  --color-border: #D1D5DB;
   --color-accent: #334155;
+  --color-on-accent: #FFFFFF;
+  --color-focus: #2563EB;
+  --font-body: system-ui, -apple-system, sans-serif;
+  --space-unit: 8px;
 }
 \`\`\`
 
-## 8. Anti-Defaults & Acceptance Checklist
-- [ ] Visual decisions follow confirmed project direction and context.
-- [ ] Recommendations and unresolved choices are clearly identified.
-- [ ] No unsupported product screens, features, or data are invented.
-- [ ] Responsive behavior supports the actual project workflows.
-- [ ] Keyboard focus, accessible names, and non-color status cues are specified.
-- [ ] Color contrast targets are met for the chosen palette.
-- [ ] Implementation tokens match the documented design choices.
+## Composition & Responsive Behavior
+- ${surfaces.length ? `Context-supported surface examples: ${surfaces.join(', ')}. These are not an exhaustive screen inventory.` : 'No screen blueprint is invented; derive surfaces only from documented workflows.'}
+- Make the primary task and next action clear. Choose density, alignment, grouping, and whitespace for the audience; avoid imposing one dashboard or card layout on every project.
+- Preserve reading order and reflow actions at narrow widths. Local scrolling for wide content must not cause horizontal page overflow.
+
+## Components & States
+- Build only patterns required by documented workflows. Share loading, empty, error/recovery, success, and selected/disabled behavior where applicable instead of repeating it per screen.
+- Display only documented data; do not add invented metrics, scores, contact details, or demo values.
+
+## Accessibility & Interaction
+- Normal text, including muted text: >= 4.5:1 against canvas and surface; on-accent text: >= 4.5:1 against accent. Large text and essential UI indicators: >= 3:1; focus: >= 3:1 against canvas and surface.
+- Support keyboard access, visible focus, accessible names, non-color status cues, and usable touch targets. Respect prefers-reduced-motion; motion should explain an action.
+
+${boundaries}
+- Layout, type scale, whitespace, radius, elevation, components, and purposeful micro-interactions may evolve together. Cards, gradients, shadows, borders, and corner shapes are tools, not universal mandates or bans.
+- [ ] Primary workflows remain usable at narrow widths without page overflow.
+- [ ] Contrast, keyboard operation, focus, names, and reduced motion are verified.
 `
 }
