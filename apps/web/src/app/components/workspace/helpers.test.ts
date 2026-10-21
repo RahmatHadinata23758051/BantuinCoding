@@ -10,10 +10,44 @@ import {
   getSectionTabKey,
   hasContextData,
   isSensitiveContextValue,
+  shouldShowDesignSystemGraph,
   statusTone,
 } from './helpers'
 
 describe('Workspace helpers', () => {
+  describe('shouldShowDesignSystemGraph', () => {
+    const graph = {
+      nodes: [
+        { id: 'web', label: 'Web', category: 'ui' as const, description: 'User interface' },
+        { id: 'api', label: 'API', category: 'api' as const, description: 'Application API' },
+      ],
+      edges: [{ source: 'web', target: 'api', label: 'Requests' }],
+    }
+
+    it('shows the graph for a non-simple project with connected components', () => {
+      expect(shouldShowDesignSystemGraph(graph, 'SAAS')).toBe(true)
+    })
+
+    it('hides the graph when it is missing or has fewer than two nodes', () => {
+      expect(shouldShowDesignSystemGraph(null, 'SAAS')).toBe(false)
+      expect(shouldShowDesignSystemGraph({ nodes: [graph.nodes[0]], edges: graph.edges }, 'SAAS')).toBe(false)
+    })
+
+    it('hides graphs with empty, self-referential, or invalid relationships', () => {
+      expect(shouldShowDesignSystemGraph({ ...graph, edges: [] }, 'SAAS')).toBe(false)
+      expect(shouldShowDesignSystemGraph({ ...graph, edges: [{ source: 'web', target: 'web' }] }, 'SAAS')).toBe(false)
+      expect(shouldShowDesignSystemGraph({ ...graph, edges: [{ source: 'web', target: 'missing' }] }, 'SAAS')).toBe(false)
+    })
+
+    it.each(['LANDING_PAGE', 'STATIC_SITE'])('hides simple classification %s', (classification) => {
+      expect(shouldShowDesignSystemGraph(graph, classification)).toBe(false)
+    })
+
+    it('hides the graph when classification is unknown', () => {
+      expect(shouldShowDesignSystemGraph(graph, null)).toBe(false)
+    })
+  })
+
   describe('getSectionTabKey', () => {
     it('handles design-system special casing', () => {
       expect(getSectionTabKey('design-system')).toBe('tabDesignSystem')
