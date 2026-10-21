@@ -185,14 +185,22 @@ describe('Rule-Based Consistency Validator', () => {
     expect(report.issues).toEqual([])
   })
 
-  it('blocks a missing document in an explicit backlog relevant-docs entry', () => {
-    const report = validateRuleBasedConsistency([
+  it('accepts section citations for included documents and still blocks missing cited documents', () => {
+    const accepted = validateRuleBasedConsistency([
       { type: 'PRD', path: 'PRD.md', content: '# Product requirements' },
-      { type: 'BACKLOG', path: 'BACKLOG.md', content: '**Relevant Docs:** PRD.md, SRS.md' },
+      { type: 'AGENT', path: 'Agent.md', content: '# Agent' },
+      { type: 'ARCHITECTURE', path: 'ARCHITECTURE.md', content: '# Architecture' },
+      { type: 'BACKLOG', path: 'BACKLOG.md', content: '**Relevant Docs:** Agent.md §2, §3, §6; ARCHITECTURE.md §1–§3; PRD.md §4 FR-01' },
     ])
+    expect(accepted.blocksExport).toBe(false)
+    expect(accepted.issues.filter((issue) => issue.category === 'INVALID_BACKLOG_DOC_REF')).toEqual([])
 
-    expect(report.blocksExport).toBe(true)
-    expect(report.issues).toContainEqual(expect.objectContaining({
+    const rejected = validateRuleBasedConsistency([
+      { type: 'PRD', path: 'PRD.md', content: '# Product requirements' },
+      { type: 'BACKLOG', path: 'BACKLOG.md', content: '**Relevant Docs:** PRD.md §4 FR-01; SRS.md §2' },
+    ])
+    expect(rejected.blocksExport).toBe(true)
+    expect(rejected.issues).toContainEqual(expect.objectContaining({
       category: 'INVALID_BACKLOG_DOC_REF',
       classification: 'BLOCKER',
       affected_documents: ['BACKLOG.md', 'SRS.md'],
@@ -304,34 +312,31 @@ describe('Rule-Based Consistency Validator', () => {
     expect(report.issues).toEqual([])
   })
 
-  it('detects missing YAML front matter tokens in DESIGN.md', () => {
+  it('detects missing CSS token block in visual DESIGN.md', () => {
     const report = validateRuleBasedConsistency([
       {
         type: 'DESIGN',
         path: 'DESIGN.md',
-        content: '# DESIGN.md\nNo front matter',
+        content: '# DESIGN.md\nNo CSS tokens',
       },
     ])
 
-    expect(report.issues.some((i) => i.category === 'INVALID_DESIGN_SYSTEM')).toBe(true)
+    expect(report.issues.some((i) => i.category === 'INVALID_DESIGN_SYSTEM' && i.description.includes('CSS :root token block'))).toBe(true)
   })
 
-  it('passes validation when DESIGN.md has valid YAML front matter and Agent.md references DESIGN.md', () => {
-    const validDesign = `---
-name: "Acme Design System"
-archetype: "Contemporary Institutional"
-colors:
-  canvas: "#FFF"
-typography:
-  body: { fontFamily: "Inter" }
-rounded:
-  sm: "2px"
-spacing:
-  sm: "8px"
-iconography:
-  library: "lucide-react"
----
-# DESIGN.md`
+  it('passes validation when DESIGN.md has authoritative CSS tokens and Agent.md references DESIGN.md', () => {
+    const validDesign = `# DESIGN.md
+\`\`\`css
+:root {
+  --color-canvas: #FFFFFF;
+  --color-surface: #F5F5F5;
+  --color-ink: #111827;
+  --color-muted: #4B5563;
+  --color-accent: #334155;
+  --color-on-accent: #FFFFFF;
+  --color-focus: #2563EB;
+}
+\`\`\``
 
     const report = validateRuleBasedConsistency([
       {
@@ -350,22 +355,37 @@ iconography:
     expect(report.isConsistent).toBe(true)
   })
 
+  it('passes validation for nonvisual DESIGN.md with UI scope none', () => {
+    const report = validateRuleBasedConsistency([
+      {
+        type: 'DESIGN',
+        path: 'DESIGN.md',
+        content: '# DESIGN.md\nUI scope: none\n## Accessibility & Interaction\nConsole text only.',
+      },
+      {
+        type: 'AGENT',
+        path: 'Agent.md',
+        content: '# Agent.md\nPrecedence: DESIGN.md is visual authority',
+      },
+    ])
+
+    expect(report.issues).toHaveLength(0)
+    expect(report.isConsistent).toBe(true)
+  })
+
   it('detects when Agent.md fails to reference DESIGN.md', () => {
-    const validDesign = `---
-name: "Acme Design System"
-archetype: "Contemporary Institutional"
-colors:
-  canvas: "#FFF"
-typography:
-  body: { fontFamily: "Inter" }
-rounded:
-  sm: "2px"
-spacing:
-  sm: "8px"
-iconography:
-  library: "lucide-react"
----
-# DESIGN.md`
+    const validDesign = `# DESIGN.md
+\`\`\`css
+:root {
+  --color-canvas: #FFFFFF;
+  --color-surface: #F5F5F5;
+  --color-ink: #111827;
+  --color-muted: #4B5563;
+  --color-accent: #334155;
+  --color-on-accent: #FFFFFF;
+  --color-focus: #2563EB;
+}
+\`\`\``
 
     const report = validateRuleBasedConsistency([
       {
