@@ -44,6 +44,7 @@ TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
    - Cite source requirements and technical/design sections in each task description or acceptance criteria (for example: PRD.md §4 FR-01 and ARCHITECTURE.md §5).
    - Acceptance criteria must say what to implement or verify, then point to the owner document for exact rules and values instead of copying its specification.
    - Every task needs at least one relevant source reference in relevant_docs; never emit a task with no source document or confirmed-context basis.
+   - relevant_docs must contain only exact file paths from the supplied document references (for example, "PRD.md", not "PRD.md §4 FR-01"). Put section/requirement citations in the description or acceptance criteria, not in relevant_docs.
    - Backend: Break down only the actual storage, service, and API boundaries supported by the project facts.
    - Domain logic: Identify concrete business rules, state transitions, and validation requirements from supplied documents.
    - User interface: Specify screens, forms, interaction behavior, and loading/empty/error states grounded in the product requirements.
@@ -56,7 +57,7 @@ TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
    - Definition of done must give a project-appropriate verification method grounded in available repository instructions; do not invent commands when tooling is unknown.
    - Frontend tasks MUST include the exact planned design document path in relevant_docs when a design document is included in the references.
 6. Only return the phases and structured task graph. The Markdown file will be generated automatically by the server based on your structured tasks.
-7. Any UI or design tasks must reference DESIGN.md for every visual decision and must not define a palette, border system, radius system, shadow system, typography system, or visual archetype of its own.
+7. UI and design tasks must reference the included DESIGN.md and preserve its hard invariants: confirmed direction/brand, scope/data contracts, and accessibility. Do not duplicate token values or impose a conflicting visual system in backlog tasks. Allow agents to refine adaptable defaults (layout, typography, whitespace, radius, elevation, components, and purposeful micro-interactions) for a polished, project-specific result; update the canonical CSS tokens coherently when needed. If DESIGN.md is not included, do not invent a reference to it.
 8. Strictly adhere to the AUTHORITATIVE CANONICAL DECISIONS block. Backlog tasks must be grounded in confirmed project decisions, entities, and requirements. Do not invent ungrounded components, microservices, or external tools.
 9. GROUNDED SKILL RECOMMENDATIONS: Each task's recommended_skills array must ONLY contain exact skill names listed in the Available Project Skills catalog. If no matching skill is appropriate or no skills are available, use an empty array []. Never invent or hallucinate skill names.`
 
