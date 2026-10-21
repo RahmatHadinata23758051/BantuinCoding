@@ -37,6 +37,20 @@ describe('getSafeApiErrorMessage', () => {
     )
   })
 
+  it('surfaces safe backlog grounding and missing-reference errors', () => {
+    const grounding = 'Generated backlog failed project-grounding checks: BK-001 references unplanned document path "ROADMAP.md".'
+    const missing = 'Required PRD reference is not ready for the current context. Generate or repair it, then retry backlog generation.'
+
+    expect(getSafeApiErrorMessage(new Error(grounding), 'Backlog generation failed. Please retry.')).toBe(grounding)
+    expect(getSafeApiErrorMessage(new Error(missing), 'Backlog generation failed. Please retry.')).toBe(missing)
+  })
+
+  it('surfaces safe backlog reference limit errors', () => {
+    const message = 'Backlog reference section labels exceed the 12000-character limit; shorten the source document and retry.'
+
+    expect(getSafeApiErrorMessage(new Error(message), 'Backlog generation failed. Please retry.')).toBe(message)
+  })
+
   it('maps export secret alerts without exposing credential values', () => {
     const message = getSafeApiErrorMessage(
       new Error('SECURITY ALERT: Potential API key leakage detected in ARCHITECTURE.md'),
