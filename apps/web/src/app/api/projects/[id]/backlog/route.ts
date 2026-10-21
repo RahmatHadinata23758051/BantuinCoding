@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@repo/db'
-import { getSafeApiErrorMessage } from '@/lib/api/errors'
+import { BacklogGenerationError, getSafeApiErrorMessage } from '@/lib/api/errors'
 import { auth } from '@/lib/auth'
 import { generateProjectBacklog } from '@/lib/engine/backlog-generator'
 import { requireProjectAction } from '@/lib/projects/project-service'
@@ -90,9 +90,15 @@ export async function POST(
 
     return NextResponse.json({ backlog, readiness, artifact, phases: formattedPhases })
   } catch (err) {
-    console.error('Backlog generation error:', err)
-    const message = getSafeApiErrorMessage(err, 'Backlog generation failed. Please retry.')
-    const status = message === 'Project not found' ? 404 : 400
+    const message = err instanceof BacklogGenerationError
+      ? err.message
+      : getSafeApiErrorMessage(err, 'Backlog generation failed. Please retry.')
+    const status = err instanceof BacklogGenerationError ? err.status
+      : message === 'Project not found' ? 404
+        : /current state|provider session|Canonical context|reference is not ready/i.test(message) ? 409
+          : /input exceeds|reference.*limit/i.test(message) ? 400 : 500
+    // Never log provider errors: they can contain credentials and raw generated text.
+    console.error('Backlog generation failed', { status })
     return NextResponse.json({ error: message }, { status })
   }
 }
