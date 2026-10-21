@@ -782,4 +782,94 @@ describe('Backlog Generator Engine — generateProjectBacklog', () => {
     expect(md).toContain('BK-001 — Initialize project scaffold and tooling')
     expect(md).toContain('BK-002 — Implement the confirmed record persistence behavior')
   })
+
+  it('repairs an invalid initial draft once and persists the repaired output', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [{ type: 'PRD', path: 'PRD.md', contextId: 'ctx-1', content: '# PRD\n\nCurrent source.', status: 'READY' }],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'OPENAI', model: 'model-1', apiKey: 'test-key',
+    })
+    // First call returns missing definition_of_done (the exact bug observed in production)
+    const invalidDraft = {
+      phases: [{
+        name: 'Phase 1', order: 1,
+        tasks: [{
+          id: 'BK-001', title: 'Task 1', description: 'Desc', dependencies: [],
+          acceptance_criteria: ['Criterion 1'], definition_of_done: '', relevant_docs: ['PRD.md'], recommended_skills: [],
+        }],
+      }],
+    }
+    const generateStructured = vi.fn()
+      .mockResolvedValueOnce(invalidDraft)
+      .mockResolvedValueOnce({ phases: mockPhases })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'OPENAI', testConnection: vi.fn(), generateStructured,
+    })
+    dbMocks.tx.backlogPhase.create.mockImplementation(async ({ data }) => ({ id: 'phase-1', ...data }))
+    dbMocks.tx.backlogTask.create.mockImplementation(async ({ data }) => ({ id: 'task-1', ...data }))
+
+    const result = await generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })
+
+    expect(generateStructured).toHaveBeenCalledTimes(2)
+    expect(generateStructured.mock.calls[1]?.[0]).toContain('<draft_to_repair>')
+    expect(generateStructured.mock.calls[1]?.[0]).toContain('definition_of_done')
+    expect(result.phases).toHaveLength(1)
+    expect(dbMocks.tx.artifact.upsert).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves previous READY backlog artifact status when replacement fails', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [
+        { type: 'PRD', path: 'PRD.md', contextId: 'ctx-1', content: '# PRD\n\nCurrent source.', status: 'READY' },
+        { type: 'BACKLOG', path: 'BACKLOG.md', contextId: 'ctx-1', content: '# Previous Backlog\n\nExisting content.', status: 'READY' },
+      ],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'OPENAI', model: 'model-1', apiKey: 'test-key',
+    })
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'OPENAI', testConnection: vi.fn(),
+      generateStructured: vi.fn().mockRejectedValueOnce(new Error('Network timeout')),
+    })
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).rejects.toThrow()
+
+    // Artifact status should be restored to READY rather than FAILED
+    expect(dbMocks.tx.artifact.update).toHaveBeenCalledWith({
+      where: { projectId_type: { projectId: 'p-1', type: 'BACKLOG' } },
+      data: { status: 'READY' },
+    })
+  })
+
+  it('does not attempt draft repair on provider network or auth failure', async () => {
+    const { db } = await import('@repo/db')
+    const { createProvider } = await import('@/lib/ai/provider')
+    vi.mocked(db.project.findFirst).mockResolvedValueOnce({
+      id: 'p-1', userId: 'u-1', name: 'Test',
+      contexts: [{ id: 'ctx-1', isCurrent: true, contentJson: '{}', artifactPlans: [{ type: 'PRD', path: 'PRD.md', isRequired: true }] }],
+      artifacts: [{ type: 'PRD', path: 'PRD.md', contextId: 'ctx-1', content: '# PRD\n\nCurrent source.', status: 'READY' }],
+      skillRecommendations: [],
+    } as never)
+    vi.mocked(getProviderConfig).mockReturnValueOnce({
+      provider: 'OPENAI', model: 'model-1', apiKey: 'test-key',
+    })
+    const generateStructured = vi.fn().mockRejectedValueOnce(new Error('fetch failed: ENOTFOUND'))
+    vi.mocked(createProvider).mockReturnValueOnce({
+      type: 'OPENAI', testConnection: vi.fn(), generateStructured,
+    })
+
+    await expect(generateProjectBacklog({ userId: 'u-1', projectId: 'p-1' })).rejects.toThrow()
+    expect(generateStructured).toHaveBeenCalledTimes(1)
+  })
 })
