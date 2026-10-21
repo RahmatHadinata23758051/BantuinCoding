@@ -76,14 +76,29 @@ describe('SkillsLLM Catalog Adapter & Fallback', () => {
     const adapter = new SkillsLLMCatalogAdapter()
     const catalog = await adapter.fetchCatalog()
     expect(catalog.length).toBeGreaterThan(0)
-    expect(catalog[0]?.name).toBe('typescript-backend')
+    expect(catalog[0]?.name).toBe('find-skills')
   })
 
   it('keeps skills as structured recommendations for Agent.md', () => {
-    expect(internalCatalogFallback[0]?.name).toBe('typescript-backend')
+    expect(internalCatalogFallback[0]?.name).toBe('find-skills')
     expect(internalCatalogFallback[0]?.purpose).toBeTruthy()
     expect(internalCatalogFallback.some((s) => s.name === 'antislop')).toBe(true)
     expect(internalCatalogFallback.some((s) => s.name === 'anti-slop-ui')).toBe(true)
+  })
+
+  it('provides verified UI/UX Pro Max setup metadata and manual guidance for other skills', () => {
+    const verified = internalCatalogFallback.find((skill) => skill.name === 'ui-ux-pro-max')
+    const manual = internalCatalogFallback.find((skill) => skill.name === 'antislop')
+
+    expect(verified).toMatchObject({
+      installation_mode: 'ui-ux-pro-max-cli',
+      installation_source: 'https://github.com/nextlevelbuilder/ui-ux-pro-max-skill',
+      installation_skill_id: 'ui-ux-pro-max',
+      installation_hint: 'npx ui-ux-pro-max-cli init --ai <agent>',
+    })
+    expect(manual?.installation_mode).toBe('manual')
+    expect(manual?.installation_hint).toBeUndefined()
+    expect(internalCatalogFallback.some((skill) => skill.installation_hint?.includes('skills-llm'))).toBe(false)
   })
 })
 
@@ -295,7 +310,7 @@ describe('Skill Resolver Engine — resolveProjectSkills', () => {
     const result = await resolveProjectSkills({ userId: 'u-1', projectId: 'p-1' })
 
     expect(result.rationale).toBe('AI resolved custom skills')
-    expect(result.skills[0]?.name).toBe('typescript-backend')
+    expect(result.skills[0]?.name).toBe('find-skills')
   })
 })
 
@@ -357,6 +372,19 @@ describe('Skill Resolver Stack Compatibility Filter', () => {
 
     expect(filtered.some((s) => s.name === 'typescript-backend')).toBe(true)
     expect(filtered.some((s) => s.name === 'prisma-db-architect')).toBe(true)
+  })
+
+  it('filters out mobile-development when mobile is explicitly excluded', () => {
+    const webOnlyContext = JSON.stringify({
+      technical_constraints: [
+        { value: 'web only, no mobile', provenance: 'confirmed' },
+      ],
+    })
+
+    const filtered = filterCompatibleSkills(internalCatalogFallback, webOnlyContext)
+
+    expect(filtered.some((s) => s.name === 'mobile-development')).toBe(false)
+    expect(filtered.some((s) => s.name === 'find-skills')).toBe(true)
   })
 
   it('drops incompatible skills when AI returns them for a constrained project', async () => {

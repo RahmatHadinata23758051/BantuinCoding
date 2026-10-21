@@ -2,6 +2,7 @@ import { db } from '@repo/db'
 import { z } from 'zod'
 import { getProviderConfig } from '@/lib/byok/session-store'
 import { createProvider } from '@/lib/ai/provider'
+import { VERIFIED_SKILL_INSTALLATIONS } from '@/lib/skills/bootstrap'
 import {
   SKILL_RESOLVER_SYSTEM_PROMPT,
   SkillResolverOutputSchema,
@@ -77,11 +78,15 @@ export function filterCompatibleSkills(catalog: ResolvedSkill[], contextJson: st
         .filter(Boolean)
         .join(' ')
     : ''
+  const confirmedText = `${Object.values(confirmedStack).join(' ')} ${confirmedConstraints}`.toLowerCase()
   const plainJavaScript = /\b(?:plain\s+javascript|javascript\s+only|no\s+typescript|without\s+typescript|not\s+typescript)\b/.test(
-    `${confirmedStack.backend} ${confirmedStack.frontend} ${confirmedConstraints}`,
+    confirmedText,
   )
   const prismaExcluded = /\b(?:no\s+prisma|without\s+prisma|not\s+prisma|exclude\s+prisma)\b/.test(
-    `${confirmedStack.database} ${confirmedConstraints}`,
+    confirmedText,
+  )
+  const mobileExcluded = /\b(?:no\s+mobile|web\s+only|not\s+mobile|exclude\s+mobile)\b/.test(
+    confirmedText,
   )
 
   return catalog.filter((skill) => {
@@ -89,6 +94,7 @@ export function filterCompatibleSkills(catalog: ResolvedSkill[], contextJson: st
     const text = `${name} ${skill.purpose} ${skill.trigger}`.toLowerCase()
     if (plainJavaScript && /typescript|type.?script/.test(text)) return false
     if (prismaExcluded && /prisma/.test(text)) return false
+    if (mobileExcluded && /mobile/.test(name)) return false
     return true
   })
 }
@@ -97,18 +103,57 @@ function emptySkillsOutput(reason: string): SkillResolverOutput {
   return { skills: [], rationale: reason, skills_md_content: '' }
 }
 
+function skillInstallation(name: keyof typeof VERIFIED_SKILL_INSTALLATIONS) {
+  const verified = VERIFIED_SKILL_INSTALLATIONS[name]
+  return {
+    installation_mode: verified.mode,
+    installation_source: verified.source,
+    installation_skill_id: verified.skillId,
+    installation_agents: [...verified.agents],
+    prerequisite: verified.prerequisite,
+    installation_hint: verified.command,
+  }
+}
+
 /**
  * Default fallback internal catalog (SkillsLLM adapter with offline fallback)
  */
 export const internalCatalogFallback: ResolvedSkill[] = [
   {
-    name: 'typescript-backend',
+    name: 'find-skills',
     source: 'internal-fallback',
-    purpose: 'Enforces type-safe Node/TypeScript API design and architecture patterns.',
-    trigger: 'When writing API endpoints, database interactions, or server-side business logic.',
-    applicable_phases: ['Backend foundation', 'API implementation'],
-    applicable_task_types: ['backend', 'database', 'api'],
-    installation_hint: 'npx skills-llm install typescript-backend',
+    purpose: 'Finds task-specific agent skills from the Vercel Skills ecosystem when a project needs guidance not covered by its current recommendations.',
+    trigger: 'At the start of a project or task when the current recommendations do not cover a confirmed need; use discovery results only after checking their source and relevance.',
+    applicable_phases: ['Project setup', 'Task planning'],
+    applicable_task_types: ['discovery', 'planning', 'agent-tooling'],
+    installation_mode: 'manual',
+  },
+  {
+    name: 'backend-dev-guidelines',
+    source: 'internal-fallback',
+    purpose: 'Provides general backend implementation guidelines without requiring a particular language, ORM, or database.',
+    trigger: 'When the project includes backend services, API handlers, or server-side business logic.',
+    applicable_phases: ['Backend implementation', 'API design'],
+    applicable_task_types: ['backend', 'api', 'service'],
+    installation_mode: 'manual',
+  },
+  {
+    name: 'verification-before-completion',
+    source: 'internal-fallback',
+    purpose: 'Requires evidence from current checks before reporting implementation as complete.',
+    trigger: 'Before claiming a task, fix, or feature is complete.',
+    applicable_phases: ['Testing & verification', 'Task completion'],
+    applicable_task_types: ['testing', 'verification', 'quality'],
+    installation_mode: 'manual',
+  },
+  {
+    name: 'e2e-testing',
+    source: 'internal-fallback',
+    purpose: 'Provides end-to-end testing guidance for browser-facing behavior and user flows.',
+    trigger: 'When implementing or verifying browser-based flows and user-visible interactions.',
+    applicable_phases: ['Testing & verification', 'Browser flows'],
+    applicable_task_types: ['testing', 'e2e', 'browser'],
+    installation_mode: 'manual',
   },
   {
     name: 'ui-ux-pro-max',
@@ -117,7 +162,34 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When building frontend components, dashboards, workspace tabs, or forms.',
     applicable_phases: ['Frontend foundation', 'Screen & view implementation'],
     applicable_task_types: ['frontend', 'ui', 'design'],
-    installation_hint: 'npx skills-llm install ui-ux-pro-max',
+    ...skillInstallation('ui-ux-pro-max'),
+  },
+  {
+    name: 'anti-ui-slop',
+    source: 'internal-fallback',
+    purpose: 'Enforces anti-slop frontend and design quality, eliminates cliché AI UI defaults, ensures component honesty and accessibility.',
+    trigger: 'When implementing frontend components, layouts, styling, forms, or user interactions.',
+    applicable_phases: ['Frontend development', 'Design system & tokens'],
+    applicable_task_types: ['frontend', 'ui', 'design'],
+    installation_mode: 'manual',
+  },
+  {
+    name: 'design-taste-frontend',
+    source: 'internal-fallback',
+    purpose: 'Brings polished frontend design aesthetics, typographic hierarchy, spatial rhythm, and distinctive visual feel.',
+    trigger: 'When crafting visual design, component themes, responsive views, or aesthetic refinements.',
+    applicable_phases: ['Design system & tokens', 'Screen implementation'],
+    applicable_task_types: ['frontend', 'design', 'ui'],
+    installation_mode: 'manual',
+  },
+  {
+    name: 'mobile-development',
+    source: 'internal-fallback',
+    purpose: 'Provides project-specific mobile-platform implementation guidance without assuming a framework.',
+    trigger: 'Only when the confirmed project context includes a native or cross-platform mobile application.',
+    applicable_phases: ['Mobile architecture', 'Mobile implementation'],
+    applicable_task_types: ['mobile', 'platform'],
+    installation_mode: 'manual',
   },
   {
     name: 'antislop',
@@ -126,7 +198,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When implementing components, data views, user flows, or frontend/fullstack logic.',
     applicable_phases: ['Frontend development', 'Feature delivery'],
     applicable_task_types: ['frontend', 'fullstack', 'ui', 'logic'],
-    installation_hint: 'npx skills-llm install antislop',
+    installation_mode: 'manual',
   },
   {
     name: 'anti-slop-ui',
@@ -135,7 +207,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When implementing workspace screens, design tokens, typography, or layout structures.',
     applicable_phases: ['Design system & tokens', 'Screen implementation'],
     applicable_task_types: ['frontend', 'design', 'ui'],
-    installation_hint: 'npx skills-llm install anti-slop-ui',
+    installation_mode: 'manual',
   },
   {
     name: 'security-hardening',
@@ -144,16 +216,25 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When handling user authentication, session stores, API keys, or security gates.',
     applicable_phases: ['System foundation', 'Security & auth integration'],
     applicable_task_types: ['security', 'auth', 'export'],
-    installation_hint: 'npx skills-llm install security-hardening',
+    installation_mode: 'manual',
+  },
+  {
+    name: 'typescript-backend',
+    source: 'internal-fallback',
+    purpose: 'Enforces type-safe Node/TypeScript API design and architecture patterns.',
+    trigger: 'Only when the confirmed project stack specifies TypeScript for backend implementation.',
+    applicable_phases: ['Backend foundation', 'API implementation'],
+    applicable_task_types: ['backend', 'database', 'api'],
+    installation_mode: 'manual',
   },
   {
     name: 'prisma-db-architect',
     source: 'internal-fallback',
     purpose: 'Enforces robust relational schema design, migrations, relations, and transactional queries.',
-    trigger: 'When designing database models, writing migrations, or querying Prisma ORM.',
+    trigger: 'Only when the confirmed project stack explicitly includes Prisma ORM.',
     applicable_phases: ['Database schema & migrations', 'Data access layer'],
     applicable_task_types: ['database', 'backend'],
-    installation_hint: 'npx skills-llm install prisma-db-architect',
+    installation_mode: 'manual',
   },
   {
     name: 'playwright-browser-qa',
@@ -162,7 +243,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When running end-to-end user journeys, responsive verification, or browser automation.',
     applicable_phases: ['Testing & verification', 'Quality assurance'],
     applicable_task_types: ['testing', 'qa', 'browser'],
-    installation_hint: 'npx skills-llm install playwright-browser-qa',
+    installation_mode: 'manual',
   },
   {
     name: 'accessibility-wcag-audit',
@@ -171,7 +252,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When implementing interactive controls, forms, modals, or reviewing frontend accessibility.',
     applicable_phases: ['UI development', 'Accessibility verification'],
     applicable_task_types: ['frontend', 'accessibility', 'qa'],
-    installation_hint: 'npx skills-llm install accessibility-wcag-audit',
+    installation_mode: 'manual',
   },
   {
     name: 'vitest-unit-testing',
@@ -180,7 +261,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When implementing core business logic, utility functions, state machines, or route handlers.',
     applicable_phases: ['Domain logic', 'Testing & verification'],
     applicable_task_types: ['testing', 'unit', 'integration'],
-    installation_hint: 'npx skills-llm install vitest-unit-testing',
+    installation_mode: 'manual',
   },
   {
     name: 'ecc',
@@ -189,16 +270,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When orchestrating complex multi-file features or long-running agent workflows.',
     applicable_phases: ['System architecture', 'Performance optimization'],
     applicable_task_types: ['workflow', 'agent', 'architecture'],
-    installation_hint: 'npx skills-llm install ecc',
-  },
-  {
-    name: 'superpowers',
-    source: 'internal-fallback',
-    purpose: 'An agentic skills framework and disciplined software development methodology.',
-    trigger: 'When executing structured phased implementations and automated quality gates.',
-    applicable_phases: ['Foundation & setup', 'Feature implementation'],
-    applicable_task_types: ['workflow', 'methodology'],
-    installation_hint: 'npx skills-llm install superpowers',
+    installation_mode: 'manual',
   },
   {
     name: 'next-ai-draw-io',
@@ -207,7 +279,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When designing architecture specifications, entity relationships, or data flows.',
     applicable_phases: ['Architecture design', 'System documentation'],
     applicable_task_types: ['architecture', 'design', 'documentation'],
-    installation_hint: 'npx skills-llm install next-ai-draw-io',
+    installation_mode: 'manual',
   },
   {
     name: 'ponytail',
@@ -216,7 +288,7 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     trigger: 'When writing new features, refactoring code, or designing application architecture.',
     applicable_phases: ['Architecture design', 'Feature implementation'],
     applicable_task_types: ['architecture', 'simplification', 'review'],
-    installation_hint: 'npx skills-llm install ponytail',
+    installation_mode: 'manual',
   },
 ]
 
@@ -363,6 +435,12 @@ export async function resolveProjectSkills({
           applicable_phases: s.applicable_phases,
           applicable_task_types: s.applicable_task_types,
           installation_hint: s.installation_hint,
+          installation_mode: s.installation_mode,
+          installation_source: s.installation_source,
+          installation_skill_id: s.installation_skill_id,
+          installation_agents: s.installation_agents,
+          prerequisite: s.prerequisite,
+          initialization_hint: s.initialization_hint,
         }),
       },
     })
