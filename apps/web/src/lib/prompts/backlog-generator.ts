@@ -36,11 +36,14 @@ export type BacklogGeneratorOutput = z.infer<typeof BacklogGeneratorOutputSchema
 
 export const BACKLOG_GENERATOR_SYSTEM_PROMPT = `You are a Principal Engineering Project Manager & Agile Architect specializing in task decomposition for autonomous coding agents (Claude Code, Cursor, Codex, OpenCode).
 
-Your job is to generate a comprehensive, highly granular, phased, dependency-aware backlog.
+Your job is to generate a concise, reference-driven, phased, dependency-aware backlog that turns approved documents into executable work without rewriting their specifications.
 
 TASK DECOMPOSITION & GRANULARITY STANDARDS (CRITICAL):
 1. NO MONOLITHIC TASKS: Do NOT create broad tasks like "Build backend" or "Build frontend" or "Create UI".
 2. GROUNDED WORKSTREAMS: Break work into concrete project-specific units. Choose tools, libraries, data stores, frameworks, test runners, package managers, and commands ONLY when confirmed by canonical context or explicitly specified in the current document references. Unknown tooling is not permission to invent dependencies or install commands; use repository-provided instructions when available.
+   - Cite source requirements and technical/design sections in each task description or acceptance criteria (for example: PRD.md §4 FR-01 and ARCHITECTURE.md §5).
+   - Acceptance criteria must say what to implement or verify, then point to the owner document for exact rules and values instead of copying its specification.
+   - Every task needs at least one relevant source reference in relevant_docs; never emit a task with no source document or confirmed-context basis.
    - Backend: Break down only the actual storage, service, and API boundaries supported by the project facts.
    - Domain logic: Identify concrete business rules, state transitions, and validation requirements from supplied documents.
    - User interface: Specify screens, forms, interaction behavior, and loading/empty/error states grounded in the product requirements.
@@ -63,8 +66,8 @@ export interface BacklogDocumentReference {
   content: string
 }
 
-export const MAX_BACKLOG_REFERENCE_CHARS = 7_000
-export const MAX_BACKLOG_PROMPT_CHARS = 48_000
+export const MAX_BACKLOG_REFERENCE_CHARS = 10_000
+export const MAX_BACKLOG_PROMPT_CHARS = 80_000
 
 const PRIORITY_SECTION = /requirement|functional|non-functional|security|constraint|data|export|performance|design|token|stack|architecture|decision|entity|scope|acceptance|api|auth|database|deployment|accessibility|workflow/i
 
@@ -96,39 +99,96 @@ export function summarizeBacklogReference(content: string): string {
     }
   }
   saveSection()
+
   if (sections.length === 0) {
-    throw new Error(`A ${MAX_BACKLOG_REFERENCE_CHARS}-character backlog reference limit cannot preserve this unsectioned document; add Markdown headings or shorten the document.`)
+    const marker = '\n\n[...document truncated for reference brevity...]'
+    const maxLen = Math.max(0, MAX_BACKLOG_REFERENCE_CHARS - marker.length)
+    return `${content.slice(0, maxLen)}${marker}`
+  }
+
+  let preambleText = preamble.join('\n').trim()
+  if (preambleText.length > 2_000) {
+    const marker = '\n\n[...preamble truncated for reference brevity...]'
+    preambleText = `${preambleText.slice(0, 1_800)}${marker}`
   }
 
   const selected = new Set<number>()
-  let selectedChars = preamble.join('\n').length
-  for (const [index, section] of sections.entries()) {
-    if (!section.priority) continue
-    if (selectedChars + section.content.length > MAX_BACKLOG_REFERENCE_CHARS) {
-      throw new Error(`Priority sections in a backlog reference exceed the ${MAX_BACKLOG_REFERENCE_CHARS}-character limit; shorten the source document and retry.`)
+  const truncated = new Map<number, string>()
+  const formatNotice = (label: string, headings: string[]) => {
+    const maxChars = 1_800
+    const prefix = `${label}: `
+    let text = prefix
+    let included = 0
+    for (const title of headings) {
+      const name = title.length > 100 ? `${title.slice(0, 97)}...` : title
+      const addition = `${included > 0 ? '; ' : ''}${name}`
+      if (text.length + addition.length > maxChars) break
+      text += addition
+      included++
     }
+    if (included < headings.length) text += `${included > 0 ? '; ' : ''}and ${headings.length - included} more section(s)`
+    return text
+  }
+
+  const buildSummaryText = () => {
+    const omittedHeadings = sections
+      .map((section, index) => ({ section, index }))
+      .filter(({ index }) => !selected.has(index) && !truncated.has(index))
+      .map(({ section }) => section.heading)
+    const truncatedHeadings = sections
+      .map((section, index) => ({ section, index }))
+      .filter(({ index }) => truncated.has(index))
+      .map(({ section }) => section.heading)
+    const parts: string[] = []
+    if (preambleText) parts.push(preambleText)
+    for (let index = 0; index < sections.length; index++) {
+      if (truncated.has(index)) parts.push(truncated.get(index)!)
+      else if (selected.has(index)) parts.push(sections[index].content)
+    }
+    const notices: string[] = []
+    if (omittedHeadings.length > 0) {
+      notices.push(formatNotice('Omitted complete sections (not provided; do not infer their contents)', omittedHeadings))
+    }
+    if (truncatedHeadings.length > 0) {
+      notices.push(formatNotice('Truncated sections (partial content provided)', truncatedHeadings))
+    }
+    return `${parts.join('\n\n')}${notices.length > 0 ? `\n\n${notices.join('\n')}` : ''}`
+  }
+
+  const priorityIndices = sections.flatMap((section, index) => section.priority ? [index] : [])
+  const nonPriorityIndices = sections.flatMap((section, index) => section.priority ? [] : [index])
+
+  for (const index of priorityIndices) {
     selected.add(index)
-    selectedChars += section.content.length
+    if (buildSummaryText().length > MAX_BACKLOG_REFERENCE_CHARS) selected.delete(index)
   }
 
-  for (const [index, section] of sections.entries()) {
+  for (const index of priorityIndices) {
     if (selected.has(index)) continue
-    if (selectedChars + section.content.length <= MAX_BACKLOG_REFERENCE_CHARS) {
-      selected.add(index)
-      selectedChars += section.content.length
+    const marker = '\n\n[...section truncated for reference brevity...]'
+    let low = 1
+    let high = sections[index].content.length
+    let best = ''
+    while (low <= high) {
+      const length = Math.floor((low + high) / 2)
+      truncated.set(index, `${sections[index].content.slice(0, length)}${marker}`)
+      if (buildSummaryText().length <= MAX_BACKLOG_REFERENCE_CHARS) {
+        best = truncated.get(index)!
+        low = length + 1
+      } else {
+        high = length - 1
+      }
     }
+    if (best) truncated.set(index, best)
+    else truncated.delete(index)
   }
 
-  const omitted = sections.filter((_, index) => !selected.has(index)).map(({ heading: title }) => title)
-  const excerpt = [...preamble, ...sections.filter((_, index) => selected.has(index)).map(({ content: body }) => body)].join('\n\n')
-  const omissionNotice = omitted.length > 0
-    ? `\n\nOmitted complete sections (not provided; do not infer their contents): ${omitted.join('; ')}`
-    : ''
-  if (excerpt.length + omissionNotice.length > MAX_BACKLOG_REFERENCE_CHARS) {
-    throw new Error(`Backlog reference section labels exceed the ${MAX_BACKLOG_REFERENCE_CHARS}-character limit; shorten the source document and retry.`)
+  for (const index of nonPriorityIndices) {
+    selected.add(index)
+    if (buildSummaryText().length > MAX_BACKLOG_REFERENCE_CHARS) selected.delete(index)
   }
 
-  return `${excerpt}${omissionNotice}`
+  return buildSummaryText().slice(0, MAX_BACKLOG_REFERENCE_CHARS)
 }
 
 export function buildBacklogGeneratorUserPrompt(
