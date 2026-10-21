@@ -1,9 +1,16 @@
+export class BacklogGenerationError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+    this.name = 'BacklogGenerationError'
+  }
+}
+
 const SAFE_ERROR_PATTERNS: Array<[RegExp, string | ((msg: string) => string)]> = [
   [/project not found/i, 'Project not found'],
   [/project state .* does not allow/i, 'This action is not available in the project’s current state. Refresh the project and continue from the active workflow step.'],
   [/no active ai provider session/i, 'No active AI provider session found. Please configure your BYOK provider first.'],
   [/answer pending clarification questions/i, 'Answer pending clarification questions before generating a new round.'],
-  [/no canonical context/i, 'Canonical context is required before this action can run.'],
+  [/no canonical (?:project )?context/i, 'Canonical context is required before this action can run.'],
   [/project is not exportable/i, 'Project validation must pass before export.'],
   [/project has no current context/i, 'Canonical context is required before export.'],
   [/project documents are not ready for export/i, 'All required documents must be ready before export.'],
@@ -24,6 +31,10 @@ const SAFE_ERROR_PATTERNS: Array<[RegExp, string | ((msg: string) => string)]> =
   [/invalid json body/i, 'Invalid JSON body'],
   [/invalid input/i, 'Invalid input'],
   [/rate limit|429/i, 'Provider rate limit exceeded. Please wait and retry.'],
+  [/backlog generation timed out|timed out/i, 'Generation timed out. The provider took too long to respond. Please retry or choose a faster model.'],
+  [/failed validation after repair attempt/i, 'Provider response could not be validated after a repair attempt. Retry or choose a more capable model.'],
+  [/too_small|invalid_type|string must contain|unrecognized_keys/i, 'Provider response could not be validated. Retry or choose a more capable model.'],
+  [/backlog replacement failed/i, (msg) => msg],
   // Model-specific errors first — upstream model issues should not blame user's API key
   [/model.*(not found|does not exist|invalid|unavailable|no active credentials for provider)/i, 'The selected provider model is unavailable. Choose another model and retry.'],
   [/no active credentials for provider/i, 'The selected model is currently unavailable in this provider. Choose another model and retry.'],
