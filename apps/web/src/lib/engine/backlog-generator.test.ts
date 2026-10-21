@@ -229,6 +229,17 @@ describe('Backlog Generator Schema & Prompt', () => {
     expect(prompt).toContain('recommended_skills array on every task must be empty: []')
     expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('Engineering Project Manager')
     expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('exact skill names listed in the Available Project Skills catalog')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('relevant_docs must contain only exact file paths')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('not "PRD.md §4 FR-01"')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('Put section/requirement citations in the description or acceptance criteria')
+  })
+
+  it('preserves design invariants without locking every visual decision', () => {
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('preserve its hard invariants')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('Allow agents to refine adaptable defaults')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('update the canonical CSS tokens coherently')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).toContain('If DESIGN.md is not included, do not invent a reference to it')
+    expect(BACKLOG_GENERATOR_SYSTEM_PROMPT).not.toContain('for every visual decision')
   })
 
   it('includes DESIGN only when it is a current planned reference', () => {
