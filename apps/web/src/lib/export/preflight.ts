@@ -1,5 +1,6 @@
 import { db } from '@repo/db'
 import { validateArtifactIntegrity } from '@/lib/engine/artifact-integrity'
+import { extractMermaidDiagram } from '@/lib/prompts/architecture-generator'
 
 /**
  * Validates file path inside ZIP pack to prevent path traversal vulnerability.
@@ -161,6 +162,17 @@ export function validateExportPreflight(project: ExportPreflightProject): Export
 
   if (!normalizedPaths.has('README.md')) {
     scanContentForSecrets(generateBootstrapReadme(project.name), 'README.md')
+  }
+
+  const archArtifact = exportableArtifacts.find((artifact) => artifact.type === 'ARCHITECTURE')
+  if (archArtifact) {
+    const diagramContent = extractMermaidDiagram(archArtifact.content)
+    if (diagramContent) {
+      if (normalizedPaths.has('diagram.md')) {
+        throw new Error('Duplicate file path detected in export: diagram.md')
+      }
+      scanContentForSecrets(diagramContent, 'diagram.md')
+    }
   }
 
   return exportableArtifacts
