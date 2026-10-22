@@ -22,7 +22,7 @@ export function buildFallbackDesignMarkdown(
 ## Direction & Decisions
 - **Context excerpt:** ${excerpt(context.summary) || 'Workflow details remain unspecified; consult the canonical context and PRD.'}
 - **Direction excerpt (${provenance}):** ${directionText || 'Not confirmed; choose from the project context before implementation.'}
-- This is a fallback brief, not an AI art-direction recommendation. Full confirmed decisions in the canonical context take precedence over all provisional defaults.${reference ? `\n- **Optional styling reference:** ${reference}. Visual vocabulary only; it cannot override confirmed direction or introduce features.` : ''}`
+- This is a fallback brief, not an AI art-direction recommendation. Full confirmed decisions in the canonical context take precedence over all provisional defaults.${reference ? `\n- **Optional styling reference:** ${reference}. Palette, contrast, and mood cues only; it cannot override confirmed direction, dictate layout, or introduce features.` : ''}`
   const boundaries = `## Implementation Boundaries
 - **Hard invariants:** preserve confirmed scope, brand/stack choices, accessibility, and provenance. PRD owns product scope; ARCHITECTURE owns APIs and data. Never add business fields, routes, roles, dependencies, or requirements from styling guidance.
 - **Adaptable defaults:** agents may refine recommendations coherently for this project's workflow; never present assumptions as confirmed.
