@@ -100,6 +100,16 @@ describe('SkillsLLM Catalog Adapter & Fallback', () => {
     expect(manual?.installation_hint).toBeUndefined()
     expect(internalCatalogFallback.some((skill) => skill.installation_hint?.includes('skills-llm'))).toBe(false)
   })
+
+  it('provides verified superpowers setup metadata in the fallback catalog', () => {
+    const superpowers = internalCatalogFallback.find((skill) => skill.name === 'superpowers')
+    expect(superpowers).toMatchObject({
+      installation_mode: 'superpowers-plugin',
+      installation_source: 'https://github.com/obra/superpowers',
+      installation_skill_id: 'superpowers',
+      installation_hint: '/plugin install superpowers@claude-plugins-official',
+    })
+  })
 })
 
 describe('Skill Resolver Engine — resolveProjectSkills', () => {
@@ -311,6 +321,7 @@ describe('Skill Resolver Engine — resolveProjectSkills', () => {
 
     expect(result.rationale).toBe('AI resolved custom skills')
     expect(result.skills[0]?.name).toBe('find-skills')
+    expect(result.skills.some((s) => s.name === 'superpowers')).toBe(true)
   })
 })
 
