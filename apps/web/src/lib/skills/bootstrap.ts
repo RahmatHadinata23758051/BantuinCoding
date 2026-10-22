@@ -1,5 +1,5 @@
 export interface VerifiedSkillDefinition {
-  mode: 'ui-ux-pro-max-cli' | 'skills-cli'
+  mode: 'ui-ux-pro-max-cli' | 'skills-cli' | 'superpowers-plugin'
   source: string
   skillId: string
   agents: readonly string[]
@@ -16,8 +16,18 @@ export const UI_UX_PRO_MAX_INSTALLATION: VerifiedSkillDefinition = {
   command: 'npx ui-ux-pro-max-cli init --ai <agent>',
 } as const
 
+export const SUPERPOWERS_INSTALLATION: VerifiedSkillDefinition = {
+  mode: 'superpowers-plugin',
+  source: 'https://github.com/obra/superpowers',
+  skillId: 'superpowers',
+  agents: ['claude', 'codex', 'cursor', 'universal'],
+  prerequisite: 'Git or agent plugin manager',
+  command: '/plugin install superpowers@claude-plugins-official',
+} as const
+
 export const VERIFIED_SKILL_INSTALLATIONS: Record<string, VerifiedSkillDefinition> = {
   'ui-ux-pro-max': UI_UX_PRO_MAX_INSTALLATION,
+  'superpowers': SUPERPOWERS_INSTALLATION,
 } as const
 
 type SkillInstallation = {
@@ -60,6 +70,19 @@ export function getVerifiedSkillInstallCommand(
 
   if (!verified.agents.includes(agent)) {
     return undefined
+  }
+
+  if (verified.mode === 'superpowers-plugin') {
+    if (agent === 'claude') {
+      return '/plugin install superpowers@claude-plugins-official'
+    }
+    if (agent === 'cursor') {
+      return '/add-plugin superpowers'
+    }
+    if (agent === 'codex') {
+      return '/plugins install superpowers'
+    }
+    return 'git clone https://github.com/obra/superpowers.git'
   }
 
   if (verified.mode === 'skills-cli') {
