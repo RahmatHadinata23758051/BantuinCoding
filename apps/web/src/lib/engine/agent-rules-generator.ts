@@ -71,20 +71,21 @@ You are the primary coding agent assigned to implement ${projectName}.
 - **VERIFY**: Run typecheck, lint, and tests.
 - **REPORT**: Provide structured completion report.
 
-### 4. Anti-Slop Execution Discipline
-The coding agent must strictly adhere to anti-slop guidelines (see \`antislop\` and \`anti-slop-ui\` skills):
-- **DESIGN.md Authority**: Treat \`DESIGN.md\` as strict immutable data. Never invent arbitrary styles or override tokens.
+### 4. Implementation Discipline
+- **DESIGN.md Authority**: Follow project-specific visual and interaction direction. Preserve confirmed brand/scope/data and accessibility invariants; refine adaptable choices coherently without treating initial tokens as an aesthetic ceiling.
+- **Skills**: For matching work, inspect the actual agent environment, read and apply applicable resolved skill instructions that are available, and record only skills actually loaded. Recommendations alone do not prove activation. Report unavailable skills/tools; do not invent installation steps.
 - **Component Completeness**: Every button, link, and toggle must be wired to working logic. Dead triggers are forbidden; if unfinished, badge with "Coming soon" and tag with \`// TODO\`.
-- **Mandatory Triple States**: Every data view must provide explicit Empty (actionable), Loading (skeleton), and Error (retryable) states.
+- **States**: Implement loading, empty, and error/recovery states when supported by the documented workflow; do not invent product behavior.
 - **Accessibility & Keyboard Navigation**: Full keyboard operability, visible focus rings, and WCAG AA contrast (minimum 4.5:1).
 - **Native Implementation**: Implement code and styles directly in source files; do not run ad-hoc rewrite scripts.
 
 ### 5. Quality Gate
 - [ ] Typecheck passes
 - [ ] Lint passes
-- [ ] Tests pass
+- [ ] Functional tests and acceptance criteria pass
 - [ ] No secrets exposed
-- [ ] Acceptance criteria met
+- [ ] For UI changes, inspect rendered representative screens at desktop and narrow/mobile widths when browser or screenshot tools are available; compare with DESIGN.md and iterate on observed issues
+- [ ] Claim visual verification only when rendered evidence was inspected; otherwise report the limitation.
 
 ${bootstrapInstructions}
 

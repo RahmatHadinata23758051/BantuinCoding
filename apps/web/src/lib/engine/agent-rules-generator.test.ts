@@ -84,6 +84,15 @@ describe('Agent Rules Prompt & Schema', () => {
     expect(prompt).toContain('Skill recommendations have not been resolved yet')
     expect(prompt).toContain('do not invent skills')
   })
+
+  it('instructs honest skill activation, visual quality gates, and adaptive composition in system prompt', () => {
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('Recommendations do not prove activation')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('record only skills actually loaded')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('Claim visual verification only when rendered evidence was actually inspected')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('do not impose universal layouts or invent business data/screen scope')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).not.toContain('antislop')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).not.toContain('anti-slop-ui')
+  })
 })
 
 describe('One-shot kickoff prompt', () => {
@@ -138,6 +147,19 @@ describe('Agent Rules Fallback Generators', () => {
     const md = generateFallbackRulesMd('Acme App')
     expect(md).toContain('# Agent.md — Operational Rules for Acme App')
     expect(md).toContain('BYOK API keys must remain session-scoped')
+  })
+
+  it('frames DESIGN.md adaptively without immutable token ceiling or hardcoded skills in fallback', () => {
+    const md = generateFallbackAgentMd('Acme App', 'CLAUDE_CODE', [verifiedSkill])
+    expect(md).toContain('refine adaptable choices coherently without treating initial tokens as an aesthetic ceiling')
+    expect(md).not.toContain('strict immutable data')
+    expect(md).not.toContain('Never invent arbitrary styles or override tokens')
+    expect(md).not.toContain('antislop')
+    expect(md).not.toContain('anti-slop-ui')
+    expect(md).toContain('Functional tests and acceptance criteria pass')
+    expect(md).toContain('inspect rendered representative screens at desktop and narrow/mobile widths')
+    expect(md).toContain('Claim visual verification only when rendered evidence was inspected; otherwise report the limitation.')
+    expect(md).toContain('when supported by the documented workflow; do not invent product behavior')
   })
 })
 

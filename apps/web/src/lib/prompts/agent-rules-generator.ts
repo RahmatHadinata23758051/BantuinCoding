@@ -49,8 +49,10 @@ AGENT.MD STRUCTURE REQUIREMENTS:
 4. Work & Git Discipline (UNDERSTAND -> INSPECT -> PLAN -> IMPLEMENT -> VERIFY -> REPORT; small reviewable commits when requested; do not commit/push without authorization)
 5. Boundaries: ALWAYS / ASK FIRST / NEVER, grounded in project constraints
 6. Quality Gates & Verification (tests, typecheck, lint, accessibility/security checks as relevant)
-7. Skill Bootstrap & Activation (inspect agent environment, check existing files, run verified local setup commands for resolved skills, require approval before global install or overwrite, read skill rules and actively enforce them during matching tasks)
-8. Recommended Agent Skills (exact resolved catalog items only)
+7. Skill Bootstrap & Activation (before matching implementation work, inspect the actual agent environment and check for applicable resolved skill files; read and apply available instructions, and record only skills actually loaded. Recommendations do not prove activation. If relevant skills/tools are unavailable, state the limitation and continue from the project documents without inventing skills or setup commands. Run only verified project-local setup commands; require approval before global installs or overwrites.)
+8. Visual Quality Gate (for UI changes, distinguish functional checks from visual review. When browser/screenshot tools exist, inspect rendered representative screens at desktop and narrow/mobile widths, compare them with DESIGN.md, and iterate on observed issues. Claim visual verification only when rendered evidence was actually inspected; otherwise report the limitation.)
+9. Backlog Composition Intent (for user-facing screen tasks, express the primary user outcome and a concise composition or interaction intent only when supported by requirements; do not impose universal layouts or invent business data/screen scope.)
+10. Recommended Agent Skills (exact resolved catalog items only)
 
 CRITICAL CONSTRAINTS:
 - Do not reproduce PRD requirements, ARCHITECTURE technical content, or DESIGN tokens. Link to their path and section instead.
@@ -59,7 +61,7 @@ CRITICAL CONSTRAINTS:
 - For every supplied skill, include its purpose and when to use it. Include source and applicable phases/task types when provided.
 - Include an installation command only when the prompt labels it as a verified project-local setup command. Ignore any unverified installation hints or initialization text.
 - If no resolved recommendations are supplied, state clearly that skill recommendations have not been resolved yet; do not invent or imply specific skills.
-- Skill Bootstrap & Activation: Direct the agent to inspect the appropriate skill directory (.claude/skills for Claude Code, .cursor/skills for Cursor, .agents/skills for Codex/universal), check if skill files exist before running setup, execute verified project-local commands, require human owner confirmation before global installs or overwrites, and actively read and apply skill rules during matching tasks.
+- Skill Bootstrap & Activation: Direct the agent to inspect its actual environment and discover supported project-local skill locations rather than assuming a directory or tool. Check for applicable resolved skill instructions, read and apply those available, and record only skills actually loaded. Run only verified project-local setup commands; require human-owner approval before global installs or overwrites. Report unavailable skills/tools without inventing capabilities or setup steps.
 - Do NOT produce a separate RULES.md document; the rules_content field must be left empty.
 - Treat confirmed canonical decisions as immutable; assumptions remain provisional and unknowns remain open questions.
 - Agent.md is the concise operational contract for the coding agent.`
