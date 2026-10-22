@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   UI_UX_PRO_MAX_INSTALLATION,
+  SUPERPOWERS_INSTALLATION,
   getVerifiedSkillInstallCommand,
 } from './bootstrap'
 
@@ -12,6 +13,15 @@ describe('getVerifiedSkillInstallCommand', () => {
     installation_agents: [...UI_UX_PRO_MAX_INSTALLATION.agents],
     prerequisite: UI_UX_PRO_MAX_INSTALLATION.prerequisite,
     installation_hint: UI_UX_PRO_MAX_INSTALLATION.command,
+  }
+
+  const validSuperpowersMetadata = {
+    installation_mode: SUPERPOWERS_INSTALLATION.mode,
+    installation_source: SUPERPOWERS_INSTALLATION.source,
+    installation_skill_id: SUPERPOWERS_INSTALLATION.skillId,
+    installation_agents: [...SUPERPOWERS_INSTALLATION.agents],
+    prerequisite: SUPERPOWERS_INSTALLATION.prerequisite,
+    installation_hint: SUPERPOWERS_INSTALLATION.command,
   }
 
   it('resolves verified command for CLAUDE_CODE', () => {
@@ -60,5 +70,16 @@ describe('getVerifiedSkillInstallCommand', () => {
   it('returns undefined if installation metadata is null or undefined', () => {
     expect(getVerifiedSkillInstallCommand('ui-ux-pro-max', null, 'CLAUDE_CODE')).toBeUndefined()
     expect(getVerifiedSkillInstallCommand('ui-ux-pro-max', undefined, 'CLAUDE_CODE')).toBeUndefined()
+  })
+
+  it('resolves verified commands for superpowers across supported agents', () => {
+    expect(getVerifiedSkillInstallCommand('superpowers', validSuperpowersMetadata, 'CLAUDE_CODE'))
+      .toBe('/plugin install superpowers@claude-plugins-official')
+    expect(getVerifiedSkillInstallCommand('superpowers', validSuperpowersMetadata, 'CURSOR'))
+      .toBe('/add-plugin superpowers')
+    expect(getVerifiedSkillInstallCommand('superpowers', validSuperpowersMetadata, 'CODEX'))
+      .toBe('/plugins install superpowers')
+    expect(getVerifiedSkillInstallCommand('superpowers', validSuperpowersMetadata, 'OTHER'))
+      .toBe('git clone https://github.com/obra/superpowers.git')
   })
 })
