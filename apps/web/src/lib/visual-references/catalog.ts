@@ -12,6 +12,11 @@ export interface VisualReferenceItem {
   dnaPrompt: string
 }
 
+export type VisualReferencePalette = Pick<
+  VisualReferenceItem,
+  'name' | 'theme' | 'accentColor' | 'surfaceColor' | 'canvasColor'
+>
+
 export const VISUAL_REFERENCES: VisualReferenceItem[] = [
   {
     id: 'notion',

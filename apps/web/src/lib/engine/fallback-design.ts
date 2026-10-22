@@ -1,9 +1,11 @@
+import { calculateContrastRatio } from '@/lib/engine/design-token-validator'
 import { isNonVisualContext } from '@/lib/prompts/design-generator'
+import type { VisualReferencePalette } from '@/lib/visual-references/catalog'
 
 export function buildFallbackDesignMarkdown(
   projectName: string,
   context: Record<string, unknown>,
-  visualReference?: string,
+  visualReference?: VisualReferencePalette,
 ): string {
   // Bound context excerpts, not the finished Markdown; never cut a section or fence.
   const excerpt = (value: unknown, limit = 500): string => typeof value === 'string'
@@ -16,20 +18,23 @@ export function buildFallbackDesignMarkdown(
   const provenance = direction?.provenance === 'confirmed' || direction?.provenance === 'assumed'
     ? direction.provenance : 'unknown'
   const styling = excerpt(stack?.styling?.value, 160)
-  const reference = excerpt(visualReference, 500)
+  const isNonVisual = isNonVisualContext(context)
+  const reference = visualReference && !isNonVisual
+    ? `${excerpt(visualReference.name, 80)} (${visualReference.theme}: canvas ${visualReference.canvasColor}, surface ${visualReference.surfaceColor}, accent ${visualReference.accentColor})`
+    : ''
   const identity = `# DESIGN.md — ${excerpt(projectName, 120)}
 
 ## Direction & Decisions
 - **Context excerpt:** ${excerpt(context.summary) || 'Workflow details remain unspecified; consult the canonical context and PRD.'}
 - **Direction excerpt (${provenance}):** ${directionText || 'Not confirmed; choose from the project context before implementation.'}
-- This is a fallback brief, not an AI art-direction recommendation. Full confirmed decisions in the canonical context take precedence over all provisional defaults.${reference ? `\n- **Optional styling reference:** ${reference}. Palette, contrast, and mood cues only; it cannot override confirmed direction, dictate layout, or introduce features.` : ''}`
+- This is a fallback brief, not an AI art-direction recommendation. Full confirmed decisions in the canonical context take precedence over all provisional defaults.${reference ? `\n- **Optional styling reference:** ${reference}. Palette and contrast cues only; it cannot override confirmed direction, dictate layout, or introduce features.` : ''}`
   const boundaries = `## Implementation Boundaries
 - **Hard invariants:** preserve confirmed scope, brand/stack choices, accessibility, and provenance. PRD owns product scope; ARCHITECTURE owns APIs and data. Never add business fields, routes, roles, dependencies, or requirements from styling guidance.
 - **Adaptable defaults:** agents may refine recommendations coherently for this project's workflow; never present assumptions as confirmed.
 - [ ] Only documented requirements and data are implemented.
 - [ ] Confirmed decisions are preserved and unresolved choices identified.`
 
-  if (isNonVisualContext(context)) {
+  if (isNonVisual) {
     return `${identity}
 
 UI scope: none
@@ -49,6 +54,17 @@ ${boundaries}
       const name = excerpt(screen.name ?? screen.title, 100)
       return name ? [name] : []
     })
+  const canvasColor = reference ? visualReference!.canvasColor : '#FFFFFF'
+  const surfaceColor = reference ? visualReference!.surfaceColor : '#F5F5F5'
+  const accentColor = reference ? visualReference!.accentColor : '#334155'
+  const onAccentColor = (calculateContrastRatio('#FFFFFF', accentColor) ?? 0) >= 4.5 ? '#FFFFFF' : '#111827'
+  const contrastSafeInk = (background: string): string => {
+    const dark = '#111827'
+    const light = '#FFFFFF'
+    return (calculateContrastRatio(dark, background) ?? 0) >= 4.5 ? dark : light
+  }
+  const inkColor = contrastSafeInk(canvasColor)
+  const mutedColor = contrastSafeInk(surfaceColor)
 
   return `${identity}
 - Token values are provisional accessible defaults, not confirmed brand choices. Reconcile them with confirmed brand constraints before implementation.
@@ -58,12 +74,12 @@ One authoritative CSS block; refine values here rather than copying them into pr
 
 \`\`\`css
 :root {
-  --color-canvas: #FFFFFF;
-  --color-surface: #F5F5F5;
-  --color-ink: #111827;
-  --color-muted: #4B5563;
-  --color-accent: #334155;
-  --color-on-accent: #FFFFFF;
+  --color-canvas: ${canvasColor};
+  --color-surface: ${surfaceColor};
+  --color-ink: ${inkColor};
+  --color-muted: ${mutedColor};
+  --color-accent: ${accentColor};
+  --color-on-accent: ${onAccentColor};
   --color-focus: #2563EB;
   --font-body: system-ui, -apple-system, sans-serif;
   --space-unit: 8px;

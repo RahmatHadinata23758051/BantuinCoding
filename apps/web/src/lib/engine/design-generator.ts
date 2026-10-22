@@ -52,7 +52,7 @@ export async function generateDesignArtifactResult(
     projectName,
     contextJson,
     contextVersion,
-    selectedReference ? { name: selectedReference.name, dnaPrompt: selectedReference.dnaPrompt } : undefined,
+    selectedReference,
   )
   let context: Record<string, unknown> = {}
   try {
@@ -65,7 +65,7 @@ export async function generateDesignArtifactResult(
     const content = buildFallbackDesignMarkdown(
       projectName,
       context,
-      selectedReference ? `${selectedReference.name}: ${selectedReference.dnaPrompt}` : undefined,
+      selectedReference,
     )
     const fallbackViolations = validateDesignMarkdown(content, context)
     if (fallbackViolations.length) throw new Error(`Invalid fallback DESIGN.md: ${fallbackViolations.join('; ')}`)

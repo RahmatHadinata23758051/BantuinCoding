@@ -236,13 +236,15 @@ describe('Artifact Generation Prompts & Schemas', () => {
       'Acme',
       '{"name":"Acme"}',
       3,
-      { name: 'Plate · The Pass', dnaPrompt: 'Thermal tickets and restrained alert red.' },
+      { name: 'Plate · The Pass', theme: 'light', canvasColor: '#e9edec', surfaceColor: '#fbfcfa', accentColor: '#2b3438' },
     )
     expect(referencedPrompt).toContain('OPTIONAL VISUAL REFERENCE — DESIGN.md ONLY')
-    expect(referencedPrompt).toContain('Thermal tickets and restrained alert red.')
+    expect(referencedPrompt).toContain('Canvas: #e9edec')
+    expect(referencedPrompt).toContain('Surface: #fbfcfa')
+    expect(referencedPrompt).toContain('Accent: #2b3438')
+    expect(referencedPrompt).toContain('supplies no mood, typography, layout, composition, component styling, or surface hierarchy')
+    expect(referencedPrompt).not.toContain('Thermal tickets')
     expect(referencedPrompt).toContain('Do not copy its product, screens, features, data, or interactions')
-    expect(referencedPrompt).toContain('ONLY for its color palette, tonal contrast, and overall mood')
-    expect(referencedPrompt).toContain('must not constrain appropriate visual richness or variety')
     expect(promptDesign).not.toContain('OPTIONAL VISUAL REFERENCE')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('styles.refero.design')
     expect(DESIGN_GENERATOR_SYSTEM_PROMPT).not.toContain('saasframe.io')
@@ -258,16 +260,60 @@ describe('Design generator validation', () => {
     expect(generateStructured).toHaveBeenCalledTimes(1)
   })
 
-  it('sends the selected visual reference only in the design prompt', async () => {
+  it('sends only the selected reference colors to the design prompt', async () => {
     const generateStructured = vi.fn().mockResolvedValue(makeDesignResponse())
     const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured } as never
 
     await expect(generateDesignArtifactContent(provider, 'Acme', '{"name":"Acme"}', 2, 'plite'))
       .resolves.toBe(VALID_DESIGN_MARKDOWN)
-    expect(generateStructured.mock.calls[0]?.[0]).toContain('OPTIONAL VISUAL REFERENCE — DESIGN.md ONLY')
-    expect(generateStructured.mock.calls[0]?.[0]).toContain('Plate · The Pass')
-    expect(generateStructured.mock.calls[0]?.[0]).toContain('Professional kitchen ticket rail aesthetic')
-    expect(generateStructured.mock.calls[0]?.[0]).toContain('{"name":"Acme"}')
+    const prompt = generateStructured.mock.calls[0]?.[0] as string
+    expect(prompt).toContain('OPTIONAL VISUAL REFERENCE — DESIGN.md ONLY')
+    expect(prompt).toContain('Plate · The Pass')
+    expect(prompt).toContain('Canvas: #e9edec')
+    expect(prompt).toContain('Surface: #fbfcfa')
+    expect(prompt).toContain('Accent: #2b3438')
+    expect(prompt).not.toContain('Professional kitchen ticket rail aesthetic')
+    expect(prompt).not.toContain('Barlow')
+    expect(prompt).not.toContain('zigzag tear edges')
+    expect(prompt).toContain('{"name":"Acme"}')
+  })
+
+  it('stores selected colors in the fallback tokens without importing reference styling', async () => {
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockRejectedValue(new Error('provider unavailable')) } as never
+    const result = await generateDesignArtifactResult(provider, 'Acme', '{"name":"Acme"}', 2, 'plite')
+    expect(result.status).toBe('fallback')
+    expect(result.content).toContain('--color-canvas: #e9edec;')
+    expect(result.content).toContain('--color-surface: #fbfcfa;')
+    expect(result.content).toContain('--color-accent: #2b3438;')
+    expect(result.content).not.toContain('ticket rail aesthetic')
+    expect(result.content).not.toContain('Barlow')
+    expect(validateDesignMarkdown(result.content, { name: 'Acme' })).toEqual([])
+  })
+
+  it('keeps confirmed brand direction explicit alongside provisional reference colors', async () => {
+    const context = { design_direction: { value: 'Brand uses a gold accent', provenance: 'confirmed' } }
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockRejectedValue(new Error('provider unavailable')) } as never
+    const result = await generateDesignArtifactResult(provider, 'Acme', JSON.stringify(context), 2, 'plite')
+    expect(result.content).toContain('Direction excerpt (confirmed):** Brand uses a gold accent')
+    expect(result.content).toContain('--color-accent: #2b3438;')
+    expect(validateDesignMarkdown(result.content, context)).toEqual([])
+  })
+
+  it('uses white foreground when the selected accent cannot support dark foreground contrast', async () => {
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockRejectedValue(new Error('provider unavailable')) } as never
+    const result = await generateDesignArtifactResult(provider, 'Acme', '{}', 2, 'notion')
+    expect(result.content).toContain('--color-accent: #0075de;')
+    expect(result.content).toContain('--color-on-accent: #FFFFFF;')
+    expect(validateDesignMarkdown(result.content, {})).toEqual([])
+  })
+
+  it('keeps palette guidance out of non-visual fallback packs', async () => {
+    const provider = { type: 'ANTHROPIC', testConnection: vi.fn(), generateStructured: vi.fn().mockRejectedValue(new Error('provider unavailable')) } as never
+    const context = { stack_preferences: { frontend: { value: 'None (API only)', provenance: 'confirmed' } } }
+    const result = await generateDesignArtifactResult(provider, 'API', JSON.stringify(context), 1, 'plite')
+    expect(result.content).toContain('UI scope: none')
+    expect(result.content).not.toContain('#e9edec')
+    expect(result.content).not.toContain('DESIGN Tokens')
   })
 
   it('does not add visual-reference guidance when the model chooses', async () => {
@@ -276,6 +322,15 @@ describe('Design generator validation', () => {
 
     await generateDesignArtifactContent(provider, 'Acme', '{"name":"Acme"}', 2)
     expect(generateStructured.mock.calls[0]?.[0]).not.toContain('OPTIONAL VISUAL REFERENCE')
+  })
+
+  it('removes mood, layout and styling contracts from selected reference', async () => {
+    const result = buildDesignGeneratorUserPrompt('Acme', '{}', 1, {
+      name: 'Custom', theme: 'dark', canvasColor: '#101010', surfaceColor: '#202020', accentColor: '#aabbcc',
+    })
+    expect(result).toContain('Theme: dark')
+    expect(result).not.toContain('overall mood')
+    expect(result).not.toContain('DNA')
   })
 
   it('repairs a valid-schema response missing the top-level heading once', async () => {
@@ -355,7 +410,7 @@ describe('Design generator validation', () => {
     expect(result.status).toBe('fallback')
     expect(result.content).toContain('Direction excerpt (confirmed):** Quiet monochrome editorial')
     expect(result.content).toContain('Optional styling reference:')
-    expect(result.content).toContain('Palette, contrast, and mood cues only')
+    expect(result.content).toContain('Palette and contrast cues only')
     expect(result.content).toContain('cannot override confirmed direction')
     expect(validateDesignMarkdown(result.content, context)).toEqual([])
     expect(context.design_direction).toEqual({ value: 'Quiet monochrome editorial', provenance: 'confirmed' })
