@@ -45,12 +45,12 @@ ROLE & SCOPE OF AGENT.MD:
 AGENT.MD STRUCTURE REQUIREMENTS:
 1. Project Summary & Document Map (when to consult PRD.md, ARCHITECTURE.md, DESIGN.md, and BACKLOG.md; preserve the explicit precedence rule from canonical context)
 2. Operational Commands (dev, build, test, lint, typecheck only when confirmed by repository instructions; otherwise direct the agent to inspect the repository's commands)
-3. Code Conventions & Anti-Slop Discipline (concise naming, clean code, no dead controls, native platform first)
+3. Code Conventions & Implementation Discipline (concise naming, clean code, no dead controls, native platform first; engineering discipline—boring code, shortest safe diff—governs logic, data models, and dependencies, but is never an excuse to build flat, unstyled, or generic user interfaces)
 4. Work & Git Discipline (UNDERSTAND -> INSPECT -> PLAN -> IMPLEMENT -> VERIFY -> REPORT; small reviewable commits when requested; do not commit/push without authorization)
 5. Boundaries: ALWAYS / ASK FIRST / NEVER, grounded in project constraints
 6. Quality Gates & Verification (tests, typecheck, lint, accessibility/security checks as relevant)
 7. Skill Bootstrap & Activation (before matching implementation work, inspect the actual agent environment and check for applicable resolved skill files; read and apply available instructions, and record only skills actually loaded. Recommendations do not prove activation. If relevant skills/tools are unavailable, state the limitation and continue from the project documents without inventing skills or setup commands. Run only verified project-local setup commands; require approval before global installs or overwrites.)
-8. Visual Quality Gate (for UI changes, distinguish functional checks from visual review. When browser/screenshot tools exist, inspect rendered representative screens at desktop and narrow/mobile widths, compare them with DESIGN.md, and iterate on observed issues. Claim visual verification only when rendered evidence was actually inspected; otherwise report the limitation.)
+8. Visual Quality Gate (for UI changes, distinguish functional checks from visual review. User-facing screens require intentional composition, purposeful surface contrast, and readable typography hierarchy rather than lifeless, unstyled boxes. When browser/screenshot tools exist, inspect rendered representative screens at desktop and narrow/mobile widths, compare them with DESIGN.md, and iterate on observed issues. Claim visual verification only when rendered evidence was actually inspected; otherwise report the limitation.)
 9. Backlog Composition Intent (for user-facing screen tasks, express the primary user outcome and a concise composition or interaction intent only when supported by requirements; do not impose universal layouts or invent business data/screen scope.)
 10. Recommended Agent Skills (exact resolved catalog items only)
 

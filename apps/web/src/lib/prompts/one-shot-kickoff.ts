@@ -63,6 +63,7 @@ ${skillsSection}
 
 ## Working guidance
 - Treat \`DESIGN.md\` as the visual source of truth. Do not invent a competing visual system or override it with conventions from this prompt.
+- Engineering discipline (boring code, shortest safe diff) governs system logic, data models, and dependencies; it does not justify flat, unstyled, or generic user interfaces. Implement screens with intentional composition, surface hierarchy, and readability.
 - Review the backlog and its dependencies, then propose the next appropriate task for the human owner’s approval before implementation.
 - Follow the pack’s quality gates, verify your work with the relevant checks, and report assumptions, changes, and unresolved decisions clearly.
 - Do not assume that every backlog item is in scope for this session; do not silently expand the project beyond the generated requirements.`

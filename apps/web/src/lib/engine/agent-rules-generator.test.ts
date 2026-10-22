@@ -90,6 +90,8 @@ describe('Agent Rules Prompt & Schema', () => {
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('record only skills actually loaded')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('Claim visual verification only when rendered evidence was actually inspected')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('do not impose universal layouts or invent business data/screen scope')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('boring code, shortest safe diff')
+    expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).toContain('flat, unstyled, or generic user interfaces')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).not.toContain('antislop')
     expect(AGENT_RULES_GENERATOR_SYSTEM_PROMPT).not.toContain('anti-slop-ui')
   })
@@ -113,6 +115,7 @@ describe('One-shot kickoff prompt', () => {
 
     expect(prompt).toContain('npx ui-ux-pro-max-cli init --ai claude')
     expect(prompt).toContain('read each skill instruction file and apply it whenever its trigger matches')
+    expect(prompt).toContain('Engineering discipline (boring code, shortest safe diff) governs system logic')
     expect(prompt).toContain('propose the next appropriate task for the human owner’s approval before implementation')
   })
 
@@ -160,6 +163,8 @@ describe('Agent Rules Fallback Generators', () => {
     expect(md).toContain('inspect rendered representative screens at desktop and narrow/mobile widths')
     expect(md).toContain('Claim visual verification only when rendered evidence was inspected; otherwise report the limitation.')
     expect(md).toContain('when supported by the documented workflow; do not invent product behavior')
+    expect(md).toContain('**Engineering vs. visual quality**')
+    expect(md).toContain('do not let that discipline produce flat, unstyled, or generic user interfaces')
   })
 })
 
