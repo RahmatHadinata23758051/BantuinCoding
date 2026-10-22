@@ -8,6 +8,7 @@ import {
   SkillResolverOutputSchema,
   ResolvedSkillSchema,
   buildSkillResolverUserPrompt,
+  MAX_RESOLVED_SKILLS,
   type ResolvedSkill,
   type SkillResolverOutput,
 } from '@/lib/prompts/skill-resolver'
@@ -41,9 +42,16 @@ function resolveCatalogOutput(
     return catalogSkill && compatibleNames.has(skill.name) ? [catalogSkill] : []
   })
 
+  if (skills.length > 0) {
+    const superpowersSkill = catalogByName.get('superpowers')
+    if (superpowersSkill && compatibleNames.has('superpowers') && !skills.some((s) => s.name === 'superpowers')) {
+      skills.push(superpowersSkill)
+    }
+  }
+
   return {
     ...output,
-    skills,
+    skills: skills.slice(0, MAX_RESOLVED_SKILLS),
     skills_md_content: '',
   }
 }
@@ -127,6 +135,15 @@ export const internalCatalogFallback: ResolvedSkill[] = [
     applicable_phases: ['Project setup', 'Task planning'],
     applicable_task_types: ['discovery', 'planning', 'agent-tooling'],
     installation_mode: 'manual',
+  },
+  {
+    name: 'superpowers',
+    source: 'https://github.com/obra/superpowers',
+    purpose: 'Core software development methodology and agentic skills framework: TDD, systematic debugging, plan drafting/execution, subagent dispatch, and verification before completion.',
+    trigger: 'Universal engineering workflow across all implementation phases: planning, testing, debugging, and task execution.',
+    applicable_phases: ['Project setup', 'Task planning', 'Feature implementation', 'Testing & verification'],
+    applicable_task_types: ['architecture', 'planning', 'backend', 'frontend', 'testing', 'debugging', 'verification'],
+    ...skillInstallation('superpowers'),
   },
   {
     name: 'backend-dev-guidelines',
