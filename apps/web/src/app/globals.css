@@ -77,10 +77,10 @@
   --graph-node-external-label: #5e5547;
   --graph-node-external-name: #26211a;
 
-  --font-notioninter: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-lyon-text: Georgia, 'Times New Roman', serif;
+  --font-notioninter: "Inter", var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-lyon-text: "Source Serif 4", Georgia, 'Times New Roman', serif;
   --font-sans: var(--font-notioninter);
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --paper: var(--color-paper-warmth);
   --paper-raised: var(--color-pure-white);
@@ -124,7 +124,7 @@
   --color-draft-blue: var(--draft-blue); --color-proof-amber: var(--proof-amber); --color-pass-teal: var(--pass-teal); --color-fail-rose: var(--fail-rose);
   --color-panel: var(--bg-panel); --color-surface: var(--bg-surface); --color-raised: var(--bg-raised);
   --color-border-subtle: var(--border-subtle); --color-border-default: var(--border-default); --color-border-hi: var(--border-hi);
-  --font-sans: var(--font-notioninter); --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-notioninter); --font-mono: var(--font-mono);
 }
 
 html {
