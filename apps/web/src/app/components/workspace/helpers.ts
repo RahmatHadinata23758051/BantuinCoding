@@ -176,7 +176,7 @@ export function getDocumentReadiness({
     })
 
   const retryableCount = requiredTypes.filter((type) => {
-    if (!['PRD', 'ARCHITECTURE', 'DESIGN', 'AGENT'].includes(type)) return false
+    if (!['PRD', 'ARCHITECTURE', 'DESIGN', 'AGENT', 'BACKLOG'].includes(type)) return false
     const artifact = requiredArtifacts.find((candidate) => candidate.type === type)
     return !artifact || (artifact.status !== 'READY' && artifact.status !== 'MODIFIED')
   }).length

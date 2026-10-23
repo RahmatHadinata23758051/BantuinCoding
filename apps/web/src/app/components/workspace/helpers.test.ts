@@ -249,6 +249,30 @@ describe('Workspace helpers', () => {
       expect(result.retryableCount).toBe(2) // ARCHITECTURE (failed) + AGENT (missing)
     })
 
+    it('includes BACKLOG in retryableCount when pending or failed', () => {
+      const result = getDocumentReadiness({
+        requiredArtifactTypes: ['PRD', 'ARCHITECTURE', 'DESIGN', 'AGENT', 'BACKLOG'],
+        artifacts: [
+          { type: 'PRD', status: 'READY' },
+          { type: 'ARCHITECTURE', status: 'READY' },
+          { type: 'DESIGN', status: 'READY' },
+        ],
+        plannedDocuments: [
+          { id: 'PRD', type: 'PRD', filename: 'PRD.md', status: 'READY' },
+          { id: 'ARCHITECTURE', type: 'ARCHITECTURE', filename: 'ARCHITECTURE.md', status: 'READY' },
+          { id: 'DESIGN', type: 'DESIGN', filename: 'DESIGN.md', status: 'READY' },
+          { id: 'AGENT', type: 'AGENT', filename: 'Agent.md', status: 'WAITING' },
+          { id: 'BACKLOG', type: 'BACKLOG', filename: 'BACKLOG.md', status: 'WAITING' },
+        ],
+      })
+
+      expect(result.readyCount).toBe(3)
+      expect(result.totalCount).toBe(5)
+      expect(result.attentionCount).toBe(2)
+      expect(result.retryableCount).toBe(2) // AGENT & BACKLOG
+      expect(result.pendingDocuments.map((d) => d.type)).toEqual(['AGENT', 'BACKLOG'])
+    })
+
     it('does not include SRS in retryableCount', () => {
       const result = getDocumentReadiness({
         requiredArtifactTypes: ['PRD', 'SRS'],
