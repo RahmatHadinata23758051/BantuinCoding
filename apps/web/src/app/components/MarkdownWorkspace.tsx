@@ -169,15 +169,28 @@ export function MarkdownWorkspace({
       }
 
       const data = (await response.json()) as {
+        artifact?: WorkspaceArtifactItem & { error?: string }
         artifacts?: Array<WorkspaceArtifactItem & { error?: string }>
-        backlog?: { backlog_md_content: string }
+        backlog?: { backlog_md_content?: string }
         systemGraph?: SystemGraphData | null
       }
       let newContent = ''
       let errorMsg = ''
 
-      if (activeArtifact.type === 'BACKLOG' && data.backlog) {
-        newContent = data.backlog.backlog_md_content
+      if (activeArtifact.type === 'BACKLOG') {
+        const backlogArtifact = data.artifact?.type === 'BACKLOG'
+          ? data.artifact
+          : data.artifacts?.find((a) => a.type === 'BACKLOG')
+        if (backlogArtifact?.status === 'FAILED') {
+          errorMsg = backlogArtifact.error || t('markdownOutputFailed')
+        } else if (backlogArtifact?.content) {
+          newContent = backlogArtifact.content
+        } else if (data.backlog?.backlog_md_content) {
+          newContent = data.backlog.backlog_md_content
+        }
+      } else if (data.artifact && data.artifact.type === activeArtifact.type) {
+        if (data.artifact.status === 'FAILED') errorMsg = data.artifact.error || t('markdownOutputFailed')
+        else newContent = data.artifact.content
       } else if (data.artifacts) {
         const updated = data.artifacts.find((a) => a.type === activeArtifact.type)
         if (updated?.status === 'FAILED') errorMsg = updated.error || t('markdownOutputFailed')
@@ -193,8 +206,7 @@ export function MarkdownWorkspace({
           data.systemGraph,
         )
       } else {
-        announce(t('markdownRefreshing'))
-        window.location.reload()
+        announce(t('markdownGenerationFailed'), 'error')
       }
     } catch (error) {
       announce(error instanceof Error ? error.message : t('markdownRegenerationError'), 'error')
