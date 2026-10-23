@@ -88,7 +88,15 @@ export async function POST(
       }),
     }))
 
-    return NextResponse.json({ backlog, readiness, artifact, phases: formattedPhases })
+    return NextResponse.json({
+      backlog: {
+        ...backlog,
+        backlog_md_content: artifact?.content ?? '',
+      },
+      readiness,
+      artifact,
+      phases: formattedPhases,
+    })
   } catch (err) {
     const message = err instanceof BacklogGenerationError
       ? err.message

@@ -306,8 +306,12 @@ describe('BK-031 Route Integration, Security, and Recovery', () => {
         params,
       )
       expect(backlogRes.status).toBe(200)
-      const backlogBody = await parseBody<{ artifact: { type: string; status: string } }>(backlogRes)
+      const backlogBody = await parseBody<{
+        artifact: { type: string; status: string; content: string }
+        backlog: { backlog_md_content: string }
+      }>(backlogRes)
       expect(backlogBody.artifact.type).toBe('BACKLOG')
+      expect(backlogBody.backlog.backlog_md_content).toBe('# Backlog')
 
       // Step 10: Consistency Validation & Export Promotion
       mocks.requireProjectAction.mockResolvedValueOnce({ id: projectId, status: 'READY' })
