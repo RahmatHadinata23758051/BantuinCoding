@@ -98,11 +98,14 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const router = useRouter()
   const searchParams = useSearchParams()
   const requestedTab = parseWorkspaceTab(searchParams.get('tab'))
+  const [overrideTab, setOverrideTab] = useState<{ target: WorkspaceSection; origin: WorkspaceSection } | null>(null)
   const [currentClassification, setCurrentClassification] = useState(initialData.classification)
   const [systemGraph, setSystemGraph] = useState<SystemGraphData | null>(initialData.systemGraph)
   const showDesignSystem = shouldShowDesignSystemGraph(systemGraph, currentClassification)
   const sectionItems = ALL_SECTIONS.filter((section) => section.id !== 'design-system' || showDesignSystem)
-  const activeTab = requestedTab === 'design-system' && !showDesignSystem ? 'overview' : requestedTab
+  const resolvedRequestedTab = requestedTab === 'design-system' && !showDesignSystem ? 'overview' : requestedTab
+  const currentOverride = overrideTab && overrideTab.origin === requestedTab ? overrideTab.target : null
+  const activeTab = currentOverride ?? resolvedRequestedTab
 
   useEffect(() => {
     if (showDesignSystem || requestedTab !== 'design-system') return
@@ -113,6 +116,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   }, [requestedTab, router, searchParams, showDesignSystem])
 
   const selectTab = (section: WorkspaceSection) => {
+    setOverrideTab({ target: section, origin: requestedTab })
     const params = new URLSearchParams(searchParams.toString())
     params.delete('flow')
     if (section === 'overview') params.delete('tab')
@@ -183,7 +187,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
   const attentionArtifacts = artifacts.filter(
     (artifact) => artifact.status !== 'READY' && artifact.status !== 'MODIFIED',
   )
-  const supportedRetryTypes = ['PRD', 'ARCHITECTURE', 'DESIGN', 'AGENT']
+  const supportedRetryTypes = ['PRD', 'ARCHITECTURE', 'DESIGN', 'AGENT', 'BACKLOG']
   const requiredDocumentTypes = initialData.requiredArtifactTypes.filter((type) =>
     supportedRetryTypes.includes(type),
   )
@@ -1192,6 +1196,7 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     if (initialGenerationStartedRef.current || isGenerating) return
     initialGenerationStartedRef.current = true
     setShowVisualReferenceStep(false)
+    selectTab('documents')
     try {
       await runGenerationRef.current('initial', true, referenceId)
     } catch (error) {
@@ -1245,63 +1250,116 @@ export function ProjectWorkspaceContainer({ initialData }: ProjectWorkspaceProps
     setGenerationOperation('retry')
     setProjectStatus('GENERATING')
     setGenMessage(null)
-    let state = markGenerationStageRunning(generationState, 'documents')
+    const needsCoreOrAgentRetry = retryableDocumentArtifacts.some((type) => type !== 'BACKLOG')
+    const needsBacklogRetry = retryableDocumentArtifacts.includes('BACKLOG')
+
+    let state = markGenerationStageRunning(
+      generationState,
+      needsCoreOrAgentRetry ? 'documents' : 'backlog',
+    )
     updateGenerationState(state)
 
     try {
-      const result = await requestProjectStage<{
-        artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; error?: string }>
-        readiness?: { isReady: boolean }
-        systemGraph?: SystemGraphData | null
-      }>(
-        'generate',
-        {
-          method: 'POST',
-          body: JSON.stringify({ regenerateFailed: true }),
-          headers: { 'Content-Type': 'application/json' },
-        },
-        t('documentGenerationFailed'),
-      )
-      const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED' || artifact.status === 'OUTDATED')
-      if (failedArtifact) throw new Error(failedArtifact.error ?? t('documentGenerationFailed'))
+      let nextArtifacts = [...artifacts]
+      let readinessIsReady = false
 
-      const incoming = result.artifacts ?? []
-      if (!incoming.length) throw new Error(t('documentGenerationEmpty'))
+      if (needsCoreOrAgentRetry) {
+        const result = await requestProjectStage<{
+          artifacts?: Array<{ id: string; type: string; path: string; status: string; content?: string; updatedAt?: string; error?: string }>
+          readiness?: { isReady: boolean }
+          systemGraph?: SystemGraphData | null
+        }>(
+          'generate',
+          {
+            method: 'POST',
+            body: JSON.stringify({ regenerateFailed: true }),
+            headers: { 'Content-Type': 'application/json' },
+          },
+          t('documentGenerationFailed'),
+        )
+        const failedArtifact = result.artifacts?.find((artifact) => artifact.status === 'FAILED' || artifact.status === 'OUTDATED')
+        if (failedArtifact) throw new Error(failedArtifact.error ?? t('documentGenerationFailed'))
 
-      const updated = new Map(incoming.map((artifact) => [artifact.type, artifact]))
-      const nextArtifacts = [
-        ...artifacts.filter((artifact) => !updated.has(artifact.type)),
-        ...[...updated.values()].map((artifact) => ({
-          id: artifact.id || artifact.type,
-          type: artifact.type,
-          path: artifact.path,
-          status: artifact.status,
-          content: artifact.content ?? '',
-          updatedAt: artifact.updatedAt ?? new Date().toISOString(),
-        })),
-      ]
-      setArtifacts(nextArtifacts)
-      if (result.systemGraph !== undefined) setSystemGraph(result.systemGraph)
+        const incoming = result.artifacts ?? []
+        if (!incoming.length) throw new Error(t('documentGenerationEmpty'))
 
-      let reconciled = state
-      for (const artifact of incoming) {
-        reconciled = reconcileGenerationStateAfterArtifactUpdate({
-          state: reconciled,
+        const updated = new Map(incoming.map((artifact) => [artifact.type, artifact]))
+        nextArtifacts = [
+          ...nextArtifacts.filter((artifact) => !updated.has(artifact.type)),
+          ...[...updated.values()].map((artifact) => ({
+            id: artifact.id || artifact.type,
+            type: artifact.type,
+            path: artifact.path,
+            status: artifact.status,
+            content: artifact.content ?? '',
+            updatedAt: artifact.updatedAt ?? new Date().toISOString(),
+          })),
+        ]
+        setArtifacts(nextArtifacts)
+        if (result.systemGraph !== undefined) setSystemGraph(result.systemGraph)
+
+        for (const artifact of incoming) {
+          state = reconcileGenerationStateAfterArtifactUpdate({
+            state,
+            artifacts: nextArtifacts,
+            updatedType: artifact.type,
+            projectStatus: result.readiness?.isReady ? 'READY' : 'GENERATION_FAILED',
+            requiredArtifactTypes: initialData.requiredArtifactTypes,
+            hasSkills: initialData.skills.length > 0,
+            hasBacklog: phases.length > 0,
+          })
+        }
+        readinessIsReady = Boolean(result.readiness?.isReady)
+      }
+
+      if (needsBacklogRetry) {
+        state = markGenerationStageRunning(state, 'backlog')
+        updateGenerationState(state)
+
+        const backlogResult = await generationStageRequest('backlog') as {
+          artifact?: { id: string; type: string; path: string; status: string; content?: string; updatedAt?: string }
+          phases?: typeof initialData.phases
+          readiness?: { isReady: boolean }
+        }
+        if (backlogResult.phases) {
+          setPhases(backlogResult.phases)
+          setBacklogRevision((revision) => revision + 1)
+        }
+        if (backlogResult.artifact) {
+          const artifact = backlogResult.artifact
+          const updatedArtifact: WorkspaceArtifactItem = {
+            id: artifact.id,
+            type: artifact.type,
+            path: artifact.path,
+            content: artifact.content ?? '',
+            status: artifact.status,
+            updatedAt: artifact.updatedAt ?? new Date().toISOString(),
+          }
+          nextArtifacts = nextArtifacts.some((item) => item.type === updatedArtifact.type)
+            ? nextArtifacts.map((item) => (item.type === updatedArtifact.type ? updatedArtifact : item))
+            : [...nextArtifacts, updatedArtifact]
+          setArtifacts(nextArtifacts)
+        }
+        state = markGenerationStageComplete(state, 'backlog')
+        state = reconcileGenerationStateAfterArtifactUpdate({
+          state,
           artifacts: nextArtifacts,
-          updatedType: artifact.type,
-          projectStatus: result.readiness?.isReady ? 'READY' : 'GENERATION_FAILED',
+          updatedType: 'BACKLOG',
+          projectStatus: backlogResult.readiness?.isReady ? 'READY' : 'GENERATION_FAILED',
           requiredArtifactTypes: initialData.requiredArtifactTypes,
           hasSkills: initialData.skills.length > 0,
-          hasBacklog: phases.length > 0,
+          hasBacklog: (backlogResult.phases?.length ?? phases.length) > 0,
         })
+        readinessIsReady = Boolean(backlogResult.readiness?.isReady ?? readinessIsReady)
       }
-      updateGenerationState({ ...reconciled, activeStage: null, isRunning: false })
-      setProjectStatus(result.readiness?.isReady ? 'READY' : 'GENERATION_FAILED')
+
+      updateGenerationState({ ...state, activeStage: null, isRunning: false })
+      setProjectStatus(readinessIsReady ? 'READY' : 'GENERATION_FAILED')
       setGenMessage({ type: 'status', text: t('generationComplete') })
       router.refresh()
     } catch (error) {
       const message = error instanceof Error ? error.message : t('generationRetryFailed')
-      state = markGenerationStageFailed(state, 'documents', message)
+      state = markGenerationStageFailed(state, needsBacklogRetry && !needsCoreOrAgentRetry ? 'backlog' : 'documents', message)
       updateGenerationState(state)
       setProjectStatus('GENERATION_FAILED')
       setGenMessage({
